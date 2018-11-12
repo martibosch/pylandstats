@@ -1,0 +1,28 @@
+# Config file for automatic testing at travis-ci.org
+
+language: python
+python:
+  - 2.7
+  - 3.6
+
+# command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
+install:
+  - pip install -r requirements-dev.txt
+  - pip install -r requirements.txt
+
+# command to run tests, e.g. python setup.py test
+script:
+  - tox
+  - coverage run --source pylandstats -m py.test
+
+after_success:
+  - coverage report -m
+  - coveralls
+
+# deploy new versions to PyPI
+deploy:
+  provider: pypi
+  on:
+    tags: true
+    python: 3.6
+  user: martibosch
