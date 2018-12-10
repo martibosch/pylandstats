@@ -3,13 +3,22 @@ def test_base_imports():
     from scipy import ndimage  # noqa: F401
 
 
+def test_io():
+    import pylandstats as pls
+
+    ls = pls.read_geotiff('tests/input_data/ls.tif')
+    assert ls.cell_width == 250
+    assert ls.cell_height == 250
+    assert ls.cell_area == 250 * 250
+
+
 def test_landscape_metrics_value_ranges():
     import numpy as np
     from scipy import ndimage
-    from pylandstats.landscape import Landscape
+    import pylandstats as pls
 
     ls_arr = np.load('tests/input_data/ls.npy')
-    ls = Landscape(ls_arr, res=(1, 1))
+    ls = pls.Landscape(ls_arr, res=(250, 250))
 
     # basic tests of the `Landscape` class' attributes
     assert ls.nodata not in ls.classes
