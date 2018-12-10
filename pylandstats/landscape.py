@@ -3,13 +3,14 @@ from __future__ import division
 from functools import partial
 
 import numpy as np
+import rasterio
 from scipy import ndimage, stats
 
 from . import settings
 
 # from scipy.spatial.distance import cdist
 
-__all__ = ['Landscape']
+__all__ = ['Landscape', 'read_geotiff']
 
 KERNEL_HORIZONTAL = np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]], dtype=np.int8)
 KERNEL_VERTICAL = np.array([[0, 1, 0], [0, 1, 0], [0, 1, 0]], dtype=np.int8)
@@ -1395,3 +1396,28 @@ class Landscape:
 
         # TODO
         raise NotImplementedError
+
+
+def read_geotiff(fp, nodata=0, **kwargs):
+    """
+    See also the documentation of `rasterio.open`
+
+    Parameters
+    ----------
+    fp : str, file object or pathlib.Path object
+        A filename or URL, a file object opened in binary ('rb') mode,
+        or a Path object. It will be passed to `rasterio.open`
+    nodata : int, float, or nan; default 0
+        Defines the pixel value to be interpreted as not valid data.
+    **kwargs : optional
+        Keyword arguments to be passed to `rasterio.open`
+
+    Returns
+    -------
+    result : Landscape
+    """
+    with rasterio.open(fp, nodata=nodata, **kwargs) as src:
+        ls_arr = src.read(1)
+        res = src.res
+
+    return Landscape(ls_arr, res, nodata=nodata)
