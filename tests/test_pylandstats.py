@@ -116,3 +116,28 @@ def test_landscape_metrics_value_ranges():
     # TODO: assert 0 < ls.contagion() <= 100
     # TODO: assert 0 < ls.interspersion_juxtaposition_index() <= 100
     # TODO: assert ls.shannon_diversity_index() >= 0
+
+
+def test_spatiotemporalanalysis():
+    import numpy as np
+    import pylandstats as pls
+
+    res = (250, 250)
+
+    landscapes = [
+        pls.Landscape(np.load(fp), res=res) for fp in
+        ['tests/input_data/ls.npy', 'tests/input_data/ls_future.npy']
+    ]
+
+    sta = pls.SpatioTemporalAnalysis(landscapes, dates=[2012, 2018])
+
+    # TODO: test legend and figsize
+
+    ax = sta.plot_metric('patch_density', class_val=None)
+    assert len(ax.lines) == 1
+    ax = sta.plot_metric('patch_density', class_val=54, ax=ax)
+    assert len(ax.lines) == 2
+
+    fig, axes = sta.plot_metrics(['edge_density', 'patch_density'],
+                                 class_val=54)
+    assert len(axes) == 2
