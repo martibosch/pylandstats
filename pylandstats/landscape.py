@@ -3,12 +3,9 @@ from __future__ import division
 from functools import partial
 
 import numpy as np
+import pandas as pd
 import rasterio
 from scipy import ndimage, stats
-
-from . import settings
-
-# from scipy.spatial.distance import cdist
 
 __all__ = ['Landscape', 'read_geotiff']
 
@@ -22,8 +19,7 @@ class Landscape:
 
     """
 
-    def __init__(self, landscape_arr, res, nodata=0,
-                 use_cache=settings.USE_LANDSCAPE_CACHE):
+    def __init__(self, landscape_arr, res, nodata=0):
         self.landscape_arr = landscape_arr
         self.cell_width, self.cell_height = res
         self.cell_area = res[0] * res[1]
@@ -33,286 +29,224 @@ class Landscape:
         classes = classes[~np.isnan(classes)]
         self.classes = classes
 
-        self.use_cache = use_cache
-        if use_cache:
-            # cache
-            self._class_arr_dict = dict()
-            self._label_dict = dict()
-            self._patch_areas_dict = dict()
-            self._patch_perimeters_dict = dict()
-            # TODO: worth caching perimeter area ratio, fractal dimension...?
-            # self._patch_perimter_area_ratios_dict = dict()
-
     ###########################################################################
     # common utilities
 
+    # compute methods
+
+    def class_label(self, class_val):
+        return ndimage.label(self.landscape_arr == class_val, KERNEL_MOORE)
+
     # compute methods to obtain a scalar from an array
 
-    def _compute_patch_area(self, patch_arr, cell_counts=False):
-        if self.nodata == 0:
-            # ~ x8 times faster
-            area = np.count_nonzero(patch_arr)
-        else:
-            area = np.sum(patch_arr != self.nodata)
+    def compute_arr_perimeter(self, arr):
+        return np.sum(arr[1:, :] != arr[:-1, :]) * self.cell_width + np.sum(
+            arr[:, 1:] != arr[:, :-1]) * self.cell_height
 
-        if not cell_counts:
-            area *= self.cell_area
+    def compute_arr_edge(self, arr):
+        """
+        Computes the edge of a feature considering the landscape background in
+        order to exclude the edges between the feature and nodata values
+        """
+        # check self.nodata in class_arr?
+        class_cond = arr != self.nodata
+        # class_with_bg_arr = np.copy(self.landscape_arr)
+        # class_with_bg_arr[~class_cond] = self.landscape_arr[~class_cond]
+        # get a 'boolean-like' integer array where one indicates that the cell
+        # corresponds to some class value whereas zero indicates that the cell
+        # corresponds to a nodata value
+        data_arr = (self.landscape_arr != self.nodata).astype(np.int8)
 
-        return area
+        # use a convolution to determine which edges should be exluded from the
+        # perimeter's width and height
+        perimeter_width = np.sum(arr[1:, :] != arr[:-1, :]) + np.sum(
+            ndimage.convolve(data_arr, KERNEL_VERTICAL)[class_cond] - 3)
+        perimeter_height = np.sum(arr[:, 1:] != arr[:, :-1]) + np.sum(
+            ndimage.convolve(data_arr, KERNEL_HORIZONTAL)[class_cond] - 3)
 
-    def _compute_patch_perimeter(self, patch_arr, cell_counts=False):
-        arr = np.pad(patch_arr, pad_width=1, mode='constant',
-                     constant_values=False)  # self.nodata
-
-        perimeter_width = np.sum(arr[1:, :] != arr[:-1, :])
-        perimeter_height = np.sum(arr[:, 1:] != arr[:, :-1])
-
-        if not cell_counts:
-            perimeter_width *= self.cell_width
-            perimeter_height *= self.cell_height
-
-        return perimeter_width + perimeter_height
-
-    def _compute_patch_perimeter_area_ratio(self, patch_arr):
-        return self._compute_patch_perimeter(
-            patch_arr) / self._compute_patch_area(patch_arr)
-
-    def _compute_patch_shape_index(self, patch_arr):
-        area = self._compute_patch_area(patch_arr, cell_counts=False)
-        # the method below ensures that every adjacency, even within a class
-        # value and nodata (the landscape boundary) is counted as patch
-        # perimeter. This is also how it is done in FRAGSTATS.
-        perimeter = self._compute_patch_perimeter(patch_arr, cell_counts=False)
-
-        # n := size of the smallest containing integer square
-        n = np.floor(np.sqrt(area))
-        m = area - n**2
-        if m == 0:
-            min_perimeter = 4 * n
-        elif n**2 < area < n * (n + 1):
-            min_perimeter = 4 * n + 2
-        else:  # assert `area > n * (n + 1)`
-            min_perimeter = 4 * n + 4
-
-        return perimeter / min_perimeter
-
-    def _compute_patch_fractal_dimension(self, patch_arr):
-        return 2 * np.log(
-            .25 * self._compute_patch_perimeter(patch_arr)) / np.log(
-                self._compute_patch_area(patch_arr))
-
-    def _compute_class_area(self, class_arr, cell_counts=False):
-        return self._compute_patch_area(class_arr, cell_counts=cell_counts)
-
-    def _compute_class_perimeter(self, class_arr, cell_counts=False,
-                                 count_boundary=False):
-        perimeter_width = np.sum(class_arr[1:, :] != class_arr[:-1, :])
-        perimeter_height = np.sum(class_arr[:, 1:] != class_arr[:, :-1])
-
-        if not count_boundary:
-            # check self.nodata in class_arr?
-            class_cond = class_arr != self.nodata
-            # class_with_bg_arr = np.copy(self.landscape_arr)
-            # class_with_bg_arr[~class_cond] = self.landscape_arr[~class_cond]
-            # get a 'boolean-like' integer array where one indicates that the
-            # cell corresponds to some class value whereas zero indicates that
-            # the cell corresponds to a nodata value
-            data_arr = (self.landscape_arr != self.nodata).astype(np.int8)
-
-            perimeter_width += np.sum(
-                ndimage.convolve(data_arr, KERNEL_VERTICAL)[class_cond] - 3)
-            perimeter_height += np.sum(
-                ndimage.convolve(data_arr, KERNEL_HORIZONTAL)[class_cond] - 3)
-
-        if not cell_counts:
-            perimeter_width *= self.cell_width
-            perimeter_height *= self.cell_height
-
-        return perimeter_width + perimeter_height
-
-    def _compute_landscape_area(self, cell_counts=False):
-        return self._compute_patch_area(self.landscape_arr,
-                                        cell_counts=cell_counts)
-
-    # compute methods to obtain class and patch-label arrays
-
-    def _compute_class_arr(self, class_val):
-        return self.landscape_arr == class_val
-
-    def _compute_class_label(self, class_arr):
-        # This returns a tuple with `label_arr` and `num_patches`
-        # TODO: parameter for Von Neumann adjacency?
-        # Moore neighborhood
-        return ndimage.label(class_arr, KERNEL_MOORE)
+        return perimeter_width * self.cell_width + \
+            perimeter_height * self.cell_height
 
     # compute methods to obtain patchwise scalars
 
-    def _compute_patch_scalars(self, label_arr, method):
-        # TODO: static method, or put in utils file
-        # abstract method to map a value to each patch of `label_arr`
-        # `patch_values` as np.array of fixed size with
-        # `patch_values[i] = ...` within the loop is slower and less Pythonic
-        # but can lead to better performances if optimized via Cython/numba
-        patch_values = []
-        # for patch_slice in ndimage.find_objects(label_arr):
-        #     patch_values.append(method(label_arr[patch_slice]))
+    def compute_patch_areas(self, label_arr):
+        # we could use `ndimage.find_objects`, but since we do not need to
+        # preserve the feature shapes, `np.bincount` is much faster
+        return np.bincount(label_arr.ravel())[1:] * self.cell_area
+
+    def compute_patch_perimeters(self, label_arr):
+        # NOTE: performance comparison of `patch_perimeters` as np.array of
+        # fixed size with `patch_perimeters[i] = ...` within the loop is
+        # slower and less Pythonic but can lead to better performances if
+        # optimized via Cython/numba
+        patch_perimeters = []
         # `ndimage.find_objects` only finds the (rectangular) bounds; there
         # might be parts of other patches within such bounds, so we need to
         # check which pixels correspond to the patch of interest. Since
         # `ndimage.label` labels patches with an enumeration starting by 1, we
         # can use Python's built-in `enumerate`
+        # NOTE: feature-wise iteration could this be done with
+        # `ndimage.labeled_comprehension(
+        #     label_arr, label_arr, np.arange(1, num_patches + 1),
+        #     _compute_arr_perimeter, np.float, default=None)`
+        # ?
+        # I suspect no, because each feature array is flattened, which does
+        # not allow for the computation of the perimeter or other shape metrics
         for i, patch_slice in enumerate(
                 ndimage.find_objects(label_arr), start=1):
-            patch_values.append(method(label_arr[patch_slice] == i))
-        return np.array(patch_values, dtype=np.float)
+            patch_arr = np.pad(label_arr[patch_slice] == i, pad_width=1,
+                               mode='constant',
+                               constant_values=False)  # self.nodata
 
-    def _compute_patch_areas(self, label_arr):
-        # could use `_compute_patch_scalars`, but `np.bincount` is much faster
-        return np.bincount(label_arr.ravel())[1:] * self.cell_area
+            patch_perimeters.append(self.compute_arr_perimeter(patch_arr))
 
-    def _compute_patch_perimeters(self, label_arr):
-        return self._compute_patch_scalars(label_arr,
-                                           self._compute_patch_perimeter)
+        return patch_perimeters
 
-    def _compute_patch_perimeter_area_ratios(self, label_arr):
-        return self._compute_patch_scalars(
-            label_arr, self._compute_patch_perimeter_area_ratio)
+    # compute metrics from area and perimeter series
 
-    def _compute_patch_shape_indices(self, label_arr):
-        return self._compute_patch_scalars(label_arr,
-                                           self._compute_patch_shape_index)
+    @staticmethod
+    def compute_perimeter_area_ratio(area_ser, perimeter_ser):
+        return perimeter_ser / area_ser
 
-    def _compute_patch_fractal_dimensions(self, label_arr):
-        return self._compute_patch_scalars(
-            label_arr, self._compute_patch_fractal_dimension)
+    @staticmethod
+    def compute_shape_index(area_cells_ser, perimeter_cells_ser):
+        n = np.floor(np.sqrt(area_cells_ser))
+        m = area_cells_ser - n**2
+        min_p = np.ones(len(area_cells_ser))
+        min_p = np.where(m == 0, 4 * n, min_p)
+        min_p = np.where(
+            (n**2 < area_cells_ser) & (area_cells_ser <= n * (n + 1)),
+            4 * n + 2, min_p)
+        min_p = np.where(area_cells_ser > n * (n + 1), 4 * n + 4, min_p)
 
-    # cache of class-level arrays and lists of patchwise scalars
+        return perimeter_cells_ser / min_p
 
-    def _get_from_cache_or_compute(self, class_val, cache_dict_name,
-                                   compute_method, compute_method_args):
-        # Assume that we do not pass kwargs, because we only cache FRAGSTATS'
-        # defaults, which correspond to the methods' default kwarg values
-        if self.use_cache:
-            cache_dict = getattr(self, cache_dict_name)
-            try:
-                return cache_dict[class_val]
-            except KeyError:
-                element = compute_method(*compute_method_args)
-                cache_dict[class_val] = element
-                return element
-        else:
-            return compute_method(*compute_method_args)
+    @staticmethod
+    def compute_fractal_dimension(area_ser, perimeter_ser):
+        return 2 * np.log(.25 * perimeter_ser) / np.log(area_ser)
 
-    def _get_class_arr(self, class_val):
-        return self._get_from_cache_or_compute(
-            class_val, '_class_arr_dict', self._compute_class_arr, [class_val])
+    # properties
 
-    def _get_label_arr(self, class_val):
-        class_arr = self._get_class_arr(class_val)
-        return self._get_from_cache_or_compute(class_val, '_label_dict',
-                                               self._compute_class_label,
-                                               [class_arr])[0]
+    @property
+    def _num_patches_dict(self):
+        try:
+            return self._cached_num_patches_dict
+        except AttributeError:
+            self._cached_num_patches_dict = {
+                class_val: self.class_label(class_val)[1]
+                for class_val in self.classes
+            }
 
-    def _get_num_patches(self, class_val):
-        class_arr = self._get_class_arr(class_val)
-        return self._get_from_cache_or_compute(class_val, '_label_dict',
-                                               self._compute_class_label,
-                                               [class_arr])[1]
-
-    def _get_patch_areas(self, class_val):
-        label_arr = self._get_label_arr(class_val)
-        return self._get_from_cache_or_compute(class_val, '_patch_areas_dict',
-                                               self._compute_patch_areas,
-                                               [label_arr])
-
-    def _get_patch_perimeters(self, class_val):
-        label_arr = self._get_label_arr(class_val)
-        return self._get_from_cache_or_compute(
-            class_val, '_patch_perimeters_dict',
-            self._compute_patch_perimeters, [label_arr])
-
-    def _get_patch_perimeter_area_ratios(self, class_val):
-        label_arr = self._get_label_arr(class_val)
-        return self._compute_patch_perimeter_area_ratios(label_arr)
-
-    def _get_patch_shape_indices(self, class_val):
-        label_arr = self._get_label_arr(class_val)
-        return self._compute_patch_shape_indices(label_arr)
-
-    def _get_patch_fractal_dimensions(self, class_val):
-        # label_arr = self._get_label_arr(class_val)
-        # return self._get_from_cache_or_compute(
-        #     class_val, '_patch_fractal_dimensions_dict',
-        #     self._compute_patch_fractal_dimensions, [label_arr])
-        label_arr = self._get_label_arr(class_val)
-        return self._compute_patch_fractal_dimensions(label_arr)
+            return self._cached_num_patches_dict
 
     @property
     def landscape_area(self):
         try:
             return self._landscape_area
         except AttributeError:
-            self._landscape_area = self._compute_landscape_area()
+            if self.nodata == 0:
+                # ~ x8 times faster
+                landscape_num_cells = np.count_nonzero(self.landscape_arr)
+            else:
+                landscape_num_cells = np.sum(self.landscape_arr != self.nodata)
+
+            self._landscape_area = landscape_num_cells * self.cell_area
+
             return self._landscape_area
+
+    @property
+    def _patch_areas_df(self):
+        try:
+            return self._cached_patch_areas_df
+        except AttributeError:
+            self._cached_patch_areas_df = pd.DataFrame({
+                'class_val':
+                np.concatenate([
+                    np.full(self._num_patches_dict[class_val], class_val)
+                    for class_val in self.classes
+                ]),
+                'area':
+                np.concatenate([
+                    self.compute_patch_areas(self.class_label(class_val)[0])
+                    for class_val in self.classes
+                ])
+            })
+
+            return self._cached_patch_areas_df
+
+    @property
+    def _patch_perimeters_df(self):
+        try:
+            return self._cached_patch_perimeters_df
+        except AttributeError:
+            self._cached_patch_perimeters_df = pd.DataFrame({
+                'class_val':
+                np.concatenate([
+                    np.full(self._num_patches_dict[class_val], class_val)
+                    for class_val in self.classes
+                ]),
+                'perimeter':
+                np.concatenate([
+                    self.compute_patch_perimeters(
+                        self.class_label(class_val)[0])
+                    for class_val in self.classes
+                ])
+            })
+
+            return self._cached_patch_perimeters_df
 
     # metric distribution statistics
 
-    def _metric_reduce(
-            self,
-            class_val,
-            get_patch_scalars_method,
-            patch_reduce_method,
-    ):
-        if class_val:
-            patch_scalars = get_patch_scalars_method(class_val)
-        else:
-            patch_scalars = np.concatenate([
-                get_patch_scalars_method(_class_val)
-                for _class_val in self.classes
-            ])
+    def _metric_reduce(self, class_val, patch_metric_method,
+                       patch_metric_method_kwargs, reduce_method):
+        patch_metrics = patch_metric_method(class_val,
+                                            **patch_metric_method_kwargs)
+        if class_val is None:
+            # ACHTUNG: dropping columns from a `pd.DataFrame` until leaving it
+            # with only one column will still return a `pd.DataFrame`, so we
+            # must convert to `pd.Series` manually (e.g., with `iloc`)
+            patch_metrics = patch_metrics.drop('class_val', axis=1).iloc[:, 0]
 
-        return patch_reduce_method(patch_scalars)
+        return reduce_method(patch_metrics)
 
-    def _metric_mn(self, class_val, get_patch_scalars_method, hectares=False):
-        metric_mn = self._metric_reduce(class_val, get_patch_scalars_method,
-                                        np.mean)
+    def _metric_mn(self, class_val, patch_metric_method,
+                   patch_metric_method_kwargs={}):
+        return self._metric_reduce(class_val, patch_metric_method,
+                                   patch_metric_method_kwargs, np.mean)
 
-        if hectares:
-            metric_mn /= 10000
+    def _metric_am(self, class_val, patch_metric_method,
+                   patch_metric_method_kwargs={}):
+        # `area` can be `pd.Series` or `pd.DataFrame`
+        area = self.area(class_val)
 
-        return metric_mn
+        if class_val is None:
+            area = area['area']
 
-    def _metric_am(self, class_val, get_patch_scalars_method, hectares=False):
-        if class_val:
-            patch_areas = self._get_patch_areas(class_val)
-        else:
-            patch_areas = np.concatenate([
-                self._get_patch_areas(_class_val)
-                for _class_val in self.classes
-            ])
+        return self._metric_reduce(class_val, patch_metric_method,
+                                   patch_metric_method_kwargs,
+                                   partial(np.average, weights=area))
 
-        metric_am = self._metric_reduce(
-            class_val, get_patch_scalars_method,
-            partial(np.average, weights=patch_areas))
+    def _metric_md(self, class_val, patch_metric_method,
+                   patch_metric_method_kwargs={}):
+        return self._metric_reduce(class_val, patch_metric_method,
+                                   patch_metric_method_kwargs, np.median)
 
-        if hectares:
-            metric_am /= 10000
+    def _metric_ra(self, class_val, patch_metric_method,
+                   patch_metric_method_kwargs={}):
+        return self._metric_reduce(class_val, patch_metric_method,
+                                   patch_metric_method_kwargs,
+                                   lambda ser: ser.max() - ser.min())
 
-        return metric_am
+    def _metric_sd(self, class_val, patch_metric_method,
+                   patch_metric_method_kwargs={}):
+        return self._metric_reduce(class_val, patch_metric_method,
+                                   patch_metric_method_kwargs, np.std)
 
-    def _metric_sd(self, class_val, get_patch_scalars_method, hectares=False):
-        metric_sd = self._metric_reduce(class_val, get_patch_scalars_method,
-                                        np.std)
-
-        if hectares:
-            metric_sd /= 10000
-
-        return metric_sd
-
-    def _metric_cv(self, class_val, get_patch_scalars_method, percent=True):
-        metric_cv = self._metric_reduce(class_val, get_patch_scalars_method,
+    def _metric_cv(self, class_val, patch_metric_method,
+                   patch_metric_method_kwargs={}, percent=True):
+        metric_cv = self._metric_reduce(class_val, patch_metric_method,
+                                        patch_metric_method_kwargs,
                                         stats.variation)
-
         if percent:
             metric_cv *= 100
 
@@ -323,99 +257,192 @@ class Landscape:
 
     # area and edge metrics
 
-    def area(self, patch_arr, hectares=True):
+    def area(self, class_val=None, hectares=True):
         """
 
         Parameters
         ----------
-        patch_arr :
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding
+            class only, otherwise it will be computed for all the classes of
+            the landscape
         hectares : bool, default True
             whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
         -------
-        area : float
+        area : pd.Series if `class_val` is provided, pd.DataFrame otherwise
             area > 0, without limit
         """
 
-        area = self._compute_patch_area(patch_arr)
+        # ACHTUNG: very important to copy to ensure that we do not modify the
+        # 'area' values if converting to hectares nor we return a variable
+        # with the reference to the property `self._patch_areas_df`
+        area_df = self._patch_areas_df.copy()
 
         if hectares:
-            area /= 10000
+            area_df['area'] /= 10000
 
-        return area
+        if class_val:
+            return area_df[area_df['class_val'] == class_val]['area']
+        else:
+            return area_df
 
-    def perimeter(self, patch_arr):
+    def perimeter(self, class_val=None):
         """
 
         Parameters
         ----------
-        patch_arr :
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding
+            class only, otherwise it will be computed for all the classes of
+            the landscape
 
         Returns
         -------
-        perim : float
+        perim : pd.Series if `class_val` is provided, pd.DataFrame otherwise
             perim > 0, without limit
         """
 
-        # the default arguments are already `pad=True` and
-        # `count_boundary=True`, which ensures that every adjacency, even
-        # within a class value and nodata (the landscape boundary) is counted
-        # as patch perimeter. This is also how it is done in FRAGSTATS
-        return self._compute_patch_perimeter(patch_arr)
+        # ACHTUNG: very important to copy to ensure that we do not return a
+        # variable with the reference to the property
+        # `self._patch_perimeters_df`
+        perimeters_df = self._patch_perimeters_df.copy()
+
+        if class_val:
+            return perimeters_df[perimeters_df['class_val'] ==
+                                 class_val]['perimeter']
+        else:
+            return perimeters_df
 
     # shape
 
-    def perimeter_area_ratio(self, patch_arr):
+    def perimeter_area_ratio(self, class_val=None, hectares=True):
         """
 
         Parameters
         ----------
-        patch_arr :
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding
+            class only, otherwise it will be computed for all the classes of
+            the landscape
+        hectares : bool, default True
+            whether the area should be converted to hectares (tends to yield
+            more legible values for the metric)
 
         Returns
         -------
-        para : float
+        para : pd.Series if `class_val` is provided, pd.DataFrame otherwise
             para > 0, without limit
         """
 
-        # self.area(patch_arr, hectares=False) / self.perimeter(patch_arr)
-        return self._compute_patch_perimeter_area_ratio(patch_arr)
+        # it is a bit silly to define a method in the `metric_utils` module to
+        # compute the perimeter area ratio since it is a simple division
+        area = self.area(class_val, hectares)
+        perimeter = self.perimeter(class_val)
 
-    def shape_index(self, patch_arr):
+        if class_val:
+            # both `perimeter` and `area` are `pd.Series`
+            return Landscape.compute_perimeter_area_ratio(area, perimeter)
+        else:
+            # both `perimeter` and `area` are `pd.DataFrame`
+            return pd.DataFrame({
+                'class_val':
+                area['class_val'],
+                'perimeter_area_ratio':
+                Landscape.compute_perimeter_area_ratio(area['area'],
+                                                       perimeter['perimeter'])
+            })
+
+    def shape_index(self, class_val=None):
         """
 
         Parameters
         ----------
-        patch_arr :
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding
+            class only, otherwise it will be computed for all the classes of
+            the landscape
 
         Returns
         -------
-        shape : float
+        shape : pd.Series if `class_val` is provided, pd.DataFrame otherwise
             shape >= 1, without limit ; shape equals 1 when the patch
             is maximally compact, and increases without limit as patch shape
             becomes more regular
         """
 
-        return self._compute_patch_shape_index(patch_arr)
+        area = self.area(class_val, False)
+        perimeter = self.perimeter(class_val)
 
-    def fractal_dimension(self, patch_arr):
+        if class_val:
+            # both `perimeter` and `area` are `pd.Series`
+            if self.cell_width != self.cell_height:
+                # this is rare and not even supported in FRAGSTATS. We could
+                # calculate the perimeter in terms of cell counts in a
+                # dedicated function and then adjust for a square standard,
+                # but I believe it is not worth the effort. So we will just
+                # return the base formula without adjusting for the square
+                # standard
+                return .25 * perimeter / np.sqrt(area)
+            else:
+                # we could also divide by `self.cell_height`
+                return Landscape.compute_shape_index(
+                    area / self.cell_area, perimeter / self.cell_width)
+
+        else:
+            # both `perimeter` and `area` are `pd.DataFrame`
+            if self.cell_width != self.cell_height:
+                # see comment above
+                shape_index_ser = .25 * perimeter['perimeter'] / np.sqrt(
+                    area['area'])
+            else:
+                shape_index_ser = pd.Series(
+                    Landscape.compute_shape_index(
+                        area['area'] / self.cell_area,
+                        perimeter['perimeter'] / self.cell_width),
+                    index=area.index)
+
+            return pd.DataFrame({
+                'class_val': area['class_val'],
+                'shape_index': shape_index_ser
+            })
+
+    def fractal_dimension(self, class_val=None):
         """
 
         Parameters
         ----------
-        patch_arr :
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding
+            class only, otherwise it will be computed for all the classes of
+            the landscape
+
 
         Returns
         -------
-        frac : float
+        frac : pd.Series if `class_val` is provided, pd.DataFrame otherwise
             1 <= frac <=2 ; for a two-dimensional patch, frac approaches 1 for
             very simple shapes such as squares, and approaches 2 for complex
             plane-filling shapes
         """
 
-        return self._compute_patch_fractal_dimension(patch_arr)
+        area = self.area(class_val, hectares=False)
+        perimeter = self.perimeter(class_val)
+
+        if class_val:
+            # both `perimeter` and `area` are `pd.Series`
+            return Landscape.compute_fractal_dimension(area, perimeter)
+        else:
+            # both `perimeter` and `area` are `pd.DataFrame`
+            return pd.DataFrame({
+                'class_val':
+                area['class_val'],
+                'fractal_dimension':
+                Landscape.compute_fractal_dimension(area['area'],
+                                                    perimeter['perimeter'])
+            })
 
     def continguity_index(self, patch_arr):
         """
@@ -483,13 +510,14 @@ class Landscape:
 
         Parameters
         ----------
+        ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
             landscape level
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            whether the area should be converted to hectares (tends to yield
+            more legible values for the metric)
 
         Returns
         -------
@@ -497,16 +525,14 @@ class Landscape:
         """
 
         if class_val:
-            total_area = np.sum(self._get_patch_areas(class_val))
+            return np.sum(self.area(class_val, hectares))
         else:
-            # this is safe to do for the `hectares` division below as far as
-            # Python aliases are concerned
             total_area = self.landscape_area
 
-        if hectares:
-            total_area /= 10000
+            if hectares:
+                total_area /= 10000
 
-        return total_area
+            return total_area
 
     def proportion_of_landscape(self, class_val, percent=True):
         """
@@ -536,6 +562,28 @@ class Landscape:
 
         return numerator / self.landscape_area
 
+    def number_of_patches(self, class_val=None):
+        """
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        np : int
+            np >= 1
+        """
+        if class_val:
+            num_patches = self._num_patches_dict[class_val]
+        else:
+            num_patches = np.sum(list(self._num_patches_dict.values()))
+
+        return num_patches
+
     def patch_density(self, class_val=None, percent=True, hectares=True):
         """
 
@@ -559,15 +607,7 @@ class Landscape:
             every cell is a separate patch
         """
 
-        if class_val:
-            num_patches = self._get_num_patches(class_val)
-        else:
-            num_patches = np.sum([
-                self._get_num_patches(_class_val)
-                for _class_val in self.classes
-            ])
-
-        numerator = num_patches
+        numerator = self.number_of_patches(class_val)
         if percent:
             numerator *= 100
         if hectares:
@@ -597,15 +637,13 @@ class Landscape:
             largest patch comprises the totality of the landscape
         """
 
-        if class_val:
-            patch_areas = self._get_patch_areas(class_val)
-        else:
-            patch_areas = np.concatenate([
-                self._get_patch_areas(_class_val)
-                for _class_val in self.classes
-            ])
+        area = self.area(class_val, hectares=False)
 
-        numerator = np.max(patch_areas)
+        if class_val:
+            numerator = np.max(area)
+        else:
+            numerator = np.max(area['area'])
+
         if percent:
             numerator *= 100
 
@@ -632,27 +670,20 @@ class Landscape:
         """
 
         if class_val:
-            # Alternative: check performance, check if same result. In any
-            # case, it makes sense to use the cache methods, since patchwise
-            # computations (even if less performant) might have already been
-            # performed, or might be useful later
-            # class_arr = self._get_class_arr(class_val)
-            # total_edge = self._compute_arr_perimeter(class_arr)
             if count_boundary:
                 # then the total edge is just the sum of the perimeters of all
                 # the patches of the corresponding class
-                total_edge = np.sum(self._get_patch_perimeters(class_val))
+                total_edge = np.sum(self.perimeter(class_val))
             else:
-                total_edge = self._compute_class_perimeter(
-                    self._get_class_arr(class_val))
+                total_edge = self.compute_arr_edge(
+                    self.landscape_arr == class_val)
         else:
-            landscape_arr = np.copy(self.landscape_arr)
             if count_boundary:
-                landscape_arr = np.pad(landscape_arr, pad_width=1,
-                                       mode='constant',
-                                       constant_values=self.nodata)
-            total_edge = self._compute_class_perimeter(
-                landscape_arr, count_boundary=count_boundary)
+                total_edge = self.compute_arr_perimeter(
+                    np.pad(self.landscape_arr, pad_width=1, mode='constant',
+                           constant_values=self.nodata))
+            else:
+                total_edge = self.compute_arr_edge(self.landscape_arr)
 
         return total_edge
 
@@ -708,7 +739,7 @@ class Landscape:
         area_mn : float
         """
 
-        return self._metric_mn(class_val, self._get_patch_areas, hectares)
+        return self._metric_mn(class_val, self.area, {'hectares': hectares})
 
     def area_am(self, class_val=None, hectares=True):
         """
@@ -729,7 +760,49 @@ class Landscape:
         area_am : float
         """
 
-        return self._metric_am(class_val, self._get_patch_areas, hectares)
+        return self._metric_am(class_val, self.area, {'hectares': hectares})
+
+    def area_md(self, class_val=None, hectares=True):
+        """
+        See also the documentation of `Landscape.area`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+        hectares : bool, default True
+            whether the landscape area should be converted to hectares (tends
+            to yield more legible values for the metric)
+
+        Returns
+        -------
+        area_md : float
+        """
+
+        return self._metric_md(class_val, self.area, {'hectares': hectares})
+
+    def area_ra(self, class_val=None, hectares=True):
+        """
+        See also the documentation of `Landscape.area`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+        hectares : bool, default True
+            whether the landscape area should be converted to hectares (tends
+            to yield more legible values for the metric)
+
+        Returns
+        -------
+        area_ra : float
+        """
+
+        return self._metric_ra(class_val, self.area, {'hectares': hectares})
 
     def area_sd(self, class_val=None, hectares=True):
         """
@@ -750,7 +823,7 @@ class Landscape:
         area_sd : float
         """
 
-        return self._metric_sd(class_val, self._get_patch_areas, hectares)
+        return self._metric_sd(class_val, self.area, {'hectares': hectares})
 
     def area_cv(self, class_val=None, percent=True):
         """
@@ -771,8 +844,7 @@ class Landscape:
         area_cv : float
         """
 
-        return self._metric_cv(class_val, self._get_patch_areas,
-                               percent=percent)
+        return self._metric_cv(class_val, self.area, percent=percent)
 
     def landscape_shape_index(self, class_val=None):
         """
@@ -792,47 +864,24 @@ class Landscape:
             limit as the patches of such class become more disaggregated.
         """
 
-        if class_val:
-            # total_edge = self.total_edge(class_val=class_val,
-            #                              count_boundary=True)
-            # return .25 * total_edge / np.sqrt(self.landscape_area)
-            class_arr = self._get_class_arr(class_val)
-            area = self._compute_class_area(class_arr, cell_counts=True)
-            perimeter = self._compute_class_perimeter(
-                class_arr, cell_counts=True, count_boundary=True)
+        area = self.total_area(class_val, False)
+        perimeter = self.total_edge(class_val, count_boundary=True)
 
-            n = np.floor(np.sqrt(area))
-            m = area - n**2
-            if m == 0:
-                min_perimeter = 4 * n
-            elif n**2 < area < n * (n + 1):
-                min_perimeter = 4 * n + 2
-            else:  # assert `area > n * (n + 1)`
-                min_perimeter = 4 * n + 4
-
-            return perimeter / min_perimeter
+        if self.cell_width != self.cell_height:
+            # this is rare and not even supported in FRAGSTATS. We could
+            # calculate the perimeter in terms of cell counts in a dedicated
+            # function and then adjust for a square standard, but I believe it
+            # is not worth the effort. So we will just return the base formula
+            # without adjusting for the square standard
+            return .25 * perimeter / np.sqrt(area)
         else:
-            landscape_arr = np.pad(self.landscape_arr, pad_width=1,
-                                   mode='constant',
-                                   constant_values=self.nodata)
-            perimeter = self._compute_class_perimeter(
-                landscape_arr, cell_counts=True, count_boundary=True)
-            area = self._compute_landscape_area(cell_counts=True)
-
-            n = np.floor(np.sqrt(area))
-            m = area - n**2
-            if m == 0:
-                min_perimeter = 4 * n
-            elif n**2 < area < n * (n + 1):
-                min_perimeter = 4 * n + 2
-            else:  # assert `area > n * (n + 1)`
-                min_perimeter = 4 * n + 4
-
-            return perimeter / min_perimeter
+            # we could also divide by `self.cell_height`
+            return Landscape.compute_shape_index(
+                [area / self.cell_area], [perimeter / self.cell_width])[0]
 
     # shape
 
-    def perimeter_area_ratio_mn(self, class_val=None):
+    def perimeter_area_ratio_mn(self, class_val=None, hectares=True):
         """
         See also the documentation of `Landscape.perimeter_area_ratio`
 
@@ -842,16 +891,19 @@ class Landscape:
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
             landscape level
+        hectares : bool, default True
+            whether the landscape area should be converted to hectares (tends
+            to yield more legible values for the metric)
 
         Returns
         -------
         para_mn : float
         """
 
-        return self._metric_mn(class_val,
-                               self._get_patch_perimeter_area_ratios)
+        return self._metric_mn(class_val, self.perimeter_area_ratio,
+                               {'hectares': hectares})
 
-    def perimeter_area_ratio_am(self, class_val=None):
+    def perimeter_area_ratio_am(self, class_val=None, hectares=True):
         """
         See also the documentation of `Landscape.perimeter_area_ratio`
 
@@ -861,16 +913,19 @@ class Landscape:
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
             landscape level
+        hectares : bool, default True
+            whether the landscape area should be converted to hectares (tends
+            to yield more legible values for the metric)
 
         Returns
         -------
-        para_an : float
+        para_am : float
         """
 
-        return self._metric_am(class_val,
-                               self._get_patch_perimeter_area_ratios)
+        return self._metric_am(class_val, self.perimeter_area_ratio,
+                               {'hectares': hectares})
 
-    def perimeter_area_ratio_sd(self, class_val=None):
+    def perimeter_area_ratio_md(self, class_val=None, hectares=True):
         """
         See also the documentation of `Landscape.perimeter_area_ratio`
 
@@ -880,14 +935,61 @@ class Landscape:
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
             landscape level
+        hectares : bool, default True
+            whether the landscape area should be converted to hectares (tends
+            to yield more legible values for the metric)
+
+        Returns
+        -------
+        para_md : float
+        """
+
+        return self._metric_md(class_val, self.perimeter_area_ratio,
+                               {'hectares': hectares})
+
+    def perimeter_area_ratio_ra(self, class_val=None, hectares=True):
+        """
+        See also the documentation of `Landscape.perimeter_area_ratio`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+        hectares : bool, default True
+            whether the landscape area should be converted to hectares (tends
+            to yield more legible values for the metric)
+
+        Returns
+        -------
+        para_ra : float
+        """
+
+        return self._metric_ra(class_val, self.perimeter_area_ratio,
+                               {'hectares': hectares})
+
+    def perimeter_area_ratio_sd(self, class_val=None, hectares=True):
+        """
+        See also the documentation of `Landscape.perimeter_area_ratio`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+        hectares : bool, default True
+            whether the landscape area should be converted to hectares (tends
+            to yield more legible values for the metric)
 
         Returns
         -------
         para_sd : float
         """
 
-        return self._metric_sd(class_val,
-                               self._get_patch_perimeter_area_ratios)
+        return self._metric_sd(class_val, self.perimeter_area_ratio,
+                               {'hectares': hectares})
 
     def perimeter_area_ratio_cv(self, class_val=None, percent=True):
         """
@@ -908,8 +1010,8 @@ class Landscape:
         para_cv : float
         """
 
-        return self._metric_cv(
-            class_val, self._get_patch_perimeter_area_ratios, percent=percent)
+        return self._metric_cv(class_val, self.perimeter_area_ratio,
+                               percent=percent)
 
     def shape_index_mn(self, class_val=None):
         """
@@ -927,7 +1029,7 @@ class Landscape:
         shape_mn : float
         """
 
-        return self._metric_mn(class_val, self._get_patch_shape_indices)
+        return self._metric_mn(class_val, self.shape_index)
 
     def shape_index_am(self, class_val=None):
         """
@@ -945,7 +1047,43 @@ class Landscape:
         shape_am : float
         """
 
-        return self._metric_am(class_val, self._get_patch_shape_indices)
+        return self._metric_am(class_val, self.shape_index)
+
+    def shape_index_md(self, class_val=None):
+        """
+        See also the documentation of `Landscape.shape_index`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        shape_md : float
+        """
+
+        return self._metric_md(class_val, self.shape_index)
+
+    def shape_index_ra(self, class_val=None):
+        """
+        See also the documentation of `Landscape.shape_index`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        shape_ra : float
+        """
+
+        return self._metric_ra(class_val, self.shape_index)
 
     def shape_index_sd(self, class_val=None):
         """
@@ -963,7 +1101,7 @@ class Landscape:
         shape_sd : float
         """
 
-        return self._metric_sd(class_val, self._get_patch_shape_indices)
+        return self._metric_sd(class_val, self.shape_index)
 
     def shape_index_cv(self, class_val=None, percent=True):
         """
@@ -984,8 +1122,7 @@ class Landscape:
         shape_cv : float
         """
 
-        return self._metric_cv(class_val, self._get_patch_shape_indices,
-                               percent=percent)
+        return self._metric_cv(class_val, self.shape_index, percent=percent)
 
     def fractal_dimension_mn(self, class_val=None):
         """
@@ -1003,7 +1140,7 @@ class Landscape:
         frac_mn : float
         """
 
-        return self._metric_mn(class_val, self._get_patch_fractal_dimensions)
+        return self._metric_mn(class_val, self.fractal_dimension)
 
     def fractal_dimension_am(self, class_val=None):
         """
@@ -1021,7 +1158,43 @@ class Landscape:
         frac_am : float
         """
 
-        return self._metric_am(class_val, self._get_patch_fractal_dimensions)
+        return self._metric_am(class_val, self.fractal_dimension)
+
+    def fractal_dimension_md(self, class_val=None):
+        """
+        See also the documentation of `Landscape.fractal_dimension`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        frac_md : float
+        """
+
+        return self._metric_md(class_val, self.fractal_dimension)
+
+    def fractal_dimension_ra(self, class_val=None):
+        """
+        See also the documentation of `Landscape.fractal_dimension`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        frac_ra : float
+        """
+
+        return self._metric_ra(class_val, self.fractal_dimension)
 
     def fractal_dimension_sd(self, class_val=None):
         """
@@ -1039,7 +1212,7 @@ class Landscape:
         frac_sd : float
         """
 
-        return self._metric_sd(class_val, self._get_patch_fractal_dimensions)
+        return self._metric_sd(class_val, self.fractal_dimension)
 
     def fractal_dimension_cv(self, class_val=None, percent=True):
         """
@@ -1060,7 +1233,7 @@ class Landscape:
         frac_cv : float
         """
 
-        return self._metric_cv(class_val, self._get_patch_fractal_dimensions,
+        return self._metric_cv(class_val, self.fractal_dimension,
                                percent=percent)
 
     def continguity_index_mn(self, class_val=None):
@@ -1082,7 +1255,7 @@ class Landscape:
         # TODO
         raise NotImplementedError
 
-    def continguity_index_aw(self, class_val=None):
+    def continguity_index_am(self, class_val=None):
         """
         See also the documentation of `Landscape.contiguity_index`
 
@@ -1095,7 +1268,45 @@ class Landscape:
 
         Returns
         -------
-        contig_aw : float
+        contig_am : float
+        """
+
+        # TODO
+        raise NotImplementedError
+
+    def continguity_index_md(self, class_val=None):
+        """
+        See also the documentation of `Landscape.contiguity_index`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        contig_md : float
+        """
+
+        # TODO
+        raise NotImplementedError
+
+    def continguity_index_ra(self, class_val=None):
+        """
+        See also the documentation of `Landscape.contiguity_index`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        contig_ra : float
         """
 
         # TODO
@@ -1160,7 +1371,7 @@ class Landscape:
         # TODO
         raise NotImplementedError
 
-    def proximity_aw(self, class_val=None):
+    def proximity_am(self, class_val=None):
         """
         See also the documentation of `Landscape.proximity`
 
@@ -1173,7 +1384,45 @@ class Landscape:
 
         Returns
         -------
-        prox_aw : float
+        prox_am : float
+        """
+
+        # TODO
+        raise NotImplementedError
+
+    def proximity_md(self, class_val=None):
+        """
+        See also the documentation of `Landscape.proximity`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        prox_md : float
+        """
+
+        # TODO
+        raise NotImplementedError
+
+    def proximity_ra(self, class_val=None):
+        """
+        See also the documentation of `Landscape.proximity`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        prox_ra : float
         """
 
         # TODO
@@ -1234,8 +1483,7 @@ class Landscape:
         """
 
         # TODO
-        # label_arr = self._get_label_arr(class_val)
-        # num_patches = self._get_num_patches(class_val)
+        # label_arr, num_patches = self.class_label(class_val)
 
         # if num_patches == 0:
         #     return np.nan
@@ -1266,7 +1514,7 @@ class Landscape:
         #     return np.nanmean(b) * self.cell_area
         raise NotImplementedError
 
-    def euclidean_nearest_neighbor_aw(self, class_val=None):
+    def euclidean_nearest_neighbor_am(self, class_val=None):
         """
         See also the documentation of `Landscape.euclidean_nearest_neighbor`
 
@@ -1279,7 +1527,45 @@ class Landscape:
 
         Returns
         -------
-        enn_aw : float
+        enn_am : float
+        """
+
+        # TODO
+        raise NotImplementedError
+
+    def euclidean_nearest_neighbor_md(self, class_val=None):
+        """
+        See also the documentation of `Landscape.euclidean_nearest_neighbor`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        enn_md : float
+        """
+
+        # TODO
+        raise NotImplementedError
+
+    def euclidean_nearest_neighbor_ra(self, class_val=None):
+        """
+        See also the documentation of `Landscape.euclidean_nearest_neighbor`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        enn_ra : float
         """
 
         # TODO
@@ -1396,6 +1682,32 @@ class Landscape:
 
         # TODO
         raise NotImplementedError
+
+    def patch_metrics_df(self):
+        patch_metrics = [
+            'area', 'perimeter', 'perimeter_area_ratio', 'shape_index',
+            'fractal_dimension'
+        ]  # 'contiguity_index', 'euclidean_nearest_neighbor', 'proximity'
+
+        # so far we do not support metric-wise kwargs in this method, so we
+        # only work with FRAGSTATS defaults. More customized metrics might be
+        # computed individually with their dedicated method
+
+        # df = getattr(self, patch_metrics[0])()
+
+        # for patch_metric in patch_metrics[1:]:
+        #     df = pd.concat(
+        #         [df, getattr(self, patch_metric)().drop('class_val', 1)],
+        #         axis=1)
+        # return df
+
+        # in order to avoid adding a duplicate 'class_val' column for each
+        # metric, we drop the 'class_val' column of each metric DataFrame
+        # except for the first
+        return pd.concat([getattr(self, patch_metrics[0])()] + [
+            getattr(self, patch_metric)().drop('class_val', 1)
+            for patch_metric in patch_metrics[1:]
+        ], axis=1)  # [['class_val'] + patch_metrics]
 
 
 def read_geotiff(fp, nodata=0, **kwargs):
