@@ -7,7 +7,7 @@ import pandas as pd
 import rasterio
 from scipy import ndimage, stats
 
-from . import settings
+from . import metric_utils, settings
 
 __all__ = ['Landscape', 'read_geotiff']
 
@@ -41,67 +41,6 @@ class Landscape:
     ###########################################################################
     # common utilities
 
-    # compute methods to obtain a scalar from an array
-
-    def _compute_arr_area(self, arr, cell_counts=False):
-        # TODO: set a partial in `Landscape.__init__` to avoid performing the
-        # `self.nodata == 0` check at each patch
-        if self.nodata == 0:
-            # ~ x8 times faster
-            area = np.count_nonzero(arr)
-        else:
-            area = np.sum(arr != self.nodata)
-
-        if cell_counts:
-            return area
-        else:
-            return area * self.cell_area
-
-    def _compute_arr_perimeter(self, arr):
-        arr = np.pad(arr, pad_width=1, mode='constant',
-                     constant_values=False)  # self.nodata
-
-        return np.sum(arr[1:, :] != arr[:-1, :]) * self.cell_width + np.sum(
-            arr[:, 1:] != arr[:, :-1]) * self.cell_height
-
-    def _compute_class_perimeter(self, class_arr, cell_counts=False,
-                                 count_boundary=False):
-        perimeter_width = np.sum(class_arr[1:, :] != class_arr[:-1, :])
-        perimeter_height = np.sum(class_arr[:, 1:] != class_arr[:, :-1])
-
-        if not count_boundary:
-            # check self.nodata in class_arr?
-            class_cond = class_arr != self.nodata
-            # class_with_bg_arr = np.copy(self.landscape_arr)
-            # class_with_bg_arr[~class_cond] = self.landscape_arr[~class_cond]
-            # get a 'boolean-like' integer array where one indicates that the
-            # cell corresponds to some class value whereas zero indicates that
-            # the cell corresponds to a nodata value
-            data_arr = (self.landscape_arr != self.nodata).astype(np.int8)
-
-            perimeter_width += np.sum(
-                ndimage.convolve(data_arr, KERNEL_VERTICAL)[class_cond] - 3)
-            perimeter_height += np.sum(
-                ndimage.convolve(data_arr, KERNEL_HORIZONTAL)[class_cond] - 3)
-
-        if not cell_counts:
-            perimeter_width *= self.cell_width
-            perimeter_height *= self.cell_height
-
-        return perimeter_width + perimeter_height
-
-    # special case
-    def _compute_shape_index(self, area_cells, perimeter_cells):
-        n = np.floor(np.sqrt(area_cells))
-        m = area_cells - n**2
-        min_p = np.ones_like(area_cells)
-        min_p = np.where(m == 0, 4 * n, min_p)
-        min_p = np.where((n**2 < area_cells) & (area_cells <= n * (n + 1)),
-                         4 * n + 2, min_p)
-        min_p = np.where(area_cells > n * (n + 1), 4 * n + 4, min_p)
-
-        return perimeter_cells / min_p
-
     # compute methods to obtain class and patch-label arrays
 
     def _compute_class_arr(self, class_val):
@@ -112,35 +51,6 @@ class Landscape:
         # TODO: parameter for Von Neumann adjacency?
         # Moore neighborhood
         return ndimage.label(class_arr, KERNEL_MOORE)
-
-    # compute methods to obtain patchwise scalars
-
-    def _compute_patch_scalars(self, label_arr, method):
-        # TODO: static method, or put in utils file
-        # abstract method to map a value to each patch of `label_arr`
-        # `patch_values` as np.array of fixed size with
-        # `patch_values[i] = ...` within the loop is slower and less Pythonic
-        # but can lead to better performances if optimized via Cython/numba
-        patch_values = []
-        # for patch_slice in ndimage.find_objects(label_arr):
-        #     patch_values.append(method(label_arr[patch_slice]))
-        # `ndimage.find_objects` only finds the (rectangular) bounds; there
-        # might be parts of other patches within such bounds, so we need to
-        # check which pixels correspond to the patch of interest. Since
-        # `ndimage.label` labels patches with an enumeration starting by 1, we
-        # can use Python's built-in `enumerate`
-        for i, patch_slice in enumerate(
-                ndimage.find_objects(label_arr), start=1):
-            patch_values.append(method(label_arr[patch_slice] == i))
-        return np.array(patch_values, dtype=np.float)
-
-    def _compute_patch_areas(self, label_arr):
-        # could use `_compute_patch_scalars`, but `np.bincount` is much faster
-        return np.bincount(label_arr.ravel())[1:] * self.cell_area
-
-    def _compute_patch_perimeters(self, label_arr):
-        return self._compute_patch_scalars(label_arr,
-                                           self._compute_arr_perimeter)
 
     # cache of class-level arrays and lists of patchwise scalars
 
@@ -178,7 +88,14 @@ class Landscape:
         try:
             return self._landscape_area
         except AttributeError:
-            self._landscape_area = self._compute_arr_area(self.landscape_arr)
+            if self.nodata == 0:
+                # ~ x8 times faster
+                landscape_num_cells = np.count_nonzero(self.landscape_arr)
+            else:
+                landscape_num_cells = np.sum(self.landscape_arr != self.nodata)
+
+            self._landscape_area = landscape_num_cells * self.cell_area
+
             return self._landscape_area
 
     @property
@@ -194,7 +111,8 @@ class Landscape:
                 ]),
                 'area':
                 np.concatenate([
-                    self._compute_patch_areas(self._get_label_arr(class_val))
+                    metric_utils.compute_patch_areas(
+                        self._get_label_arr(class_val), self.cell_area)
                     for class_val in self.classes
                 ])
             })
@@ -214,9 +132,9 @@ class Landscape:
                 ]),
                 'perimeter':
                 np.concatenate([
-                    self._compute_patch_perimeters(
-                        self._get_label_arr(class_val))
-                    for class_val in self.classes
+                    metric_utils.compute_patch_perimeters(
+                        self._get_label_arr(class_val), self.cell_width,
+                        self.cell_height) for class_val in self.classes
                 ])
             })
 
@@ -338,8 +256,8 @@ class Landscape:
         perimeters_df = self._patch_perimeters_df.copy()
 
         if class_val:
-            return perimeters_df[perimeters_df['class_val'] == class_val][
-                'perimeter']
+            return perimeters_df[perimeters_df['class_val'] ==
+                                 class_val]['perimeter']
         else:
             return perimeters_df
 
@@ -364,19 +282,22 @@ class Landscape:
             para > 0, without limit
         """
 
+        # it is a bit silly to define a method in the `metric_utils` module to
+        # compute the perimeter area ratio since it is a simple division
         area = self.area(class_val, hectares)
         perimeter = self.perimeter(class_val)
 
         if class_val:
             # both `perimeter` and `area` are `pd.Series`
-            return perimeter / area
+            return metric_utils.compute_perimeter_area_ratio(area, perimeter)
         else:
             # both `perimeter` and `area` are `pd.DataFrame`
             return pd.DataFrame({
                 'class_val':
                 area['class_val'],
                 'perimeter_area_ratio':
-                perimeter['perimeter'] / area['area']
+                metric_utils.compute_perimeter_area_ratio(
+                    area['area'], perimeter['perimeter'])
             })
 
     def shape_index(self, class_val=None):
@@ -412,10 +333,9 @@ class Landscape:
                 return .25 * perimeter / np.sqrt(area)
             else:
                 # we could also divide by `self.cell_height`
-                return pd.Series(
-                    self._compute_shape_index(area / self.cell_area,
-                                              perimeter / self.cell_width),
-                    index=area.index)
+                return metric_utils.compute_shape_index(
+                    area / self.cell_area, perimeter / self.cell_width)
+
         else:
             # both `perimeter` and `area` are `pd.DataFrame`
             if self.cell_width != self.cell_height:
@@ -424,7 +344,7 @@ class Landscape:
                     area['area'])
             else:
                 shape_index_ser = pd.Series(
-                    self._compute_shape_index(
+                    metric_utils.compute_shape_index(
                         area['area'] / self.cell_area,
                         perimeter['perimeter'] / self.cell_width),
                     index=area.index)
@@ -458,14 +378,15 @@ class Landscape:
 
         if class_val:
             # both `perimeter` and `area` are `pd.Series`
-            return 2 * np.log(.25 * perimeter) / np.log(area)
+            return metric_utils.compute_fractal_dimension(area, perimeter)
         else:
             # both `perimeter` and `area` are `pd.DataFrame`
             return pd.DataFrame({
                 'class_val':
                 area['class_val'],
                 'fractal_dimension':
-                2 * np.log(.25 * perimeter['perimeter']) / np.log(area['area'])
+                metric_utils.compute_fractal_dimension(area['area'],
+                                                       perimeter['perimeter'])
             })
 
     def continguity_index(self, patch_arr):
@@ -551,7 +472,12 @@ class Landscape:
         if class_val:
             return np.sum(self.area(class_val, hectares))
         else:
-            return self.landscape_area
+            total_area = self.landscape_area
+
+            if hectares:
+                total_area /= 10000
+
+            return total_area
 
     def proportion_of_landscape(self, class_val, percent=True):
         """
@@ -693,31 +619,25 @@ class Landscape:
             consist of the corresponding class
         """
 
-        # TODO: see if we can DRY this method. Especially the
-        # `self._compute_class_perimeter` and the landscape-level computation
-        # of the total edge
         if class_val:
-            # Alternative: check performance, check if same result. In any
-            # case, it makes sense to use the cache methods, since patchwise
-            # computations (even if less performant) might have already been
-            # performed, or might be useful later
-            # class_arr = self._get_class_arr(class_val)
-            # total_edge = self._compute_arr_perimeter(class_arr)
             if count_boundary:
                 # then the total edge is just the sum of the perimeters of all
                 # the patches of the corresponding class
                 total_edge = np.sum(self.perimeter(class_val))
             else:
-                total_edge = self._compute_class_perimeter(
-                    self._get_class_arr(class_val))
+                total_edge = metric_utils.compute_arr_edge(
+                    self._get_class_arr(class_val), self.landscape_arr,
+                    self.cell_width, self.cell_height, self.nodata)
         else:
-            landscape_arr = np.copy(self.landscape_arr)
             if count_boundary:
-                landscape_arr = np.pad(landscape_arr, pad_width=1,
-                                       mode='constant',
-                                       constant_values=self.nodata)
-            total_edge = self._compute_class_perimeter(
-                landscape_arr, count_boundary=count_boundary)
+                total_edge = metric_utils.compute_arr_perimeter(
+                    np.pad(self.landscape_arr, pad_width=1, mode='constant',
+                           constant_values=self.nodata), self.cell_width,
+                    self.cell_height)
+            else:
+                total_edge = metric_utils.compute_arr_edge(
+                    self.landscape_arr, self.landscape_arr, self.cell_width,
+                    self.cell_height, self.nodata)
 
         return total_edge
 
@@ -898,25 +818,20 @@ class Landscape:
             limit as the patches of such class become more disaggregated.
         """
 
-        if class_val:
-            # total_edge = self.total_edge(class_val=class_val,
-            #                              count_boundary=True)
-            # return .25 * total_edge / np.sqrt(self.landscape_area)
-            class_arr = self._get_class_arr(class_val)
-            area_cells = self._compute_arr_area(class_arr, cell_counts=True)
-            perimeter_cells = self._compute_class_perimeter(
-                class_arr, cell_counts=True, count_boundary=True)
+        area = self.total_area(class_val, False)
+        perimeter = self.total_edge(class_val, count_boundary=True)
 
-            return self._compute_shape_index(area_cells, perimeter_cells)
+        if self.cell_width != self.cell_height:
+            # this is rare and not even supported in FRAGSTATS. We could
+            # calculate the perimeter in terms of cell counts in a dedicated
+            # function and then adjust for a square standard, but I believe it
+            # is not worth the effort. So we will just return the base formula
+            # without adjusting for the square standard
+            return .25 * perimeter / np.sqrt(area)
         else:
-            landscape_arr = np.pad(self.landscape_arr, pad_width=1,
-                                   mode='constant',
-                                   constant_values=self.nodata)
-            perimeter_cells = self._compute_class_perimeter(
-                landscape_arr, cell_counts=True, count_boundary=True)
-            area_cells = self.landscape_area / self.cell_area
-
-            return area_cells / perimeter_cells
+            # we could also divide by `self.cell_height`
+            return metric_utils.compute_shape_index(
+                [area / self.cell_area], [perimeter / self.cell_width])[0]
 
     # shape
 
