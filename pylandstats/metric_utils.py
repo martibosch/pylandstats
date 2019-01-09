@@ -5,6 +5,13 @@ KERNEL_HORIZONTAL = np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]], dtype=np.int8)
 KERNEL_VERTICAL = np.array([[0, 1, 0], [0, 1, 0], [0, 1, 0]], dtype=np.int8)
 KERNEL_MOORE = ndimage.generate_binary_structure(2, 2)
 
+# common utilities
+
+
+def class_label(landscape_arr, class_val):
+    return ndimage.label(landscape_arr == class_val, KERNEL_MOORE)
+
+
 # compute methods to obtain a scalar from an array
 
 
@@ -73,6 +80,9 @@ def compute_patch_perimeters(label_arr, cell_width, cell_height):
             compute_arr_perimeter(patch_arr, cell_width, cell_height))
 
     return patch_perimeters
+
+
+# compute metrics from area and perimeter series
 
 
 def compute_perimeter_area_ratio(area_ser, perimeter_ser):

@@ -5,15 +5,11 @@ from functools import partial
 import numpy as np
 import pandas as pd
 import rasterio
-from scipy import ndimage, stats
+from scipy import stats
 
-from . import metric_utils, settings
+from . import metric_utils
 
 __all__ = ['Landscape', 'read_geotiff']
-
-KERNEL_HORIZONTAL = np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]], dtype=np.int8)
-KERNEL_VERTICAL = np.array([[0, 1, 0], [0, 1, 0], [0, 1, 0]], dtype=np.int8)
-KERNEL_MOORE = ndimage.generate_binary_structure(2, 2)
 
 
 class Landscape:
@@ -21,8 +17,7 @@ class Landscape:
 
     """
 
-    def __init__(self, landscape_arr, res, nodata=0,
-                 use_cache=settings.USE_LANDSCAPE_CACHE):
+    def __init__(self, landscape_arr, res, nodata=0):
         self.landscape_arr = landscape_arr
         self.cell_width, self.cell_height = res
         self.cell_area = res[0] * res[1]
@@ -32,56 +27,20 @@ class Landscape:
         classes = classes[~np.isnan(classes)]
         self.classes = classes
 
-        self.use_cache = use_cache
-        if use_cache:
-            # cache
-            self._class_arr_dict = dict()
-            self._label_dict = dict()
-
     ###########################################################################
     # common utilities
 
-    # compute methods to obtain class and patch-label arrays
+    @property
+    def _num_patches_dict(self):
+        try:
+            return self._cached_num_patches_dict
+        except AttributeError:
+            self._cached_num_patches_dict = {
+                class_val: metric_utils.class_label(class_val)[1]
+                for class_val in self.classes
+            }
 
-    def _compute_class_arr(self, class_val):
-        return self.landscape_arr == class_val
-
-    def _compute_class_label(self, class_arr):
-        # This returns a tuple with `label_arr` and `num_patches`
-        # TODO: parameter for Von Neumann adjacency?
-        # Moore neighborhood
-        return ndimage.label(class_arr, KERNEL_MOORE)
-
-    # cache of class-level arrays and lists of patchwise scalars
-
-    def _get_from_cache_or_compute(self, class_val, cache_dict_name,
-                                   compute_method, compute_method_args):
-        if self.use_cache:
-            cache_dict = getattr(self, cache_dict_name)
-            try:
-                return cache_dict[class_val]
-            except KeyError:
-                element = compute_method(*compute_method_args)
-                cache_dict[class_val] = element
-                return element
-        else:
-            return compute_method(*compute_method_args)
-
-    def _get_class_arr(self, class_val):
-        return self._get_from_cache_or_compute(
-            class_val, '_class_arr_dict', self._compute_class_arr, [class_val])
-
-    def _get_label_arr(self, class_val):
-        class_arr = self._get_class_arr(class_val)
-        return self._get_from_cache_or_compute(class_val, '_label_dict',
-                                               self._compute_class_label,
-                                               [class_arr])[0]
-
-    def _get_num_patches(self, class_val):
-        class_arr = self._get_class_arr(class_val)
-        return self._get_from_cache_or_compute(class_val, '_label_dict',
-                                               self._compute_class_label,
-                                               [class_arr])[1]
+            return self._cached_num_patches_dict
 
     @property
     def landscape_area(self):
@@ -106,13 +65,13 @@ class Landscape:
             self._cached_patch_areas_df = pd.DataFrame({
                 'class_val':
                 np.concatenate([
-                    np.full(self._get_num_patches(class_val), class_val)
+                    np.full(self._num_patches_dict[class_val], class_val)
                     for class_val in self.classes
                 ]),
                 'area':
                 np.concatenate([
                     metric_utils.compute_patch_areas(
-                        self._get_label_arr(class_val), self.cell_area)
+                        metric_utils.class_label(class_val)[0], self.cell_area)
                     for class_val in self.classes
                 ])
             })
@@ -127,14 +86,15 @@ class Landscape:
             self._cached_patch_perimeters_df = pd.DataFrame({
                 'class_val':
                 np.concatenate([
-                    np.full(self._get_num_patches(class_val), class_val)
+                    np.full(self._num_patches_dict[class_val], class_val)
                     for class_val in self.classes
                 ]),
                 'perimeter':
                 np.concatenate([
                     metric_utils.compute_patch_perimeters(
-                        self._get_label_arr(class_val), self.cell_width,
-                        self.cell_height) for class_val in self.classes
+                        metric_utils.class_label(class_val)[0],
+                        self.cell_width, self.cell_height)
+                    for class_val in self.classes
                 ])
             })
 
@@ -521,14 +481,9 @@ class Landscape:
             np >= 1
         """
         if class_val:
-            # TODO: `self._get_num_patches` vs `__len__` of any other
-            # patch-based metric DataFrame
-            num_patches = self._get_num_patches(class_val)
+            num_patches = self._num_patches_dict[class_val]
         else:
-            num_patches = np.sum([
-                self._get_num_patches(_class_val)
-                for _class_val in self.classes
-            ])
+            num_patches = np.sum(list(self._num_patches_dict.values()))
 
         return num_patches
 
@@ -624,7 +579,7 @@ class Landscape:
                 total_edge = np.sum(self.perimeter(class_val))
             else:
                 total_edge = metric_utils.compute_arr_edge(
-                    self._get_class_arr(class_val), self.landscape_arr,
+                    self.landscape_arr == class_val, self.landscape_arr,
                     self.cell_width, self.cell_height, self.nodata)
         else:
             if count_boundary:
@@ -1435,8 +1390,7 @@ class Landscape:
         """
 
         # TODO
-        # label_arr = self._get_label_arr(class_val)
-        # num_patches = self._get_num_patches(class_val)
+        # label_arr, num_patches = metric_utils.class_label(class_val)
 
         # if num_patches == 0:
         #     return np.nan
