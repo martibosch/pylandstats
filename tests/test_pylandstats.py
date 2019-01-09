@@ -12,9 +12,25 @@ def test_io():
     assert ls.cell_area == 250 * 250
 
 
+def test_patch_level_metrics_parameters():
+    import numpy as np
+    import pandas as pd
+    import pylandstats as pls
+
+    ls_arr = np.load('tests/input_data/ls.npy')
+    ls = pls.Landscape(ls_arr, res=(250, 250))
+
+    for metric in [
+            'area', 'perimeter', 'perimeter_area_ratio', 'shape_index',
+            'fractal_dimension'
+    ]:  # 'contiguity_index', 'euclidean_nearest_neighbor', 'proximity'
+        method = getattr(ls, metric)
+        assert isinstance(method(), pd.DataFrame)
+        assert isinstance(method(class_val=ls.classes[0]), pd.Series)
+
+
 def test_landscape_metrics_value_ranges():
     import numpy as np
-    from scipy import ndimage
     import pylandstats as pls
 
     ls_arr = np.load('tests/input_data/ls.npy')
@@ -25,19 +41,19 @@ def test_landscape_metrics_value_ranges():
     assert ls.landscape_area > 0
 
     class_val = ls.classes[0]
-    label_arr = ls._get_label_arr(class_val)
+    # label_arr = ls._get_label_arr(class_val)
 
     # patch-level metrics
-    for patch_arr in map(label_arr.__getitem__,
-                         ndimage.find_objects(label_arr)):
-        assert ls.area(patch_arr) > 0
-        assert ls.perimeter(patch_arr) > 0
-        assert ls.perimeter_area_ratio(patch_arr) > 0
-        assert ls.shape_index(patch_arr) >= 1
-        assert 1 <= ls.fractal_dimension(patch_arr) <= 2
-        # TODO: assert 0 <= ls.contiguity_index(patch_arr) <= 1
-        # TODO: assert 0 <= ls.euclidean_nearest_neighbor(patch_arr) <= 1
-        # TODO: assert 0 <= ls.proximity(patch_arr) <= 1
+    assert (ls.area()['area'] > 0).all()
+    assert (ls.perimeter()['perimeter'] > 0).all()
+    assert (ls.perimeter_area_ratio()['perimeter_area_ratio'] > 0).all()
+    assert (ls.shape_index()['shape_index'] >= 1).all()
+    _fractal_dimension_ser = ls.fractal_dimension()['fractal_dimension']
+    assert (_fractal_dimension_ser >= 1).all() and (_fractal_dimension_ser <=
+                                                    2).all()
+    # TODO: assert 0 <= ls.contiguity_index(patch_arr) <= 1
+    # TODO: assert 0 <= ls.euclidean_nearest_neighbor(patch_arr) <= 1
+    # TODO: assert 0 <= ls.proximity(patch_arr) <= 1
 
     # class-level metrics
     assert ls.total_area(class_val) > 0
