@@ -32,6 +32,42 @@ class Landscape:
     ###########################################################################
     # common utilities
 
+    # constants
+
+    PATCH_METRICS = [
+        'area', 'perimeter', 'perimeter_area_ratio', 'shape_index',
+        'fractal_dimension'
+    ]  # 'contiguity_index', 'euclidean_nearest_neighbor', 'proximity'
+
+    _suffixes = ['mn', 'am', 'md', 'ra', 'sd', 'cv']
+
+    CLASS_METRICS = [
+        'total_area',
+        'proportion_of_landscape',
+        'number_of_patches',
+        'patch_density',
+        'largest_patch_index',
+        'total_edge',
+        'edge_density',
+        'landscape_shape_index',
+    ] + ['area_{}'.format(suffix) for suffix in _suffixes] + [
+        'perimeter_area_ratio_{}'.format(suffix) for suffix in _suffixes
+    ] + ['shape_index_{}'.format(suffix) for suffix in _suffixes
+         ] + ['fractal_dimension_{}'.format(suffix) for suffix in _suffixes]
+
+    LANDSCAPE_METRICS = [
+        'total_area',
+        'number_of_patches',
+        'patch_density',
+        'largest_patch_index',
+        'total_edge',
+        'edge_density',
+        'landscape_shape_index',
+    ] + ['area_{}'.format(suffix) for suffix in _suffixes] + [
+        'perimeter_area_ratio_{}'.format(suffix) for suffix in _suffixes
+    ] + ['shape_index_{}'.format(suffix) for suffix in _suffixes
+         ] + ['fractal_dimension_{}'.format(suffix) for suffix in _suffixes]
+
     # compute methods
 
     def class_label(self, class_val):
@@ -311,8 +347,8 @@ class Landscape:
         perimeters_df = self._patch_perimeters_df.copy()
 
         if class_val:
-            return perimeters_df[perimeters_df['class_val'] ==
-                                 class_val]['perimeter']
+            return perimeters_df[perimeters_df['class_val'] == class_val][
+                'perimeter']
         else:
             return perimeters_df
 
@@ -1681,12 +1717,10 @@ class Landscape:
         # TODO
         raise NotImplementedError
 
-    def patch_metrics_df(self):
-        patch_metrics = [
-            'area', 'perimeter', 'perimeter_area_ratio', 'shape_index',
-            'fractal_dimension'
-        ]  # 'contiguity_index', 'euclidean_nearest_neighbor', 'proximity'
+    def patch_metrics_df(self, metrics=None):
 
+        if metrics is None:
+            metrics = Landscape.PATCH_METRICS
         # so far we do not support metric-wise kwargs in this method, so we
         # only work with FRAGSTATS defaults. More customized metrics might be
         # computed individually with their dedicated method
@@ -1699,64 +1733,61 @@ class Landscape:
         #         axis=1)
         # return df
 
-        # in order to avoid adding a duplicate 'class_val' column for each
-        # metric, we drop the 'class_val' column of each metric DataFrame
-        # except for the first
-        df = pd.concat([getattr(self, patch_metrics[0])()] + [
-            getattr(self, patch_metric)().drop('class_val', 1)
-            for patch_metric in patch_metrics[1:]
-        ], axis=1)  # [['class_val'] + patch_metrics]
+        try:
+            # in order to avoid adding a duplicate 'class_val' column for each
+            # metric, we drop the 'class_val' column of each metric DataFrame
+            # except for the first
+            metric = metrics[0]
+            metrics_dfs = [getattr(self, metric)()]
+            for metric in metrics[1:]:
+                metrics_dfs.append(
+                    getattr(self, metric)().drop('class_val', axis=1))
+
+        except AttributeError:
+            raise ValueError("{metric} is not among {Landscape.PATCH_METRICS}")
+
+        df = pd.concat(metrics_dfs, axis=1)  # [['class_val'] + patch_metrics]
         df.index.name = 'patch_id'
 
         return df
 
-    def class_metrics_df(self):
-        _suffixes = ['mn', 'am', 'md', 'ra', 'sd', 'cv']
-        class_metrics = [
-            'total_area',
-            'proportion_of_landscape',
-            'number_of_patches',
-            'patch_density',
-            'largest_patch_index',
-            'total_edge',
-            'edge_density',
-            'landscape_shape_index',
-        ] + ['area_{}'.format(suffix) for suffix in _suffixes] + [
-            'perimeter_area_ratio_{}'.format(suffix) for suffix in _suffixes
-        ] + ['shape_index_{}'.format(suffix) for suffix in _suffixes] + [
-            'fractal_dimension_{}'.format(suffix) for suffix in _suffixes
-        ]
+    def class_metrics_df(self, metrics=None):
 
-        df = pd.concat([
-            pd.Series({
-                class_val: getattr(self, class_metric)(class_val)
-                for class_val in self.classes
-            }, name=class_metric) for class_metric in class_metrics
-        ], axis=1)
+        if metrics is None:
+            metrics = Landscape.CLASS_METRICS
+
+        try:
+            metrics_sers = []
+            for metric in metrics:
+                metrics_sers.append(
+                    pd.Series({
+                        class_val: getattr(self, metric)(class_val)
+                        for class_val in self.classes
+                    }, name=metric))
+        except AttributeError:
+            raise ValueError("{metric} is not among {metrics}".format(
+                metric=metric, metrics=Landscape.CLASS_METRICS))
+
+        df = pd.concat(metrics_sers, axis=1)
         df.index.name = 'class_val'
 
         return df
 
-    def landscape_metrics_df(self):
-        _suffixes = ['mn', 'am', 'md', 'ra', 'sd', 'cv']
-        landscape_metrics = [
-            'total_area',
-            'number_of_patches',
-            'patch_density',
-            'largest_patch_index',
-            'total_edge',
-            'edge_density',
-            'landscape_shape_index',
-        ] + ['area_{}'.format(suffix) for suffix in _suffixes] + [
-            'perimeter_area_ratio_{}'.format(suffix) for suffix in _suffixes
-        ] + ['shape_index_{}'.format(suffix) for suffix in _suffixes] + [
-            'fractal_dimension_{}'.format(suffix) for suffix in _suffixes
-        ]
+    def landscape_metrics_df(self, metrics=None):
 
-        return pd.DataFrame({
-            landscape_metric: getattr(self, landscape_metric)()
-            for landscape_metric in landscape_metrics
-        }, index=[0])
+        if metrics is None:
+            metrics = Landscape.LANDSCAPE_METRICS
+
+        try:
+            metrics_dict = {}
+            for metric in metrics:
+                metrics_dict[metric] = getattr(self, metric)()
+
+        except AttributeError:
+            raise ValueError("{metric} is not among {metrics}".format(
+                metric=metric, metrics=Landscape.LANDSCAPE_METRICS))
+
+        return pd.DataFrame(metrics_dict, index=[0])
 
 
 def read_geotiff(fp, nodata=0, **kwargs):
