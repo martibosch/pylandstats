@@ -29,6 +29,60 @@ def test_patch_level_metrics_parameters():
         assert isinstance(method(class_val=ls.classes[0]), pd.Series)
 
 
+def test_class_landscape_level_metrics_parameters():
+    import numpy as np
+    import pylandstats as pls
+
+    ls_arr = np.load('tests/input_data/ls.npy')
+    ls = pls.Landscape(ls_arr, res=(250, 250))
+
+    _suffixes = ['mn', 'am', 'md', 'ra', 'sd', 'cv']
+
+    class_metrics = [
+        'total_area',
+        'proportion_of_landscape',
+        'number_of_patches',
+        'patch_density',
+        'largest_patch_index',
+        'total_edge',
+        'edge_density',
+        'landscape_shape_index',
+    ] + ['area_{}'.format(suffix) for suffix in _suffixes] + [
+        'perimeter_area_ratio_{}'.format(suffix) for suffix in _suffixes
+    ] + ['shape_index_{}'.format(suffix) for suffix in _suffixes
+         ] + ['fractal_dimension_{}'.format(suffix) for suffix in _suffixes]
+
+    for class_metric in class_metrics:
+        assert np.isreal(getattr(ls, class_metric)(class_val=ls.classes[0]))
+
+    # these are the metrics computable at the landscape level
+    class_metrics.remove('proportion_of_landscape')
+
+    for landscape_metric in class_metrics:
+        assert np.isreal(getattr(ls, landscape_metric)())
+
+
+def test_metric_dataframes():
+    import numpy as np
+    from pandas.api.types import is_string_dtype
+    import pylandstats as pls
+
+    ls_arr = np.load('tests/input_data/ls.npy')
+    ls = pls.Landscape(ls_arr, res=(250, 250))
+
+    patch_df = ls.patch_metrics_df()
+    assert is_string_dtype(patch_df.columns)
+    assert patch_df.index.name == 'patch_id'
+
+    class_df = ls.class_metrics_df()
+    assert is_string_dtype(class_df.columns)
+    assert class_df.index.name == 'class_val'
+
+    landscape_df = ls.landscape_metrics_df()
+    assert is_string_dtype(landscape_df.columns)
+    assert len(landscape_df.index) == 1
+
+
 def test_landscape_metrics_value_ranges():
     import numpy as np
     import pylandstats as pls

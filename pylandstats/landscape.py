@@ -1704,10 +1704,61 @@ class Landscape:
         # in order to avoid adding a duplicate 'class_val' column for each
         # metric, we drop the 'class_val' column of each metric DataFrame
         # except for the first
-        return pd.concat([getattr(self, patch_metrics[0])()] + [
+        df = pd.concat([getattr(self, patch_metrics[0])()] + [
             getattr(self, patch_metric)().drop('class_val', 1)
             for patch_metric in patch_metrics[1:]
         ], axis=1)  # [['class_val'] + patch_metrics]
+        df.index.name = 'patch_id'
+
+        return df
+
+    def class_metrics_df(self):
+        _suffixes = ['mn', 'am', 'md', 'ra', 'sd', 'cv']
+        class_metrics = [
+            'total_area',
+            'proportion_of_landscape',
+            'number_of_patches',
+            'patch_density',
+            'largest_patch_index',
+            'total_edge',
+            'edge_density',
+            'landscape_shape_index',
+        ] + ['area_{}'.format(suffix) for suffix in _suffixes] + [
+            'perimeter_area_ratio_{}'.format(suffix) for suffix in _suffixes
+        ] + ['shape_index_{}'.format(suffix) for suffix in _suffixes] + [
+            'fractal_dimension_{}'.format(suffix) for suffix in _suffixes
+        ]
+
+        df = pd.concat([
+            pd.Series({
+                class_val: getattr(self, class_metric)(class_val)
+                for class_val in self.classes
+            }, name=class_metric) for class_metric in class_metrics
+        ], axis=1)
+        df.index.name = 'class_val'
+
+        return df
+
+    def landscape_metrics_df(self):
+        _suffixes = ['mn', 'am', 'md', 'ra', 'sd', 'cv']
+        landscape_metrics = [
+            'total_area',
+            'number_of_patches',
+            'patch_density',
+            'largest_patch_index',
+            'total_edge',
+            'edge_density',
+            'landscape_shape_index',
+        ] + ['area_{}'.format(suffix) for suffix in _suffixes] + [
+            'perimeter_area_ratio_{}'.format(suffix) for suffix in _suffixes
+        ] + ['shape_index_{}'.format(suffix) for suffix in _suffixes] + [
+            'fractal_dimension_{}'.format(suffix) for suffix in _suffixes
+        ]
+
+        return pd.DataFrame({
+            landscape_metric: getattr(self, landscape_metric)()
+            for landscape_metric in landscape_metrics
+        }, index=[0])
 
 
 def read_geotiff(fp, nodata=0, **kwargs):
