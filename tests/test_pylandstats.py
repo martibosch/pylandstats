@@ -117,13 +117,14 @@ def test_landscape_metrics_value_ranges():
     assert ls.total_edge(class_val) >= 0
     assert ls.edge_density(class_val) >= 0
 
-    # the value ranges of mean and area-weighted mean aggregations are going
-    # to be the same as their respective original metrics
-    mean_suffixes = ['_mn', '_am']
-    # the value ranges of the standard deviation and coefficient of variation
-    # will always be nonnegative as long as the means are nonnegative as well
-    # (which is the case of all of the metrics implemented so far)
-    var_suffixes = ['_sd', '_cv']
+    # the value ranges of mean, area-weighted mean and median aggregations are
+    # going to be the same as their respective original metrics
+    mean_suffixes = ['_mn', '_am', '_md']
+    # the value ranges of the range, standard deviation and coefficient of
+    # variation  will always be nonnegative as long as the means are
+    # nonnegative as well (which is the case of all of the metrics implemented
+    # so far)
+    var_suffixes = ['_ra', '_sd', '_cv']
 
     for mean_suffix in mean_suffixes:
         assert getattr(ls, 'area' + mean_suffix)(class_val) > 0
