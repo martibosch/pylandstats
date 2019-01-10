@@ -5,11 +5,13 @@ from functools import partial
 import numpy as np
 import pandas as pd
 import rasterio
-from scipy import stats
-
-from . import metric_utils
+from scipy import ndimage, stats
 
 __all__ = ['Landscape', 'read_geotiff']
+
+KERNEL_HORIZONTAL = np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]], dtype=np.int8)
+KERNEL_VERTICAL = np.array([[0, 1, 0], [0, 1, 0], [0, 1, 0]], dtype=np.int8)
+KERNEL_MOORE = ndimage.generate_binary_structure(2, 2)
 
 
 class Landscape:
@@ -30,13 +32,108 @@ class Landscape:
     ###########################################################################
     # common utilities
 
+    # compute methods
+
+    def class_label(self, class_val):
+        return ndimage.label(self.landscape_arr == class_val, KERNEL_MOORE)
+
+    # compute methods to obtain a scalar from an array
+
+    def compute_arr_perimeter(self, arr):
+        return np.sum(arr[1:, :] != arr[:-1, :]) * self.cell_width + np.sum(
+            arr[:, 1:] != arr[:, :-1]) * self.cell_height
+
+    def compute_arr_edge(self, arr):
+        """
+        Computes the edge of a feature considering the landscape background in
+        order to exclude the edges between the feature and nodata values
+        """
+        # check self.nodata in class_arr?
+        class_cond = arr != self.nodata
+        # class_with_bg_arr = np.copy(self.landscape_arr)
+        # class_with_bg_arr[~class_cond] = self.landscape_arr[~class_cond]
+        # get a 'boolean-like' integer array where one indicates that the cell
+        # corresponds to some class value whereas zero indicates that the cell
+        # corresponds to a nodata value
+        data_arr = (self.landscape_arr != self.nodata).astype(np.int8)
+
+        # use a convolution to determine which edges should be exluded from the
+        # perimeter's width and height
+        perimeter_width = np.sum(arr[1:, :] != arr[:-1, :]) + np.sum(
+            ndimage.convolve(data_arr, KERNEL_VERTICAL)[class_cond] - 3)
+        perimeter_height = np.sum(arr[:, 1:] != arr[:, :-1]) + np.sum(
+            ndimage.convolve(data_arr, KERNEL_HORIZONTAL)[class_cond] - 3)
+
+        return perimeter_width * self.cell_width + \
+            perimeter_height * self.cell_height
+
+    # compute methods to obtain patchwise scalars
+
+    def compute_patch_areas(self, label_arr):
+        # we could use `ndimage.find_objects`, but since we do not need to
+        # preserve the feature shapes, `np.bincount` is much faster
+        return np.bincount(label_arr.ravel())[1:] * self.cell_area
+
+    def compute_patch_perimeters(self, label_arr):
+        # NOTE: performance comparison of `patch_perimeters` as np.array of
+        # fixed size with `patch_perimeters[i] = ...` within the loop is
+        # slower and less Pythonic but can lead to better performances if
+        # optimized via Cython/numba
+        patch_perimeters = []
+        # `ndimage.find_objects` only finds the (rectangular) bounds; there
+        # might be parts of other patches within such bounds, so we need to
+        # check which pixels correspond to the patch of interest. Since
+        # `ndimage.label` labels patches with an enumeration starting by 1, we
+        # can use Python's built-in `enumerate`
+        # NOTE: feature-wise iteration could this be done with
+        # `ndimage.labeled_comprehension(
+        #     label_arr, label_arr, np.arange(1, num_patches + 1),
+        #     _compute_arr_perimeter, np.float, default=None)`
+        # ?
+        # I suspect no, because each feature array is flattened, which does
+        # not allow for the computation of the perimeter or other shape metrics
+        for i, patch_slice in enumerate(
+                ndimage.find_objects(label_arr), start=1):
+            patch_arr = np.pad(label_arr[patch_slice] == i, pad_width=1,
+                               mode='constant',
+                               constant_values=False)  # self.nodata
+
+            patch_perimeters.append(self.compute_arr_perimeter(patch_arr))
+
+        return patch_perimeters
+
+    # compute metrics from area and perimeter series
+
+    @staticmethod
+    def compute_perimeter_area_ratio(area_ser, perimeter_ser):
+        return perimeter_ser / area_ser
+
+    @staticmethod
+    def compute_shape_index(area_cells_ser, perimeter_cells_ser):
+        n = np.floor(np.sqrt(area_cells_ser))
+        m = area_cells_ser - n**2
+        min_p = np.ones(len(area_cells_ser))
+        min_p = np.where(m == 0, 4 * n, min_p)
+        min_p = np.where(
+            (n**2 < area_cells_ser) & (area_cells_ser <= n * (n + 1)),
+            4 * n + 2, min_p)
+        min_p = np.where(area_cells_ser > n * (n + 1), 4 * n + 4, min_p)
+
+        return perimeter_cells_ser / min_p
+
+    @staticmethod
+    def compute_fractal_dimension(area_ser, perimeter_ser):
+        return 2 * np.log(.25 * perimeter_ser) / np.log(area_ser)
+
+    # properties
+
     @property
     def _num_patches_dict(self):
         try:
             return self._cached_num_patches_dict
         except AttributeError:
             self._cached_num_patches_dict = {
-                class_val: metric_utils.class_label(class_val)[1]
+                class_val: self.class_label(class_val)[1]
                 for class_val in self.classes
             }
 
@@ -70,8 +167,7 @@ class Landscape:
                 ]),
                 'area':
                 np.concatenate([
-                    metric_utils.compute_patch_areas(
-                        metric_utils.class_label(class_val)[0], self.cell_area)
+                    self.compute_patch_areas(self.class_label(class_val)[0])
                     for class_val in self.classes
                 ])
             })
@@ -91,9 +187,8 @@ class Landscape:
                 ]),
                 'perimeter':
                 np.concatenate([
-                    metric_utils.compute_patch_perimeters(
-                        metric_utils.class_label(class_val)[0],
-                        self.cell_width, self.cell_height)
+                    self.compute_patch_perimeters(
+                        self.class_label(class_val)[0])
                     for class_val in self.classes
                 ])
             })
@@ -247,15 +342,15 @@ class Landscape:
 
         if class_val:
             # both `perimeter` and `area` are `pd.Series`
-            return metric_utils.compute_perimeter_area_ratio(area, perimeter)
+            return Landscape.compute_perimeter_area_ratio(area, perimeter)
         else:
             # both `perimeter` and `area` are `pd.DataFrame`
             return pd.DataFrame({
                 'class_val':
                 area['class_val'],
                 'perimeter_area_ratio':
-                metric_utils.compute_perimeter_area_ratio(
-                    area['area'], perimeter['perimeter'])
+                Landscape.compute_perimeter_area_ratio(area['area'],
+                                                       perimeter['perimeter'])
             })
 
     def shape_index(self, class_val=None):
@@ -291,7 +386,7 @@ class Landscape:
                 return .25 * perimeter / np.sqrt(area)
             else:
                 # we could also divide by `self.cell_height`
-                return metric_utils.compute_shape_index(
+                return Landscape.compute_shape_index(
                     area / self.cell_area, perimeter / self.cell_width)
 
         else:
@@ -302,7 +397,7 @@ class Landscape:
                     area['area'])
             else:
                 shape_index_ser = pd.Series(
-                    metric_utils.compute_shape_index(
+                    Landscape.compute_shape_index(
                         area['area'] / self.cell_area,
                         perimeter['perimeter'] / self.cell_width),
                     index=area.index)
@@ -336,15 +431,15 @@ class Landscape:
 
         if class_val:
             # both `perimeter` and `area` are `pd.Series`
-            return metric_utils.compute_fractal_dimension(area, perimeter)
+            return Landscape.compute_fractal_dimension(area, perimeter)
         else:
             # both `perimeter` and `area` are `pd.DataFrame`
             return pd.DataFrame({
                 'class_val':
                 area['class_val'],
                 'fractal_dimension':
-                metric_utils.compute_fractal_dimension(area['area'],
-                                                       perimeter['perimeter'])
+                Landscape.compute_fractal_dimension(area['area'],
+                                                    perimeter['perimeter'])
             })
 
     def continguity_index(self, patch_arr):
@@ -578,19 +673,15 @@ class Landscape:
                 # the patches of the corresponding class
                 total_edge = np.sum(self.perimeter(class_val))
             else:
-                total_edge = metric_utils.compute_arr_edge(
-                    self.landscape_arr == class_val, self.landscape_arr,
-                    self.cell_width, self.cell_height, self.nodata)
+                total_edge = self.compute_arr_edge(
+                    self.landscape_arr == class_val)
         else:
             if count_boundary:
-                total_edge = metric_utils.compute_arr_perimeter(
+                total_edge = self.compute_arr_perimeter(
                     np.pad(self.landscape_arr, pad_width=1, mode='constant',
-                           constant_values=self.nodata), self.cell_width,
-                    self.cell_height)
+                           constant_values=self.nodata))
             else:
-                total_edge = metric_utils.compute_arr_edge(
-                    self.landscape_arr, self.landscape_arr, self.cell_width,
-                    self.cell_height, self.nodata)
+                total_edge = self.compute_arr_edge(self.landscape_arr)
 
         return total_edge
 
@@ -783,7 +874,7 @@ class Landscape:
             return .25 * perimeter / np.sqrt(area)
         else:
             # we could also divide by `self.cell_height`
-            return metric_utils.compute_shape_index(
+            return Landscape.compute_shape_index(
                 [area / self.cell_area], [perimeter / self.cell_width])[0]
 
     # shape
@@ -1390,7 +1481,7 @@ class Landscape:
         """
 
         # TODO
-        # label_arr, num_patches = metric_utils.class_label(class_val)
+        # label_arr, num_patches = self.class_label(class_val)
 
         # if num_patches == 0:
         #     return np.nan
