@@ -191,45 +191,44 @@ class Landscape:
             return self._landscape_area
 
     @property
-    def _patch_areas_df(self):
+    def _patch_class_ser(self):
         try:
-            return self._cached_patch_areas_df
+            return self._cached_patch_class_ser
         except AttributeError:
-            self._cached_patch_areas_df = pd.DataFrame({
-                'class_val':
+            self._cached_patch_class_ser = pd.Series(
                 np.concatenate([
                     np.full(self._num_patches_dict[class_val], class_val)
                     for class_val in self.classes
-                ]),
-                'area':
+                ]), name='class_val')
+
+            return self._cached_patch_class_ser
+
+    @property
+    def _patch_area_ser(self):
+        try:
+            return self._cached_patch_area_ser
+        except AttributeError:
+            self._cached_patch_area_ser = pd.Series(
                 np.concatenate([
                     self.compute_patch_areas(self.class_label(class_val)[0])
                     for class_val in self.classes
-                ])
-            })
+                ]), name='area')
 
-            return self._cached_patch_areas_df
+            return self._cached_patch_area_ser
 
     @property
-    def _patch_perimeters_df(self):
+    def _patch_perimeter_ser(self):
         try:
-            return self._cached_patch_perimeters_df
+            return self._cached_patch_perimeter_ser
         except AttributeError:
-            self._cached_patch_perimeters_df = pd.DataFrame({
-                'class_val':
-                np.concatenate([
-                    np.full(self._num_patches_dict[class_val], class_val)
-                    for class_val in self.classes
-                ]),
-                'perimeter':
+            self._cached_patch_perimeter_ser = pd.Series(
                 np.concatenate([
                     self.compute_patch_perimeters(
                         self.class_label(class_val)[0])
                     for class_val in self.classes
-                ])
-            })
+                ]), name='perimeter')
 
-            return self._cached_patch_perimeters_df
+            return self._cached_patch_perimeter_ser
 
     # metric distribution statistics
 
@@ -312,18 +311,19 @@ class Landscape:
             area > 0, without limit
         """
 
+        class_ser = self._patch_class_ser
         # ACHTUNG: very important to copy to ensure that we do not modify the
         # 'area' values if converting to hectares nor we return a variable
         # with the reference to the property `self._patch_areas_df`
-        area_df = self._patch_areas_df.copy()
+        area_ser = self._patch_area_ser.copy()
 
         if hectares:
-            area_df['area'] /= 10000
+            area_ser /= 10000
 
         if class_val:
-            return area_df[area_df['class_val'] == class_val]['area']
+            return area_ser[class_ser == class_val]
         else:
-            return area_df
+            return pd.DataFrame({'class_val': class_ser, 'area': area_ser})
 
     def perimeter(self, class_val=None):
         """
@@ -341,16 +341,16 @@ class Landscape:
             perim > 0, without limit
         """
 
-        # ACHTUNG: very important to copy to ensure that we do not return a
-        # variable with the reference to the property
-        # `self._patch_perimeters_df`
-        perimeters_df = self._patch_perimeters_df.copy()
+        class_ser = self._patch_class_ser
+        perimeter_ser = self._patch_perimeter_ser
 
         if class_val:
-            return perimeters_df[perimeters_df['class_val'] == class_val][
-                'perimeter']
+            return perimeter_ser[class_ser == class_val]
         else:
-            return perimeters_df
+            return pd.DataFrame({
+                'class_val': class_ser,
+                'perimeter': perimeter_ser
+            })
 
     # shape
 
