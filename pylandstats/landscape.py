@@ -144,18 +144,52 @@ class Landscape:
     def compute_perimeter_area_ratio(area_ser, perimeter_ser):
         return perimeter_ser / area_ser
 
-    @staticmethod
-    def compute_shape_index(area_cells_ser, perimeter_cells_ser):
-        n = np.floor(np.sqrt(area_cells_ser))
-        m = area_cells_ser - n**2
-        min_p = np.ones(len(area_cells_ser))
-        min_p = np.where(m == 0, 4 * n, min_p)
-        min_p = np.where(
-            (n**2 < area_cells_ser) & (area_cells_ser <= n * (n + 1)),
-            4 * n + 2, min_p)
-        min_p = np.where(area_cells_ser > n * (n + 1), 4 * n + 4, min_p)
+    def compute_shape_index(self, area_ser, perimeter_ser):
+        # scalar version of this method
+        # if self.cell_width != self.cell_height:
+        #     # this is rare and not even supported in FRAGSTATS. We could
+        #     # calculate the perimeter in terms of cell counts in a
+        #     # dedicated function and then adjust for a square standard,
+        #     # but I believe it is not worth the effort. So we will just
+        #     # return the base formula without adjusting for the square
+        #     # standard
+        #     return .25 * perimeter / np.sqrt(area)
+        # else:
+        #     area_cells = area / self.cell_area
+        #     # we could also divide by `self.cell_height`
+        #     perimeter_cells = perimeter / self.cell_width
+        #     n = np.floor(np.sqrt(area_cells))
+        #     m = area_cells - n**2
+        #     if m == 0:
+        #         min_p = 4 * n
+        #     elif n**2 < area_cells and area_cells <= n * (n + 1):
+        #         min_p = 4 * n + 2
+        #     else:  # elif area_cells > n * (n + 1):
+        #         min_p = 4 * n + 4
 
-        return perimeter_cells_ser / min_p
+        #     return perimeter_cells / min_p
+        if self.cell_width != self.cell_height:
+            # this is rare and not even supported in FRAGSTATS. We could
+            # calculate the perimeter in terms of cell counts in a
+            # dedicated function and then adjust for a square standard,
+            # but I believe it is not worth the effort. So we will just
+            # return the base formula without adjusting for the square
+            # standard
+            return .25 * perimeter_ser / np.sqrt(area_ser)
+        else:
+            area_cells_ser = area_ser / self.cell_area
+            # we could also divide by `self.cell_height`
+            perimeter_cells_ser = perimeter_ser / self.cell_width
+            n = np.floor(np.sqrt(area_cells_ser))
+            m = area_cells_ser - n**2
+            min_p = np.ones(len(area_cells_ser))
+            min_p = np.where(m == 0, 4 * n, min_p)
+            min_p = np.where(
+                (n**2 < area_cells_ser) & (area_cells_ser <= n * (n + 1)),
+                4 * n + 2, min_p)
+            min_p = np.where(area_cells_ser > n * (n + 1), 4 * n + 4, min_p)
+
+            return perimeter_cells_ser / min_p
 
     @staticmethod
     def compute_fractal_dimension(area_ser, perimeter_ser):
@@ -412,35 +446,18 @@ class Landscape:
 
         if class_val:
             # both `perimeter` and `area` are `pd.Series`
-            if self.cell_width != self.cell_height:
-                # this is rare and not even supported in FRAGSTATS. We could
-                # calculate the perimeter in terms of cell counts in a
-                # dedicated function and then adjust for a square standard,
-                # but I believe it is not worth the effort. So we will just
-                # return the base formula without adjusting for the square
-                # standard
-                return .25 * perimeter / np.sqrt(area)
-            else:
-                # we could also divide by `self.cell_height`
-                return Landscape.compute_shape_index(
-                    area / self.cell_area, perimeter / self.cell_width)
+            return self.compute_shape_index(area, perimeter)
 
         else:
             # both `perimeter` and `area` are `pd.DataFrame`
-            if self.cell_width != self.cell_height:
-                # see comment above
-                shape_index_ser = .25 * perimeter['perimeter'] / np.sqrt(
-                    area['area'])
-            else:
-                shape_index_ser = pd.Series(
-                    Landscape.compute_shape_index(
-                        area['area'] / self.cell_area,
-                        perimeter['perimeter'] / self.cell_width),
-                    index=area.index)
-
             return pd.DataFrame({
-                'class_val': area['class_val'],
-                'shape_index': shape_index_ser
+                'class_val':
+                self._patch_class_ser,
+                'shape_index':
+                pd.Series(
+                    self.compute_shape_index(area['area'],
+                                             perimeter['perimeter']),
+                    index=area.index)
             })
 
     def fractal_dimension(self, class_val=None):
@@ -901,17 +918,12 @@ class Landscape:
         area = self.total_area(class_val, False)
         perimeter = self.total_edge(class_val, count_boundary=True)
 
-        if self.cell_width != self.cell_height:
-            # this is rare and not even supported in FRAGSTATS. We could
-            # calculate the perimeter in terms of cell counts in a dedicated
-            # function and then adjust for a square standard, but I believe it
-            # is not worth the effort. So we will just return the base formula
-            # without adjusting for the square standard
-            return .25 * perimeter / np.sqrt(area)
-        else:
-            # we could also divide by `self.cell_height`
-            return Landscape.compute_shape_index(
-                [area / self.cell_area], [perimeter / self.cell_width])[0]
+        # `compute shape index` works on vectors, so we need to pass arrays as
+        # arguments and then extract its first (and only element) in order to
+        # return a scalar
+        # TODO: use np.vectorize
+        return self.compute_shape_index(
+            np.array([area]), np.array([perimeter]))[0]
 
     # shape
 
