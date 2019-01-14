@@ -264,6 +264,32 @@ class Landscape:
 
             return self._cached_patch_perimeter_ser
 
+    # small utilities to get patch areas/perimeters for a particular class only
+
+    def _get_patch_area_ser(self, class_val=None):
+        if class_val:
+            patch_area_ser = self._patch_area_ser[self._patch_class_ser ==
+                                                  class_val]
+        else:
+            patch_area_ser = self._patch_area_ser
+
+        # TODO: return a copy? even when `class_val` is set and thus
+        # `patch_area_ser` is a slice: although we would not have alias
+        # problems, we would get a `SettingWithCopyWarning` form `pandas`
+        return patch_area_ser
+
+    def _get_patch_perimeter_ser(self, class_val=None, copy=False):
+        if class_val:
+            patch_perimeter_ser = self._patch_perimeter_ser[
+                self._patch_class_ser == class_val]
+        else:
+            patch_perimeter_ser = self._patch_perimeter_ser
+
+        # TODO: return a copy? even when `class_val` is set and thus
+        # `patch_perimeter_ser` is a slice: although we would not have alias
+        # problems, we would get a `SettingWithCopyWarning` form `pandas`
+        return patch_perimeter_ser
+
     # metric distribution statistics
 
     def _metric_reduce(self, class_val, patch_metric_method,
@@ -345,19 +371,25 @@ class Landscape:
             area > 0, without limit
         """
 
-        class_ser = self._patch_class_ser
-        # ACHTUNG: very important to copy to ensure that we do not modify the
-        # 'area' values if converting to hectares nor we return a variable
-        # with the reference to the property `self._patch_areas_df`
-        area_ser = self._patch_area_ser.copy()
+        # class_ser = self._patch_class_ser
+        # area_ser = self._patch_area_ser.copy()
+        area_ser = self._get_patch_area_ser(class_val)
 
         if hectares:
+            # ACHTUNG: very important to copy to ensure that we do not modify
+            # the 'area' values if converting to hectares nor we return a
+            # variable with the reference to the property
+            # `self._patch_areas_ser`
+            area_ser = area_ser.copy()
             area_ser /= 10000
 
         if class_val:
-            return area_ser[class_ser == class_val]
+            return area_ser
         else:
-            return pd.DataFrame({'class_val': class_ser, 'area': area_ser})
+            return pd.DataFrame({
+                'class_val': self._patch_class_ser,
+                'area': area_ser
+            })
 
     def perimeter(self, class_val=None):
         """
@@ -375,14 +407,15 @@ class Landscape:
             perim > 0, without limit
         """
 
-        class_ser = self._patch_class_ser
-        perimeter_ser = self._patch_perimeter_ser
+        # class_ser = self._patch_class_ser
+        # perimeter_ser = self._patch_perimeter_ser
+        perimeter_ser = self._get_patch_perimeter_ser(class_val)
 
         if class_val:
-            return perimeter_ser[class_ser == class_val]
+            return perimeter_ser
         else:
             return pd.DataFrame({
-                'class_val': class_ser,
+                'class_val': self._patch_class_ser,
                 'perimeter': perimeter_ser
             })
 
@@ -407,29 +440,30 @@ class Landscape:
             para > 0, without limit
         """
 
-        class_ser = self._patch_class_ser
-
-        # ACHTUNG: very important to copy to ensure that we do not modify the
-        # 'area' values if converting to hectares nor we return a variable
-        # with the reference to the property `self._patch_areas_df`
-        area_ser = self._patch_area_ser.copy()
+        # class_ser = self._patch_class_ser
+        # area_ser = self._patch_area_ser.copy()
+        area_ser = self._get_patch_area_ser(class_val)
+        perimeter_ser = self._get_patch_perimeter_ser(class_val)
 
         if hectares:
+            # ACHTUNG: very important to copy to ensure that we do not modify
+            # the 'area' values if converting to hectares nor we return a
+            # variable with the reference to the property
+            # `self._patch_areas_ser`
+            area_ser = area_ser.copy()
             area_ser /= 10000
 
-        perimeter_ser = self._patch_perimeter_ser
+        perimeter_area_ratio_ser = Landscape.compute_perimeter_area_ratio(
+            area_ser, perimeter_ser)
 
         if class_val:
-            return Landscape.compute_perimeter_area_ratio(
-                area_ser[class_ser == class_val],
-                perimeter_ser[class_ser == class_val])
+            return perimeter_area_ratio_ser
         else:
-            # both `perimeter` and `area` are `pd.DataFrame`
             return pd.DataFrame({
                 'class_val':
-                class_ser,
+                self._patch_class_ser,
                 'perimeter_area_ratio':
-                Landscape.compute_perimeter_area_ratio(area_ser, perimeter_ser)
+                perimeter_area_ratio_ser
             })
 
     def shape_index(self, class_val=None):
@@ -450,22 +484,18 @@ class Landscape:
             becomes more regular
         """
 
-        class_ser = self._patch_class_ser
-        area_ser = self._patch_area_ser
-        perimeter_ser = self._patch_perimeter_ser
+        area_ser = self._get_patch_area_ser(class_val)
+        perimeter_ser = self._get_patch_perimeter_ser(class_val)
+
+        shape_index_ser = self.compute_shape_index(area_ser, perimeter_ser)
 
         if class_val:
-            return self.compute_shape_index(
-                area_ser[class_ser == class_val],
-                perimeter_ser[class_ser == class_val])
+            return shape_index_ser
 
         else:
-            # both `perimeter` and `area` are `pd.DataFrame`
             return pd.DataFrame({
-                'class_val':
-                class_ser,
-                'shape_index':
-                self.compute_shape_index(area_ser, perimeter_ser)
+                'class_val': self._patch_class_ser,
+                'shape_index': shape_index_ser
             })
 
     def fractal_dimension(self, class_val=None):
@@ -487,22 +517,19 @@ class Landscape:
             plane-filling shapes
         """
 
-        class_ser = self._patch_class_ser
-        area_ser = self._patch_area_ser
-        perimeter_ser = self._patch_perimeter_ser
+        area_ser = self._get_patch_area_ser(class_val)
+        perimeter_ser = self._get_patch_perimeter_ser(class_val)
+
+        fractal_dimension_ser = Landscape.compute_fractal_dimension(
+            area_ser, perimeter_ser)
 
         if class_val:
-            # both `perimeter` and `area` are `pd.Series`
-            return Landscape.compute_fractal_dimension(
-                area_ser[class_ser == class_val],
-                perimeter_ser[class_ser == class_val])
+            return fractal_dimension_ser
         else:
             # both `perimeter` and `area` are `pd.DataFrame`
             return pd.DataFrame({
-                'class_val':
-                class_ser,
-                'fractal_dimension':
-                Landscape.compute_fractal_dimension(area_ser, perimeter_ser)
+                'class_val': self._patch_area_ser,
+                'fractal_dimension': fractal_dimension_ser
             })
 
     def continguity_index(self, patch_arr):
@@ -586,10 +613,8 @@ class Landscape:
         """
 
         if class_val:
-            class_ser = self._patch_class_ser
-            area_ser = self._patch_area_ser
-
-            total_area = np.sum(area_ser[class_ser == class_val])
+            area_ser = self._get_patch_area_ser(class_val)
+            total_area = np.sum(area_ser)
         else:
             total_area = self.landscape_area
 
@@ -617,10 +642,7 @@ class Landscape:
             when the entire landscape consists of a single patch of such class.
         """
 
-        class_ser = self._patch_class_ser
-        area_ser = self._patch_area_ser
-
-        numerator = np.sum(area_ser[class_ser == class_val])
+        numerator = np.sum(self._get_patch_area_ser(class_val))
 
         if percent:
             numerator *= 100
@@ -709,13 +731,9 @@ class Landscape:
             largest patch comprises the totality of the landscape
         """
 
-        area_ser = self._patch_area_ser
+        area_ser = self._get_patch_area_ser(class_val)
 
-        if class_val:
-            class_ser = self._patch_class_ser
-            numerator = np.max(area_ser[class_ser == class_val])
-        else:
-            numerator = np.max(area_ser)
+        numerator = np.max(area_ser)
 
         if percent:
             numerator *= 100
@@ -746,9 +764,8 @@ class Landscape:
             if count_boundary:
                 # then the total edge is just the sum of the perimeters of all
                 # the patches of the corresponding class
-                class_ser = self._patch_class_ser
-                perimeter_ser = self._patch_perimeter_ser
-                total_edge = np.sum(perimeter_ser[class_ser == class_val])
+                perimeter_ser = self._get_patch_perimeter_ser(class_val)
+                total_edge = np.sum(perimeter_ser)
             else:
                 total_edge = self.compute_arr_edge(
                     self.landscape_arr == class_val)
@@ -944,10 +961,7 @@ class Landscape:
 
         # compute the total area
         if class_val:
-            class_ser = self._patch_class_ser
-            area_ser = self._patch_area_ser
-
-            area = np.sum(area_ser[class_ser == class_val])
+            area = np.sum(self._get_patch_area_ser(class_val))
         else:
             area = self.landscape_area
 
