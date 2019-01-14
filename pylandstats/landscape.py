@@ -140,10 +140,6 @@ class Landscape:
 
     # compute metrics from area and perimeter series
 
-    @staticmethod
-    def compute_perimeter_area_ratio(area_ser, perimeter_ser):
-        return perimeter_ser / area_ser
-
     def compute_shape_index(self, area_ser, perimeter_ser):
         # scalar version of this method
         # if self.cell_width != self.cell_height:
@@ -190,10 +186,6 @@ class Landscape:
             min_p = np.where(area_cells_ser > n * (n + 1), 4 * n + 4, min_p)
 
             return perimeter_cells_ser / min_p
-
-    @staticmethod
-    def compute_fractal_dimension(area_ser, perimeter_ser):
-        return 2 * np.log(.25 * perimeter_ser) / np.log(area_ser)
 
     # properties
 
@@ -453,8 +445,7 @@ class Landscape:
             area_ser = area_ser.copy()
             area_ser /= 10000
 
-        perimeter_area_ratio_ser = Landscape.compute_perimeter_area_ratio(
-            area_ser, perimeter_ser)
+        perimeter_area_ratio_ser = perimeter_ser / area_ser
 
         if class_val:
             return perimeter_area_ratio_ser
@@ -520,8 +511,9 @@ class Landscape:
         area_ser = self._get_patch_area_ser(class_val)
         perimeter_ser = self._get_patch_perimeter_ser(class_val)
 
-        fractal_dimension_ser = Landscape.compute_fractal_dimension(
-            area_ser, perimeter_ser)
+        # TODO: separate staticmethod?
+        fractal_dimension_ser = 2 * np.log(
+            .25 * perimeter_ser) / np.log(area_ser)
 
         if class_val:
             return fractal_dimension_ser
