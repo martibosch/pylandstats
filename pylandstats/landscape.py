@@ -448,6 +448,9 @@ class Landscape:
         perimeter_area_ratio_ser = perimeter_ser / area_ser
 
         if class_val:
+            # ensure that the returned `pd.Series` has a name (so `seaborn`
+            # plots can automatically label the axes)
+            perimeter_area_ratio_ser.name = 'perimeter_area_ratio'
             return perimeter_area_ratio_ser
         else:
             return pd.DataFrame({
@@ -481,6 +484,9 @@ class Landscape:
         shape_index_ser = self.compute_shape_index(area_ser, perimeter_ser)
 
         if class_val:
+            # ensure that the returned `pd.Series` has a name (so `seaborn`
+            # plots can automatically label the axes)
+            shape_index_ser.name = 'shape_index'
             return shape_index_ser
 
         else:
@@ -516,6 +522,9 @@ class Landscape:
             .25 * perimeter_ser) / np.log(area_ser)
 
         if class_val:
+            # ensure that the returned `pd.Series` has a name (so `seaborn`
+            # plots can automatically label the axes)
+            fractal_dimension_ser.name = 'fractal_dimension'
             return fractal_dimension_ser
         else:
             # both `perimeter` and `area` are `pd.DataFrame`
