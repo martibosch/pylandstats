@@ -407,22 +407,29 @@ class Landscape:
             para > 0, without limit
         """
 
-        # it is a bit silly to define a method in the `metric_utils` module to
-        # compute the perimeter area ratio since it is a simple division
-        area = self.area(class_val, hectares)
-        perimeter = self.perimeter(class_val)
+        class_ser = self._patch_class_ser
+
+        # ACHTUNG: very important to copy to ensure that we do not modify the
+        # 'area' values if converting to hectares nor we return a variable
+        # with the reference to the property `self._patch_areas_df`
+        area_ser = self._patch_area_ser.copy()
+
+        if hectares:
+            area_ser /= 10000
+
+        perimeter_ser = self._patch_perimeter_ser
 
         if class_val:
-            # both `perimeter` and `area` are `pd.Series`
-            return Landscape.compute_perimeter_area_ratio(area, perimeter)
+            return Landscape.compute_perimeter_area_ratio(
+                area_ser[class_ser == class_val],
+                perimeter_ser[class_ser == class_val])
         else:
             # both `perimeter` and `area` are `pd.DataFrame`
             return pd.DataFrame({
                 'class_val':
-                area['class_val'],
+                class_ser,
                 'perimeter_area_ratio':
-                Landscape.compute_perimeter_area_ratio(area['area'],
-                                                       perimeter['perimeter'])
+                Landscape.compute_perimeter_area_ratio(area_ser, perimeter_ser)
             })
 
     def shape_index(self, class_val=None):
@@ -443,23 +450,22 @@ class Landscape:
             becomes more regular
         """
 
-        area = self.area(class_val, False)
-        perimeter = self.perimeter(class_val)
+        class_ser = self._patch_class_ser
+        area_ser = self._patch_area_ser
+        perimeter_ser = self._patch_perimeter_ser
 
         if class_val:
-            # both `perimeter` and `area` are `pd.Series`
-            return self.compute_shape_index(area, perimeter)
+            return self.compute_shape_index(
+                area_ser[class_ser == class_val],
+                perimeter_ser[class_ser == class_val])
 
         else:
             # both `perimeter` and `area` are `pd.DataFrame`
             return pd.DataFrame({
                 'class_val':
-                self._patch_class_ser,
+                class_ser,
                 'shape_index':
-                pd.Series(
-                    self.compute_shape_index(area['area'],
-                                             perimeter['perimeter']),
-                    index=area.index)
+                self.compute_shape_index(area_ser, perimeter_ser)
             })
 
     def fractal_dimension(self, class_val=None):
@@ -481,20 +487,22 @@ class Landscape:
             plane-filling shapes
         """
 
-        area = self.area(class_val, hectares=False)
-        perimeter = self.perimeter(class_val)
+        class_ser = self._patch_class_ser
+        area_ser = self._patch_area_ser
+        perimeter_ser = self._patch_perimeter_ser
 
         if class_val:
             # both `perimeter` and `area` are `pd.Series`
-            return Landscape.compute_fractal_dimension(area, perimeter)
+            return Landscape.compute_fractal_dimension(
+                area_ser[class_ser == class_val],
+                perimeter_ser[class_ser == class_val])
         else:
             # both `perimeter` and `area` are `pd.DataFrame`
             return pd.DataFrame({
                 'class_val':
-                area['class_val'],
+                class_ser,
                 'fractal_dimension':
-                Landscape.compute_fractal_dimension(area['area'],
-                                                    perimeter['perimeter'])
+                Landscape.compute_fractal_dimension(area_ser, perimeter_ser)
             })
 
     def continguity_index(self, patch_arr):
@@ -578,14 +586,17 @@ class Landscape:
         """
 
         if class_val:
-            return np.sum(self.area(class_val, hectares))
+            class_ser = self._patch_class_ser
+            area_ser = self._patch_area_ser
+
+            total_area = np.sum(area_ser[class_ser == class_val])
         else:
             total_area = self.landscape_area
 
-            if hectares:
-                total_area /= 10000
+        if hectares:
+            total_area /= 10000
 
-            return total_area
+        return total_area
 
     def proportion_of_landscape(self, class_val, percent=True):
         """
@@ -606,10 +617,11 @@ class Landscape:
             when the entire landscape consists of a single patch of such class.
         """
 
-        # whether this computes a class or landscape level metric will be
-        # dealt within the `total_area` method according to the value of the
-        # `class_val` argument
-        numerator = self.total_area(class_val, hectares=False)
+        class_ser = self._patch_class_ser
+        area_ser = self._patch_area_ser
+
+        numerator = np.sum(area_ser[class_ser == class_val])
+
         if percent:
             numerator *= 100
 
@@ -660,7 +672,14 @@ class Landscape:
             every cell is a separate patch
         """
 
-        numerator = self.number_of_patches(class_val)
+        # TODO: DRY and use `self.number_of_patches` as in:
+        # `numerator = self.number_of_patches(class_val)`
+        # or avoid reusing metric's methods?
+        if class_val:
+            numerator = self._num_patches_dict[class_val]
+        else:
+            numerator = np.sum(list(self._num_patches_dict.values()))
+
         if percent:
             numerator *= 100
         if hectares:
@@ -690,12 +709,13 @@ class Landscape:
             largest patch comprises the totality of the landscape
         """
 
-        area = self.area(class_val, hectares=False)
+        area_ser = self._patch_area_ser
 
         if class_val:
-            numerator = np.max(area)
+            class_ser = self._patch_class_ser
+            numerator = np.max(area_ser[class_ser == class_val])
         else:
-            numerator = np.max(area['area'])
+            numerator = np.max(area_ser)
 
         if percent:
             numerator *= 100
@@ -726,7 +746,9 @@ class Landscape:
             if count_boundary:
                 # then the total edge is just the sum of the perimeters of all
                 # the patches of the corresponding class
-                total_edge = np.sum(self.perimeter(class_val))
+                class_ser = self._patch_class_ser
+                perimeter_ser = self._patch_perimeter_ser
+                total_edge = np.sum(perimeter_ser[class_ser == class_val])
             else:
                 total_edge = self.compute_arr_edge(
                     self.landscape_arr == class_val)
@@ -765,6 +787,9 @@ class Landscape:
             Units: meters of edge per hectare/square meter.
         """
 
+        # TODO: we make an exception here of the "not reusing other metric's
+        # methods within metric's methods" policy, since `total_edge` is a bit
+        # puzzling to compute
         numerator = self.total_edge(class_val=class_val,
                                     count_boundary=count_boundary)
 
@@ -917,7 +942,18 @@ class Landscape:
             limit as the patches of such class become more disaggregated.
         """
 
-        area = self.total_area(class_val, False)
+        # compute the total area
+        if class_val:
+            class_ser = self._patch_class_ser
+            area_ser = self._patch_area_ser
+
+            area = np.sum(area_ser[class_ser == class_val])
+        else:
+            area = self.landscape_area
+
+        # TODO: we make an exception here of the "not reusing other metric's
+        # methods within metric's methods" policy, since `total_edge` is a bit
+        # puzzling to compute
         perimeter = self.total_edge(class_val, count_boundary=True)
 
         # `compute shape index` works on vectors, so we need to pass arrays as
