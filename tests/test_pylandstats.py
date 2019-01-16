@@ -6,7 +6,7 @@ import pandas as pd
 import pylandstats as pls
 
 
-class TestPyLandStats(unittest.TestCase):
+class TestLandscape(unittest.TestCase):
     def setUp(self):
         ls_arr = np.load('tests/input_data/ls.npy')
         self.ls = pls.Landscape(ls_arr, res=(250, 250))
@@ -165,15 +165,70 @@ class TestPyLandStats(unittest.TestCase):
         # TODO: assert 0 < ls.interspersion_juxtaposition_index() <= 100
         # TODO: assert ls.shannon_diversity_index() >= 0
 
-    def test_spatiotemporalanalysis(self):
-        res = (250, 250)
 
-        landscapes = [
-            pls.Landscape(np.load(fp), res=res) for fp in
+class TestSpatioTemporalAnalysis(unittest.TestCase):
+    def setUp(self):
+        self.landscapes = [
+            pls.Landscape(np.load(fp), res=(250, 250)) for fp in
             ['tests/input_data/ls.npy', 'tests/input_data/ls_future.npy']
         ]
+        self.dates = [2012, 2018]
+        self.inexistent_class_val = 999
 
-        sta = pls.SpatioTemporalAnalysis(landscapes, dates=[2012, 2018])
+    def test_spatiotemporalanalysis_init(self):
+        # test that constructing a SpatioTemporalAnalysis with inexistent
+        # metrics and inexistent classes raises a ValueError
+        self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
+                          self.landscapes, metrics=['foo'])
+        self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
+                          self.landscapes, classes=[self.inexistent_class_val])
+
+        # test that constructing a SpatioTemporalAnalysis with a `dates`
+        # argument that mismatch the temporal snapshots defined in `landscapes`
+        # raises a ValueError
+        self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
+                          self.landscapes, dates=[2012])
+
+    def test_spatiotemporalanalysis_dataframes(self):
+        # test with the default constructor
+        sta = pls.SpatioTemporalAnalysis(self.landscapes)
+
+        # test that `class_metrics_df` and `landscape_metrics_df` are well
+        # constructed
+        class_metrics_df = sta.class_metrics_df
+        self.assertTrue(
+            np.all(class_metrics_df.columns == pls.Landscape.CLASS_METRICS))
+        self.assertTrue(
+            np.all(class_metrics_df.index == pd.MultiIndex.from_product(
+                [sta.classes, sta.dates])))
+        landscape_metrics_df = sta.landscape_metrics_df
+        self.assertTrue(
+            np.all(landscape_metrics_df.columns ==
+                   pls.Landscape.LANDSCAPE_METRICS))
+        self.assertTrue(np.all(landscape_metrics_df.index == sta.dates))
+
+        # now test the same but with an analysis that only considers a subset
+        # of metrics and a subset of classes
+        sta_metrics = ['total_area', 'edge_density', 'proportion_of_landscape']
+        sta_classes = self.landscapes[0].classes[:2]
+        sta = pls.SpatioTemporalAnalysis(self.landscapes, metrics=sta_metrics,
+                                         classes=sta_classes, dates=self.dates)
+
+        class_metrics_df = sta.class_metrics_df
+        self.assertTrue(
+            np.all(class_metrics_df.columns == np.intersect1d(
+                sta_metrics, pls.Landscape.CLASS_METRICS)))
+        self.assertTrue(
+            np.all(class_metrics_df.index == pd.MultiIndex.from_product(
+                [sta_classes, self.dates])))
+        landscape_metrics_df = sta.landscape_metrics_df
+        self.assertTrue(
+            np.all(landscape_metrics_df.columns == np.intersect1d(
+                sta_metrics, pls.Landscape.LANDSCAPE_METRICS)))
+        self.assertTrue(np.all(landscape_metrics_df.index == self.dates))
+
+    def test_spatiotemporalanalysis_plots(self):
+        sta = pls.SpatioTemporalAnalysis(self.landscapes, dates=self.dates)
 
         # TODO: test legend and figsize
 
