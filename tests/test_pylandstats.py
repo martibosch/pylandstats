@@ -230,13 +230,29 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
     def test_spatiotemporalanalysis_plots(self):
         sta = pls.SpatioTemporalAnalysis(self.landscapes, dates=self.dates)
 
+        existent_class_val = sta.classes[0]
+
+        # inexistent metrics should raise a ValueError
+        self.assertRaises(ValueError, sta.plot_metric, 'foo')
+        # inexistent classes should raise a ValueError
+        self.assertRaises(ValueError, sta.plot_metric, 'patch_density',
+                          {'class_val': self.inexistent_class_val})
+        # `proportion_of_landscape` can only be computed at the class level,
+        # so plotting it at the landscape level (with the default argument
+        # `class_val=None`) must raise a ValueError
+        self.assertRaises(ValueError, sta.plot_metric,
+                          'proportion_of_landscape')
+        # TODO: in the future, test ValueError with metrics that can only be
+        # computed at the landscape level, e.g., shannon_diversity_index
+
         # TODO: test legend and figsize
 
         ax = sta.plot_metric('patch_density', class_val=None)
-        assert len(ax.lines) == 1
-        ax = sta.plot_metric('patch_density', class_val=54, ax=ax)
-        assert len(ax.lines) == 2
+        self.assertEqual(len(ax.lines), 1)
+        ax = sta.plot_metric('patch_density', class_val=existent_class_val,
+                             ax=ax)
+        self.assertEqual(len(ax.lines), 2)
 
-        fig, axes = sta.plot_metrics(['edge_density', 'patch_density'],
-                                     class_val=54)
-        assert len(axes) == 2
+        fig, axes = sta.plot_metrics(class_val=existent_class_val,
+                                     metrics=['edge_density', 'patch_density'])
+        self.assertEqual(len(axes), 2)
