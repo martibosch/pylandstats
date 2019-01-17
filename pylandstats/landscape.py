@@ -15,11 +15,23 @@ KERNEL_MOORE = ndimage.generate_binary_structure(2, 2)
 
 
 class Landscape:
-    """Documentation for Landscape
-
+    """Class representing a raster landscape upon which the landscape metrics
+    will be computed
     """
 
     def __init__(self, landscape_arr, res, nodata=0):
+        """
+        Parameters
+        ----------
+        landscape_arr : np.ndarray
+            A landscape array with pixel values corresponding to a set of land
+            use/land cover classes
+        res : tuple
+            The (x, y) resolution of the dataset
+        nodata : int, default 0
+            Value to be assigned to pixels with no data
+        """
+
         self.landscape_arr = landscape_arr
         self.cell_width, self.cell_height = res
         self.cell_area = res[0] * res[1]
@@ -346,6 +358,7 @@ class Landscape:
 
     def area(self, class_val=None, hectares=True):
         """
+        The area of each patch of the landscape
 
         Parameters
         ----------
@@ -354,7 +367,7 @@ class Landscape:
             class only, otherwise it will be computed for all the classes of
             the landscape
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -385,6 +398,7 @@ class Landscape:
 
     def perimeter(self, class_val=None):
         """
+        The perimeter of each patch of the landscape
 
         Parameters
         ----------
@@ -415,6 +429,10 @@ class Landscape:
 
     def perimeter_area_ratio(self, class_val=None, hectares=True):
         """
+        The ratio between the perimeter and area of each patch of the
+        landscape. Measures shape complexity, however it varies with the size
+        of the patch, e.g, for the same shape, larger patches will have a
+        smaller perimeter-area ratio.
 
         Parameters
         ----------
@@ -423,7 +441,7 @@ class Landscape:
             class only, otherwise it will be computed for all the classes of
             the landscape
         hectares : bool, default True
-            whether the area should be converted to hectares (tends to yield
+            Whether the area should be converted to hectares (tends to yield
             more legible values for the metric)
 
         Returns
@@ -462,6 +480,9 @@ class Landscape:
 
     def shape_index(self, class_val=None):
         """
+        A measure of shape complexity, similar to the perimeter-area ratio,
+        but correcting for its size problem by adjusting for a standard square
+        shape. See also the documentation of `perimeter_area_ratio`.
 
         Parameters
         ----------
@@ -497,6 +518,8 @@ class Landscape:
 
     def fractal_dimension(self, class_val=None):
         """
+        A measure of shape complexity appropriate across a wide range of patch
+        sizes
 
         Parameters
         ----------
@@ -504,7 +527,6 @@ class Landscape:
             If provided, the metric will be computed for the corresponding
             class only, otherwise it will be computed for all the classes of
             the landscape
-
 
         Returns
         -------
@@ -533,12 +555,14 @@ class Landscape:
                 'fractal_dimension': fractal_dimension_ser
             })
 
-    def continguity_index(self, patch_arr):
+    def continguity_index(self, class_val=None):
         """
-
         Parameters
         ----------
-        patch_arr :
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding
+            class only, otherwise it will be computed for all the classes of
+            the landscape
 
         Returns
         -------
@@ -552,12 +576,14 @@ class Landscape:
 
     # aggregation metrics (formerly isolation, proximity)
 
-    def euclidean_nearest_neighbor(self, patch_arr):
+    def euclidean_nearest_neighbor(self, class_val=None):
         """
-
         Parameters
         ----------
-        patch_arr :
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding
+            class only, otherwise it will be computed for all the classes of
+            the landscape
 
         Returns
         -------
@@ -569,13 +595,17 @@ class Landscape:
         # TODO
         raise NotImplementedError
 
-    def proximity(self, patch_arr, neighborhood):
+    def proximity(self, search_radius, class_val=None):
         """
-
         Parameters
         ----------
-        patch_arr :
-        neighborhood :
+        search_radius : numeric
+            Search radius defining the neighborhood at which the metric will
+            be computed for each patch
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding
+            class only, otherwise it will be computed for all the classes of
+            the landscape
 
         Returns
         -------
@@ -595,17 +625,18 @@ class Landscape:
 
     def total_area(self, class_val=None, hectares=True):
         """
-        See also the documentation of `Landscape.area`
+        At the class level, measure of the extent of landscape occupied by a
+        specific class. At the landscape level, measure of the extent of the
+        landscape. See also the documentation of `area`.
 
         Parameters
-        ----------
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
             landscape level
         hectares : bool, default True
-            whether the area should be converted to hectares (tends to yield
+            Whether the area should be converted to hectares (tends to yield
             more legible values for the metric)
 
         Returns
@@ -626,12 +657,15 @@ class Landscape:
 
     def proportion_of_landscape(self, class_val, percent=True):
         """
+        Measures the proportional abundance of a particular class within the
+        landscape
 
         Parameters
         ----------
-        class_val :
+        class_val : int
+            Class for which the metric should be computed
         percent : bool, default True
-            whether the index should be expressed as proportion or converted
+            Whether the index should be expressed as proportion or converted
             to percentage. If True, this method returns FRAGSTATS' percentage
             of landscape (PLAND)
 
@@ -652,6 +686,7 @@ class Landscape:
 
     def number_of_patches(self, class_val=None):
         """
+        Number of class patches within the landscape
 
         Parameters
         ----------
@@ -674,6 +709,9 @@ class Landscape:
 
     def patch_density(self, class_val=None, percent=True, hectares=True):
         """
+        Density of class patches within the landscape, arguably more useful
+        than the number of patches since it facilitates comparison among
+        landscapes of different sizes
 
         Parameters
         ----------
@@ -682,10 +720,10 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         percent : bool, default True
-            whether the index should be expressed as proportion or converted
+            Whether the index should be expressed as proportion or converted
             to percentage
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -712,6 +750,8 @@ class Landscape:
 
     def largest_patch_index(self, class_val=None, percent=True):
         """
+        The proportion of total landscape comprised by the largest patch (of a
+        particular class if provided, otherwise for the whole landscape)
 
         Parameters
         ----------
@@ -720,7 +760,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         percent : bool, default True
-            whether the index should be expressed as proportion or converted
+            Whether the index should be expressed as proportion or converted
             to percentage
 
         Returns
@@ -743,6 +783,8 @@ class Landscape:
 
     def total_edge(self, class_val=None, count_boundary=False):
         """
+        Measure of the total edge length of a particular (of a particular
+        class if provided, otherwise for the whole landscape)
 
         Parameters
         ----------
@@ -751,7 +793,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         count_boundary : bool, default False
-            whether the boundary of the landscape should be included in the
+            Whether the boundary of the landscape should be included in the
             total edge length
 
         Returns
@@ -783,6 +825,9 @@ class Landscape:
     def edge_density(self, class_val=None, count_boundary=False,
                      hectares=True):
         """
+        Measure of edge length per area unit, which facilitates comparison
+        among landscapes of different sizes (of a particular class if provided,
+        otherwise for the whole landscape)
 
         Parameters
         ----------
@@ -791,10 +836,9 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         count_boundary : bool, default False
-            whether the boundary of the landscape should be included in the
-            total edge length
+            Whether the boundary of the landscape should be considered
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -818,7 +862,8 @@ class Landscape:
 
     def area_mn(self, class_val=None, hectares=True):
         """
-        See also the documentation of `Landscape.area`
+        Mean of the patch area distribution. See also the documentation of
+        `area`
 
         Parameters
         ----------
@@ -827,7 +872,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -839,7 +884,8 @@ class Landscape:
 
     def area_am(self, class_val=None, hectares=True):
         """
-        See also the documentation of `Landscape.area`
+        Area-weighted mean of the patch area distribution. See also the
+        documentation of `area`.
 
         Parameters
         ----------
@@ -848,7 +894,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -860,7 +906,8 @@ class Landscape:
 
     def area_md(self, class_val=None, hectares=True):
         """
-        See also the documentation of `Landscape.area`
+        Median of the patch area distribution. See also the documentation of
+        `area`.
 
         Parameters
         ----------
@@ -869,7 +916,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -881,7 +928,8 @@ class Landscape:
 
     def area_ra(self, class_val=None, hectares=True):
         """
-        See also the documentation of `Landscape.area`
+        Range of the patch area distribution. See also the documentation of
+        `area`.
 
         Parameters
         ----------
@@ -890,7 +938,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -902,7 +950,8 @@ class Landscape:
 
     def area_sd(self, class_val=None, hectares=True):
         """
-        See also the documentation of `Landscape.area`
+        Standard deviation of the patch area distribution. See also the
+        documentation of `area`.
 
         Parameters
         ----------
@@ -911,7 +960,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -923,7 +972,8 @@ class Landscape:
 
     def area_cv(self, class_val=None, percent=True):
         """
-        See also the documentation of `Landscape.area`
+        Coefficient of variation of the patch area distribution. See also the
+        documentation of `area`.
 
         Parameters
         ----------
@@ -944,6 +994,7 @@ class Landscape:
 
     def landscape_shape_index(self, class_val=None):
         """
+        Measure of class aggregation or clumpiness
 
         Parameters
         ----------
@@ -982,7 +1033,8 @@ class Landscape:
 
     def perimeter_area_ratio_mn(self, class_val=None, hectares=True):
         """
-        See also the documentation of `Landscape.perimeter_area_ratio`
+        Mean of the patch perimeter-area ratio distribution. See also the
+        documentation of `perimeter_area_ratio`.
 
         Parameters
         ----------
@@ -991,7 +1043,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -1004,7 +1056,8 @@ class Landscape:
 
     def perimeter_area_ratio_am(self, class_val=None, hectares=True):
         """
-        See also the documentation of `Landscape.perimeter_area_ratio`
+        Area-weighted mean of the patch perimeter-area ratio distribution. See
+        also the documentation of `perimeter_area_ratio`.
 
         Parameters
         ----------
@@ -1013,7 +1066,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -1026,7 +1079,8 @@ class Landscape:
 
     def perimeter_area_ratio_md(self, class_val=None, hectares=True):
         """
-        See also the documentation of `Landscape.perimeter_area_ratio`
+        Median of the patch perimeter-area ratio distribution. See also the
+        documentation of `perimeter_area_ratio`.
 
         Parameters
         ----------
@@ -1035,7 +1089,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -1048,7 +1102,8 @@ class Landscape:
 
     def perimeter_area_ratio_ra(self, class_val=None, hectares=True):
         """
-        See also the documentation of `Landscape.perimeter_area_ratio`
+        Range of the patch perimeter-area ratio distribution. See also the
+        documentation of `perimeter_area_ratio`.
 
         Parameters
         ----------
@@ -1057,7 +1112,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -1070,7 +1125,8 @@ class Landscape:
 
     def perimeter_area_ratio_sd(self, class_val=None, hectares=True):
         """
-        See also the documentation of `Landscape.perimeter_area_ratio`
+        Standard deviation of the patch perimeter-area ratio distribution. See
+        also the documentation of `perimeter_area_ratio`.
 
         Parameters
         ----------
@@ -1079,7 +1135,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         hectares : bool, default True
-            whether the landscape area should be converted to hectares (tends
+            Whether the landscape area should be converted to hectares (tends
             to yield more legible values for the metric)
 
         Returns
@@ -1092,7 +1148,8 @@ class Landscape:
 
     def perimeter_area_ratio_cv(self, class_val=None, percent=True):
         """
-        See also the documentation of `Landscape.perimeter_area_ratio`
+        Coefficient of variation of the patch perimeter-area ratio
+        distribution. See also the documentation of `perimeter_area_ratio`.
 
         Parameters
         ----------
@@ -1101,7 +1158,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         percent : bool, default True
-            whether the index should be expressed as proportion or converted
+            Whether the index should be expressed as proportion or converted
             to percentage
 
         Returns
@@ -1114,7 +1171,8 @@ class Landscape:
 
     def shape_index_mn(self, class_val=None):
         """
-        See also the documentation of `Landscape.shape_index`
+        Mean of the shape index distribution. See also the documentation of
+        `shape_index`.
 
         Parameters
         ----------
@@ -1132,7 +1190,8 @@ class Landscape:
 
     def shape_index_am(self, class_val=None):
         """
-        See also the documentation of `Landscape.shape_index`
+        Area-weighted mean of the shape index distribution. See also the
+        documentation of `shape_index`.
 
         Parameters
         ----------
@@ -1150,7 +1209,8 @@ class Landscape:
 
     def shape_index_md(self, class_val=None):
         """
-        See also the documentation of `Landscape.shape_index`
+        Median of the shape index distribution. See also the documentation of
+        `shape_index`.
 
         Parameters
         ----------
@@ -1168,7 +1228,8 @@ class Landscape:
 
     def shape_index_ra(self, class_val=None):
         """
-        See also the documentation of `Landscape.shape_index`
+        Range of the shape index distribution. See also the documentation of
+        `shape_index`.
 
         Parameters
         ----------
@@ -1186,7 +1247,8 @@ class Landscape:
 
     def shape_index_sd(self, class_val=None):
         """
-        See also the documentation of `Landscape.shape_index`
+        Standard deviation of the shape index distribution. See also the
+        documentation of `shape_index`.
 
         Parameters
         ----------
@@ -1204,7 +1266,8 @@ class Landscape:
 
     def shape_index_cv(self, class_val=None, percent=True):
         """
-        See also the documentation of `Landscape.shape_index`
+        Coefficient of variation of the shape index distribution. See also the
+        documentation of `shape_index`.
 
         Parameters
         ----------
@@ -1213,7 +1276,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         percent : bool, default True
-            whether the index should be expressed as proportion or converted
+           Whether the index should be expressed as proportion or converted
             to percentage
 
         Returns
@@ -1225,7 +1288,8 @@ class Landscape:
 
     def fractal_dimension_mn(self, class_val=None):
         """
-        See also the documentation of `Landscape.fractal_dimension`
+        Mean of the fractal dimension distribution. See also the documentation
+        of `fractal_dimension`.
 
         Parameters
         ----------
@@ -1243,7 +1307,8 @@ class Landscape:
 
     def fractal_dimension_am(self, class_val=None):
         """
-        See also the documentation of `Landscape.fractal_dimension`
+        Area-weighted mean of the fractal dimension distribution. See also the
+        documentation of `fractal_dimension`.
 
         Parameters
         ----------
@@ -1261,7 +1326,8 @@ class Landscape:
 
     def fractal_dimension_md(self, class_val=None):
         """
-        See also the documentation of `Landscape.fractal_dimension`
+        Median of the fractal dimension distribution. See also the
+        documentation of `fractal_dimension`.
 
         Parameters
         ----------
@@ -1279,7 +1345,8 @@ class Landscape:
 
     def fractal_dimension_ra(self, class_val=None):
         """
-        See also the documentation of `Landscape.fractal_dimension`
+        Range of the fractal dimension distribution. See also the
+        documentation of `fractal_dimension`.
 
         Parameters
         ----------
@@ -1297,7 +1364,8 @@ class Landscape:
 
     def fractal_dimension_sd(self, class_val=None):
         """
-        See also the documentation of `Landscape.fractal_dimension`
+        Standard deviation of the fractal dimension distribution. See also the
+        documentation of `fractal_dimension`.
 
         Parameters
         ----------
@@ -1315,7 +1383,8 @@ class Landscape:
 
     def fractal_dimension_cv(self, class_val=None, percent=True):
         """
-        See also the documentation of `Landscape.fractal_dimension`
+        Coefficient of variation of the fractal dimension distribution. See
+        also the documentation of `fractal_dimension`.
 
         Parameters
         ----------
@@ -1324,7 +1393,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         percent : bool, default True
-            whether the index should be expressed as proportion or converted
+            Whether the index should be expressed as proportion or converted
             to percentage
 
         Returns
@@ -1720,7 +1789,7 @@ class Landscape:
             corresponding class, otherwise it will be computed at the
             landscape level
         percent : bool, default True
-            whether the index should be expressed as proportion or converted
+            Whether the index should be expressed as proportion or converted
             to percentage
 
 
@@ -1749,7 +1818,7 @@ class Landscape:
         Parameters
         ----------
         percent : bool, default True
-            whether the index should be expressed as proportion or converted
+            Whether the index should be expressed as proportion or converted
             to percentage
 
         Returns
@@ -1783,6 +1852,22 @@ class Landscape:
         raise NotImplementedError
 
     def patch_metrics_df(self, metrics=None):
+        """
+        Computes the patch-level metrics. TODO: metric_kwargs
+
+        Parameters
+        ----------
+        metrics : list-like, optional
+            A list-like of strings with the names of the metrics that should
+            be computed. If None, all the implemented patch-level metrics will
+            be computed.
+
+        Returns
+        -------
+        df : pd.DataFrame
+            Dataframe with the values computed for each patch (index) and
+            metric (columns)
+        """
 
         if metrics is None:
             metrics = Landscape.PATCH_METRICS
@@ -1817,6 +1902,22 @@ class Landscape:
         return df
 
     def class_metrics_df(self, metrics=None):
+        """
+        Computes the class-level metrics. TODO: metric_kwargs
+
+        Parameters
+        ----------
+        metrics : list-like, optional
+            A list-like of strings with the names of the metrics that should
+            be computed. If None, all the implemented class-level metrics will
+            be computed.
+
+        Returns
+        -------
+        df : pd.DataFrame
+            Dataframe with the values computed for each class (index) and
+            metric (columns)
+        """
 
         if metrics is None:
             metrics = Landscape.CLASS_METRICS
@@ -1839,6 +1940,22 @@ class Landscape:
         return df
 
     def landscape_metrics_df(self, metrics=None):
+        """
+        Computes the landscape-level metrics. TODO: metric_kwargs
+
+        Parameters
+        ----------
+        metrics : list-like, optional
+            A list-like of strings with the names of the metrics that should
+            be computed. If None, all the implemented landscape-level metrics
+            will be computed.
+
+        Returns
+        -------
+        df : pd.DataFrame
+            Dataframe with the values computed at the landscape level (one row
+            only) for each metric (columns)
+        """
 
         if metrics is None:
             metrics = Landscape.LANDSCAPE_METRICS

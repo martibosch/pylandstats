@@ -11,6 +11,24 @@ __all__ = ['SpatioTemporalAnalysis']
 
 class SpatioTemporalAnalysis:
     def __init__(self, landscapes, metrics=None, classes=None, dates=None):
+        """
+        Parameters
+        ----------
+        landscapes : list-like
+            A list-like of `Landscape` objects or of strings/file objects/
+            pathlib.Path objects so that each is passed as the `fp` argument of
+            `pls.read_geotiff`
+        metrics : list-like, optional
+            A list-like of strings with the names of the metrics that should
+            be computed in the context of this analysis case
+        classes : list-like, optional
+            A list-like of ints or strings with the class values that should
+            be considered in the context of this analysis case
+        dates : list-like, optional
+            A list-like of ints or strings that label the date of each
+            snapshot of `landscapes` (for DataFrame indices and plot labels)
+        """
+
         if isinstance(landscapes[0], Landscape):
             self.landscapes = landscapes
         else:
@@ -112,39 +130,146 @@ class SpatioTemporalAnalysis:
     #     fig, ax = plt.subplots()
     #     ax.hist()
 
-    def plot_metric(self, metric, class_val=None, ax=None, legend=False,
-                    figsize=None):
-        metric_vals = [
-            getattr(landscape, metric)(class_val)
-            for landscape in self.landscapes
-        ]
+    def plot_metric(self, metric, class_val=None, ax=None, metric_legend=True,
+                    fmt='--o', plt_kws={}, subplots_kws={}):
+        """
+        Parameters
+        ----------
+        metric : str
+            A string indicating the name of the metric to plot
+        class_val : int, optional
+            If provided, the metric will be plotted at the level of the
+            corresponding class, otherwise it will be plotted at the landscape
+            level
+        ax : axis object, optional
+            Plot in given axis; if None creates a new figure
+        metric_legend : bool, default True
+            Whether the metric label should be displayed within the plot (as
+            label of the y-axis)
+        fmt : str, default '--o'
+            A format string for the `plt.plot`
+        plt_kws : dict
+            Keyword arguments to be passed to `plt.plot`
+        subplots_kws : dict
+            Keyword arguments to be passed to `plt.subplots`, only if no axis
+            is given (through the `ax` argument)
+
+        Returns
+        -------
+        ax : axis object
+            Returns the Axes object with the plot drawn onto it
+        """
+
+        # TODO: metric_legend parameter acepting a set of str values
+        # indicating, e.g., whether the metric label should appear as legend
+        # or as yaxis label
+        # TODO: if we use seaborn in the future, we can use the pd.Series
+        # directly, since its index corresponds to this SpatioTemporalAnalysis
+        # dates
+        try:
+            if class_val is None:
+                metric_values = self.landscape_metrics_df[metric].values
+            else:
+                metric_values = self.class_metrics_df.loc[class_val,
+                                                          metric].values
+        except KeyError:
+            if class_val is None:
+                raise ValueError(
+                    "Metric '{metric}' is not among {metrics}".format(
+                        metric=metric, metrics=self.landscape_metrics))
+            else:
+                if class_val not in self.classes:
+                    raise ValueError(
+                        "Class '{class_val}' is not among {classes}".format(
+                            class_val=class_val, classes=self.classes))
+                else:
+                    raise ValueError(
+                        "Metric '{metric}' is not among {metrics}".format(
+                            metric=metric, metrics=self.class_metrics))
 
         if ax is None:
-            fig, ax = plt.subplots(figsize=figsize)
+            fig, ax = plt.subplots(**subplots_kws)
 
-        # if self.dates:
-        #     ax.plot(self.dates, metric_vals, '--o', label=metric)
-        # else:
-        #     ax.plot(metric_vals, '--o', label=metric)
-        ax.plot(self.dates, metric_vals, '--o', label=metric)
+        ax.plot(self.dates, metric_values, fmt, **plt_kws)
 
-        if legend:
-            ax.legend()
+        if metric_legend:
+            ax.set_ylabel(metric)
 
         return ax
 
-    def plot_metrics(self, metrics, class_val=None, num_cols=1):
-        num_rows = int(np.ceil(len(metrics) / num_cols))
-        # TODO: base figsize?
-        fig, axes = plt.subplots(num_rows, num_cols, sharex=True,
-                                 figsize=(6 * num_cols, 6 * num_rows))
-        flat_axes = axes.flatten()
+    def plot_metrics(self, class_val=None, metrics=None, num_cols=3,
+                     metric_legend=True, xtick_labelbottom=False, plt_kws={},
+                     subplots_adjust_kws={}):
+        """
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metrics will be plotted at the level of the
+            corresponding class, otherwise it will be plotted at the landscape
+            level
+        metrics : list-like, optional
+            A list-like of strings with the names of the metrics that should
+            be plotted. The metrics should have been passed within the
+            initialization of this `SpatioTemporalAnalysis` instance
+        num_cols : int, default 3
+            Number of columns for the figure; the rows will be deduced
+            accordingly
+        metric_legend : bool, default True
+            Whether the metric label should be displayed within the plot (as
+            label of the y-axis)
+        xtick_labelbottom : bool, default False
+            If True, the label ticks (dates) in the xaxis will be displayed at
+            each row. Otherwise they will only be displayed at the bottom row
+        plt_kws : dict
+            Keyword arguments to be passed to `plt.plot`
+        subplots_adjust_kws: dict, optional
+            Keyword arguments to be passed to `plt.subplots_adjust`
+
+        Returns
+        -------
+        fig, ax : tuple
+            - figure object
+            - axis object with the plot drawn onto it
+        """
+
+        if metrics is None:
+            if class_val is None:
+                metrics = self.landscape_metrics
+            else:
+                metrics = self.class_metrics
+
+        if len(metrics) < num_cols:
+            num_cols = len(metrics)
+            num_rows = 1
+        else:
+            num_rows = int(np.ceil(len(metrics) / num_cols))
+
+        figwidth, figlength = plt.rcParams['figure.figsize']
+        fig, axes = plt.subplots(
+            num_rows, num_cols, sharex=True, figsize=(figwidth * num_cols,
+                                                      figlength * num_rows))
+
+        if num_rows == 1 and num_cols == 1:
+            flat_axes = [axes]
+        else:
+            flat_axes = axes.flatten()
+
         for metric, ax in zip(metrics, flat_axes):
-            self.plot_metric(metric, class_val=class_val, ax=ax)
+            self.plot_metric(metric, class_val=class_val, ax=ax,
+                             metric_legend=metric_legend, plt_kws=plt_kws)
+
+        if xtick_labelbottom:
+            for ax in flat_axes:
+                # this requires matplotlib >= 2.2
+                ax.xaxis.set_tick_params(labelbottom=True)
 
         # disable axis for the latest cells that correspond to no metric (i.e.,
         # when len(metrics) < num_rows * num_cols)
         for i in range(len(metrics), len(flat_axes)):
             flat_axes[i].axis('off')
+
+        # adjust spacing between axes
+        if subplots_adjust_kws:
+            fig.subplots_adjust(**subplots_adjust_kws)
 
         return fig, axes
