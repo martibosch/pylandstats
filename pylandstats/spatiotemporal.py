@@ -10,7 +10,8 @@ __all__ = ['SpatioTemporalAnalysis']
 
 
 class SpatioTemporalAnalysis:
-    def __init__(self, landscapes, metrics=None, classes=None, dates=None):
+    def __init__(self, landscapes, metrics=None, classes=None, dates=None,
+                 metrics_kws={}):
         """
         Parameters
         ----------
@@ -27,6 +28,13 @@ class SpatioTemporalAnalysis:
         dates : list-like, optional
             A list-like of ints or strings that label the date of each
             snapshot of `landscapes` (for DataFrame indices and plot labels)
+        metrics_kws : dict, optional
+            Dictionary mapping the keyword arguments (values) that should be
+            passed to each metric method (key), e.g., to exclude the boundary
+            from the computation of `total_edge`, metric_kws should map the
+            string 'total_edge' (method name) to {'count_boundary': False}.
+            The default empty dictionary will compute each metric according to
+            FRAGSTATS defaults.
         """
 
         if isinstance(landscapes[0], Landscape):
@@ -78,6 +86,8 @@ class SpatioTemporalAnalysis:
         else:
             self.dates = ['t{}'.format(i) for i in range(len(self.landscapes))]
 
+        self.metrics_kws = metrics_kws
+
     @property
     def class_metrics_df(self):
         try:
@@ -93,7 +103,8 @@ class SpatioTemporalAnalysis:
             for date, landscape in zip(self.dates, self.landscapes):
                 # get the class metrics DataFrame for the landscape snapshot
                 # at this particular date
-                df = landscape.class_metrics_df(metrics=self.class_metrics)
+                df = landscape.class_metrics_df(metrics=self.class_metrics,
+                                                metrics_kws=self.metrics_kws)
                 # filter so we only check the classes considered in this
                 # spatiotemporal analysis
                 df = df.loc[df.index.intersection(self.classes)]
@@ -119,7 +130,8 @@ class SpatioTemporalAnalysis:
             for date, landscape in zip(self.dates, self.landscapes):
                 landscape_metrics_df.loc[
                     date] = landscape.landscape_metrics_df(
-                        self.landscape_metrics).iloc[0]
+                        self.landscape_metrics,
+                        metrics_kws=self.metrics_kws).iloc[0]
 
             self._landscape_metrics_df = landscape_metrics_df
 

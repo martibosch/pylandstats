@@ -227,6 +227,51 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
                 sta_metrics, pls.Landscape.LANDSCAPE_METRICS)))
         self.assertTrue(np.all(landscape_metrics_df.index == self.dates))
 
+    def test_spatiotemporalanalysis_metric_kws(self):
+        # Instantiate two spatiotemporal analysises, one with FRAGSTATS'
+        # defaults and the other with keyword arguments specifying the total
+        # area in meters and including the boundary in the computation of the
+        # total edge.
+        sta = pls.SpatioTemporalAnalysis(self.landscapes)
+        sta_kws = pls.SpatioTemporalAnalysis(
+            self.landscapes, metrics_kws={
+                'total_area': {
+                    'hectares': False
+                },
+                'total_edge': {
+                    'count_boundary': True
+                }
+            })
+
+        # For all dates and all classes, metric values in hectares should be
+        # less than in meters, and excluding boundaries should be less or
+        # equal than including them
+        for date in sta.dates:
+            landscape_metrics = sta.landscape_metrics_df.loc[date]
+            landscape_metrics_kws = sta_kws.landscape_metrics_df.loc[date]
+            self.assertLess(landscape_metrics['total_area'],
+                            landscape_metrics_kws['total_area'])
+            self.assertLessEqual(landscape_metrics['total_edge'],
+                                 landscape_metrics_kws['total_edge'])
+
+            for class_val in sta.classes:
+                class_metrics = sta.class_metrics_df.loc[class_val, date]
+                class_metrics_kws = sta_kws.class_metrics_df.loc[class_val,
+                                                                 date]
+
+                # It could be that for some dates, some classes are not
+                # present within the landscape snapshot. In such case, all of
+                # the metrics will be `nan`, both for the analysis with and
+                # without keyword arguments. Otherwise, we just perform the
+                # usual checks
+                if class_metrics.isnull().all():
+                    self.assertTrue(class_metrics_kws.isnull().all())
+                else:
+                    self.assertLess(class_metrics['total_area'],
+                                    class_metrics_kws['total_area'])
+                    self.assertLessEqual(class_metrics['total_edge'],
+                                         class_metrics_kws['total_edge'])
+
     def test_spatiotemporalanalysis_plots(self):
         sta = pls.SpatioTemporalAnalysis(self.landscapes, dates=self.dates)
 

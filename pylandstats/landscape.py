@@ -1851,9 +1851,9 @@ class Landscape:
         # TODO
         raise NotImplementedError
 
-    def patch_metrics_df(self, metrics=None):
+    def patch_metrics_df(self, metrics=None, metrics_kws={}):
         """
-        Computes the patch-level metrics. TODO: metric_kwargs
+        Computes the patch-level metrics
 
         Parameters
         ----------
@@ -1861,6 +1861,12 @@ class Landscape:
             A list-like of strings with the names of the metrics that should
             be computed. If None, all the implemented patch-level metrics will
             be computed.
+        metrics_kws : dict, optional
+            Dictionary mapping the keyword arguments (values) that should be
+            passed to each metric method (key), e.g., to compute `area` in
+            meters instead of hectares, metric_kws should map the string 'area'
+            (method name) to {'hectares': False}. The default empty dictionary
+            will compute each metric according to FRAGSTATS defaults.
 
         Returns
         -------
@@ -1871,27 +1877,25 @@ class Landscape:
 
         if metrics is None:
             metrics = Landscape.PATCH_METRICS
-        # so far we do not support metric-wise kwargs in this method, so we
-        # only work with FRAGSTATS defaults. More customized metrics might be
-        # computed individually with their dedicated method
-
-        # df = getattr(self, patch_metrics[0])()
-
-        # for patch_metric in patch_metrics[1:]:
-        #     df = pd.concat(
-        #         [df, getattr(self, patch_metric)().drop('class_val', 1)],
-        #         axis=1)
-        # return df
 
         try:
-            # in order to avoid adding a duplicate 'class_val' column for each
-            # metric, we drop the 'class_val' column of each metric DataFrame
-            # except for the first
-            metric = metrics[0]
-            metrics_dfs = [getattr(self, metric)()]
-            for metric in metrics[1:]:
+            # # in order to avoid adding a duplicate 'class_val' column for
+            # # each metric, we drop the 'class_val' column of each metric
+            # # DataFrame except for the first
+            # metric = metrics[0]
+            # metrics_dfs = [getattr(self, metric)()]
+            # for metric in metrics[1:]:
+
+            metrics_dfs = [self._patch_class_ser]
+            for metric in metrics:
+                if metric in metrics_kws:
+                    metric_kws = metrics_kws[metric]
+                else:
+                    metric_kws = {}
+
                 metrics_dfs.append(
-                    getattr(self, metric)().drop('class_val', axis=1))
+                    getattr(self, metric)(**metric_kws).drop(
+                        'class_val', axis=1))
 
         except AttributeError:
             raise ValueError("{metric} is not among {Landscape.PATCH_METRICS}")
@@ -1901,9 +1905,9 @@ class Landscape:
 
         return df
 
-    def class_metrics_df(self, metrics=None):
+    def class_metrics_df(self, metrics=None, metrics_kws={}):
         """
-        Computes the class-level metrics. TODO: metric_kwargs
+        Computes the class-level metrics
 
         Parameters
         ----------
@@ -1911,6 +1915,13 @@ class Landscape:
             A list-like of strings with the names of the metrics that should
             be computed. If None, all the implemented class-level metrics will
             be computed.
+        metrics_kws : dict, optional
+            Dictionary mapping the keyword arguments (values) that should be
+            passed to each metric method (key), e.g., to exclude the boundary
+            from the computation of `total_edge`, metric_kws should map the
+            string 'total_edge' (method name) to {'count_boundary': False}.
+            The default empty dictionary will compute each metric according to
+            FRAGSTATS defaults.
 
         Returns
         -------
@@ -1925,11 +1936,18 @@ class Landscape:
         try:
             metrics_sers = []
             for metric in metrics:
+                if metric in metrics_kws:
+                    metric_kws = metrics_kws[metric]
+                else:
+                    metric_kws = {}
+
                 metrics_sers.append(
                     pd.Series({
-                        class_val: getattr(self, metric)(class_val)
+                        class_val: getattr(self, metric)(class_val, **
+                                                         metric_kws)
                         for class_val in self.classes
                     }, name=metric))
+
         except AttributeError:
             raise ValueError("{metric} is not among {metrics}".format(
                 metric=metric, metrics=Landscape.CLASS_METRICS))
@@ -1939,9 +1957,9 @@ class Landscape:
 
         return df
 
-    def landscape_metrics_df(self, metrics=None):
+    def landscape_metrics_df(self, metrics=None, metrics_kws={}):
         """
-        Computes the landscape-level metrics. TODO: metric_kwargs
+        Computes the landscape-level metrics
 
         Parameters
         ----------
@@ -1949,6 +1967,13 @@ class Landscape:
             A list-like of strings with the names of the metrics that should
             be computed. If None, all the implemented landscape-level metrics
             will be computed.
+        metrics_kws : dict, optional
+            Dictionary mapping the keyword arguments (values) that should be
+            passed to each metric method (key), e.g., to exclude the boundary
+            from the computation of `total_edge`, metric_kws should map the
+            string 'total_edge' (method name) to {'count_boundary': False}.
+            The default empty dictionary will compute each metric according to
+            FRAGSTATS defaults.
 
         Returns
         -------
@@ -1963,7 +1988,12 @@ class Landscape:
         try:
             metrics_dict = {}
             for metric in metrics:
-                metrics_dict[metric] = getattr(self, metric)()
+                if metric in metrics_kws:
+                    metric_kws = metrics_kws[metric]
+                else:
+                    metric_kws = {}
+
+                metrics_dict[metric] = getattr(self, metric)(**metric_kws)
 
         except AttributeError:
             raise ValueError("{metric} is not among {metrics}".format(
