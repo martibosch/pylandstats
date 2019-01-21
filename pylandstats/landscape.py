@@ -2,6 +2,7 @@ from __future__ import division
 
 from functools import partial
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import rasterio
@@ -2000,6 +2001,47 @@ class Landscape:
                 metric=metric, metrics=Landscape.LANDSCAPE_METRICS))
 
         return pd.DataFrame(metrics_dict, index=[0])
+
+    def plot_landscape(self, cmap=None, ax=None, legend=False, figsize=None,
+                       imshow_kws={}):
+        """
+        Plots the landscape
+
+        Parameters
+        -------
+        cmap : str or `~matplotlib.colors.Colormap`, optional
+            A Colormap instance
+        ax : axis object, optional
+            Plot in given axis; if None creates a new figure
+        legend : bool, optional
+            If ``True``, display the legend
+        figsize: tuple of two ints, optional
+            Size of the figure to create.
+        imshow_kws : dict, optional
+            Keyword arguments to be passed to `plt.imshow`
+
+        Returns
+        -------
+        ax : matplotlib axis
+            axis with plot data
+        """
+
+        if cmap is None:
+            cmap = plt.get_cmap('jet')
+
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize)
+        ax.set_aspect('equal')
+
+        im = ax.imshow(self.landscape_arr, cmap=cmap, **imshow_kws)
+
+        if legend:
+            for class_val in self.classes:
+                ax.plot(0, 0, 'o', c=cmap(im.norm(class_val)), label=class_val)
+
+            ax.legend()
+
+        return ax
 
 
 def read_geotiff(fp, nodata=0, **kwargs):
