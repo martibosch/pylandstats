@@ -164,7 +164,7 @@ class TestLandscape(unittest.TestCase):
 
         # TODO: assert 0 < ls.contagion() <= 100
         # TODO: assert 0 < ls.interspersion_juxtaposition_index() <= 100
-        # TODO: assert ls.shannon_diversity_index() >= 0
+        assert ls.shannon_diversity_index() >= 0
 
     def test_plot_landscape(self):
         # returned axis must be instances of matplotlib axes
@@ -292,8 +292,12 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
         # `class_val=None`) must raise a ValueError
         self.assertRaises(ValueError, sta.plot_metric,
                           'proportion_of_landscape')
-        # TODO: in the future, test ValueError with metrics that can only be
-        # computed at the landscape level, e.g., shannon_diversity_index
+        # conversely, `shannon_diversity_index` can only be computed at the
+        # landscape level, so plotting it at the class level must raise a
+        # ValueError
+        self.assertRaises(ValueError, sta.plot_metric,
+                          'shannon_diversity_index',
+                          {'class_val': existent_class_val})
 
         # TODO: test legend and figsize
 
