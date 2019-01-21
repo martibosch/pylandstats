@@ -35,27 +35,27 @@ class TestLandscape(unittest.TestCase):
 
     def test_metric_dataframes(self):
         ls = self.ls
-        patch_df = ls.patch_metrics_df()
+        patch_df = ls.compute_patch_metrics_df()
         self.assertTrue(
             np.all(
                 patch_df.columns.drop('class_val') ==
                 pls.Landscape.PATCH_METRICS))
         self.assertEqual(patch_df.index.name, 'patch_id')
-        self.assertRaises(ValueError, ls.patch_metrics_df, ['foo'])
+        self.assertRaises(ValueError, ls.compute_patch_metrics_df, ['foo'])
 
-        class_df = ls.class_metrics_df()
+        class_df = ls.compute_class_metrics_df()
         self.assertEqual(
             len(class_df.columns.difference(pls.Landscape.CLASS_METRICS)), 0)
         self.assertEqual(class_df.index.name, 'class_val')
-        self.assertRaises(ValueError, ls.class_metrics_df, ['foo'])
+        self.assertRaises(ValueError, ls.compute_class_metrics_df, ['foo'])
 
-        landscape_df = ls.landscape_metrics_df()
+        landscape_df = ls.compute_landscape_metrics_df()
         self.assertEqual(
             len(
                 landscape_df.columns.difference(
                     pls.Landscape.LANDSCAPE_METRICS)), 0)
         self.assertEqual(len(landscape_df.index), 1)
-        self.assertRaises(ValueError, ls.landscape_metrics_df, ['foo'])
+        self.assertRaises(ValueError, ls.compute_landscape_metrics_df, ['foo'])
 
     def test_landscape_metrics_value_ranges(self):
         ls = self.ls

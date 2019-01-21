@@ -103,8 +103,8 @@ class SpatioTemporalAnalysis:
             for date, landscape in zip(self.dates, self.landscapes):
                 # get the class metrics DataFrame for the landscape snapshot
                 # at this particular date
-                df = landscape.class_metrics_df(metrics=self.class_metrics,
-                                                metrics_kws=self.metrics_kws)
+                df = landscape.compute_class_metrics_df(
+                    metrics=self.class_metrics, metrics_kws=self.metrics_kws)
                 # filter so we only check the classes considered in this
                 # spatiotemporal analysis
                 df = df.loc[df.index.intersection(self.classes)]
@@ -129,7 +129,7 @@ class SpatioTemporalAnalysis:
 
             for date, landscape in zip(self.dates, self.landscapes):
                 landscape_metrics_df.loc[
-                    date] = landscape.landscape_metrics_df(
+                    date] = landscape.compute_landscape_metrics_df(
                         self.landscape_metrics,
                         metrics_kws=self.metrics_kws).iloc[0]
 

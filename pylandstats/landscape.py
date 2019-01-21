@@ -1858,7 +1858,7 @@ class Landscape:
 
         return -shdi
 
-    def patch_metrics_df(self, metrics=None, metrics_kws={}):
+    def compute_patch_metrics_df(self, metrics=None, metrics_kws={}):
         """
         Computes the patch-level metrics
 
@@ -1912,7 +1912,7 @@ class Landscape:
 
         return df
 
-    def class_metrics_df(self, metrics=None, metrics_kws={}):
+    def compute_class_metrics_df(self, metrics=None, metrics_kws={}):
         """
         Computes the class-level metrics
 
@@ -1964,7 +1964,7 @@ class Landscape:
 
         return df
 
-    def landscape_metrics_df(self, metrics=None, metrics_kws={}):
+    def compute_landscape_metrics_df(self, metrics=None, metrics_kws={}):
         """
         Computes the landscape-level metrics
 
