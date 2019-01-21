@@ -6,6 +6,8 @@ import pandas as pd
 
 import pylandstats as pls
 
+plt.switch_backend('agg')  # only for testing purposes
+
 
 class TestLandscape(unittest.TestCase):
     def setUp(self):
