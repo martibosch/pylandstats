@@ -285,3 +285,41 @@ class SpatioTemporalAnalysis:
             fig.subplots_adjust(**subplots_adjust_kws)
 
         return fig, axes
+
+    def plot_landscapes(self, cmap=None, legend=True, imshow_kws={},
+                        subplots_adjust_kws={}):
+        """
+        Plots each landscape snapshot in a dedicated matplotlib axis
+
+        Parameters
+        -------
+        cmap : str or `~matplotlib.colors.Colormap`, optional
+            A Colormap instance
+        legend : bool, optional
+            If ``True``, display the legend of the land use/cover color codes
+        imshow_kws : dict, optional
+            Keyword arguments to be passed to `plt.imshow`
+        subplots_adjust_kws: dict, optional
+            Keyword arguments to be passed to `plt.subplots_adjust`
+
+        Returns
+        -------
+        fig, ax : tuple
+            - figure object
+            - axis object with the plot drawn onto it
+        """
+
+        figwidth, figlength = plt.rcParams['figure.figsize']
+        fig, axes = plt.subplots(
+            1, len(self.dates), figsize=(figwidth * len(self.dates),
+                                         figlength))
+
+        for date, landscape, ax in zip(self.dates, self.landscapes, axes):
+            ax.imshow(landscape.landscape_arr, cmap=cmap, **imshow_kws)
+            ax.set_title(date)
+
+        # adjust spacing between axes
+        if subplots_adjust_kws:
+            fig.subplots_adjust(**subplots_adjust_kws)
+
+        return fig, axes

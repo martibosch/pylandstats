@@ -1,5 +1,6 @@
 import unittest
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -165,6 +166,10 @@ class TestLandscape(unittest.TestCase):
         # TODO: assert 0 < ls.interspersion_juxtaposition_index() <= 100
         # TODO: assert ls.shannon_diversity_index() >= 0
 
+    def test_plot_landscape(self):
+        # returned axis must be instances of matplotlib axes
+        self.assertIsInstance(self.ls.plot_landscape(), plt.Axes)
+
 
 class TestSpatioTemporalAnalysis(unittest.TestCase):
     def setUp(self):
@@ -272,7 +277,7 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
                     self.assertLessEqual(class_metrics['total_edge'],
                                          class_metrics_kws['total_edge'])
 
-    def test_spatiotemporalanalysis_plots(self):
+    def test_spatiotemporalanalysis_plot_metrics(self):
         sta = pls.SpatioTemporalAnalysis(self.landscapes, dates=self.dates)
 
         existent_class_val = sta.classes[0]
@@ -301,3 +306,15 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
         fig, axes = sta.plot_metrics(class_val=existent_class_val,
                                      metrics=['edge_density', 'patch_density'])
         self.assertEqual(len(axes), 2)
+
+    def test_plot_landscape(self):
+        sta = pls.SpatioTemporalAnalysis(self.landscapes)
+
+        fig, axes = sta.plot_landscapes()
+
+        # there must be two columns, one for each date
+        self.assertEqual(len(axes), 2)
+
+        # returned axes must be instances of matplotlib axes
+        for ax in axes:
+            self.assertIsInstance(ax, plt.Axes)
