@@ -79,7 +79,8 @@ class Landscape:
     ] + ['area_{}'.format(suffix) for suffix in _suffixes] + [
         'perimeter_area_ratio_{}'.format(suffix) for suffix in _suffixes
     ] + ['shape_index_{}'.format(suffix) for suffix in _suffixes
-         ] + ['fractal_dimension_{}'.format(suffix) for suffix in _suffixes]
+         ] + ['fractal_dimension_{}'.format(suffix)
+              for suffix in _suffixes] + ['shannon_diversity_index']
 
     # compute methods
 
@@ -1849,8 +1850,13 @@ class Landscape:
             classes becomes more equitable.
         """
 
-        # TODO
-        raise NotImplementedError
+        shdi = 0
+        for class_val in self.classes:
+            p_class = np.sum(
+                self._get_patch_area_ser(class_val)) / self.landscape_area
+            shdi += p_class * np.log(p_class)
+
+        return -shdi
 
     def patch_metrics_df(self, metrics=None, metrics_kws={}):
         """
