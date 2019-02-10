@@ -76,7 +76,7 @@ class SpatioTemporalAnalysis:
             else:
                 self.classes = classes
 
-        if dates:
+        if dates is not None:
             if len(landscapes) == len(dates):
                 self.dates = dates
             else:
