@@ -273,11 +273,11 @@ class Landscape:
     # small utilities to get patch areas/perimeters for a particular class only
 
     def _get_patch_area_ser(self, class_val=None):
-        if class_val:
+        if class_val is None:
+            patch_area_ser = self._patch_area_ser
+        else:
             patch_area_ser = self._patch_area_ser[self._patch_class_ser ==
                                                   class_val]
-        else:
-            patch_area_ser = self._patch_area_ser
 
         # TODO: return a copy? even when `class_val` is set and thus
         # `patch_area_ser` is a slice: although we would not have alias
@@ -285,11 +285,11 @@ class Landscape:
         return patch_area_ser
 
     def _get_patch_perimeter_ser(self, class_val=None, copy=False):
-        if class_val:
+        if class_val is None:
+            patch_perimeter_ser = self._patch_perimeter_ser
+        else:
             patch_perimeter_ser = self._patch_perimeter_ser[
                 self._patch_class_ser == class_val]
-        else:
-            patch_perimeter_ser = self._patch_perimeter_ser
 
         # TODO: return a copy? even when `class_val` is set and thus
         # `patch_perimeter_ser` is a slice: although we would not have alias
@@ -390,13 +390,13 @@ class Landscape:
             area_ser = area_ser.copy()
             area_ser /= 10000
 
-        if class_val:
-            return area_ser
-        else:
+        if class_val is None:
             return pd.DataFrame({
                 'class_val': self._patch_class_ser,
                 'area': area_ser
             })
+        else:
+            return area_ser
 
     def perimeter(self, class_val=None):
         """
@@ -419,13 +419,13 @@ class Landscape:
         # perimeter_ser = self._patch_perimeter_ser
         perimeter_ser = self._get_patch_perimeter_ser(class_val)
 
-        if class_val:
-            return perimeter_ser
-        else:
+        if class_val is None:
             return pd.DataFrame({
                 'class_val': self._patch_class_ser,
                 'perimeter': perimeter_ser
             })
+        else:
+            return perimeter_ser
 
     # shape
 
@@ -467,18 +467,18 @@ class Landscape:
 
         perimeter_area_ratio_ser = perimeter_ser / area_ser
 
-        if class_val:
-            # ensure that the returned `pd.Series` has a name (so `seaborn`
-            # plots can automatically label the axes)
-            perimeter_area_ratio_ser.name = 'perimeter_area_ratio'
-            return perimeter_area_ratio_ser
-        else:
+        if class_val is None:
             return pd.DataFrame({
                 'class_val':
                 self._patch_class_ser,
                 'perimeter_area_ratio':
                 perimeter_area_ratio_ser
             })
+        else:
+            # ensure that the returned `pd.Series` has a name (so `seaborn`
+            # plots can automatically label the axes)
+            perimeter_area_ratio_ser.name = 'perimeter_area_ratio'
+            return perimeter_area_ratio_ser
 
     def shape_index(self, class_val=None):
         """
@@ -506,17 +506,16 @@ class Landscape:
 
         shape_index_ser = self.compute_shape_index(area_ser, perimeter_ser)
 
-        if class_val:
-            # ensure that the returned `pd.Series` has a name (so `seaborn`
-            # plots can automatically label the axes)
-            shape_index_ser.name = 'shape_index'
-            return shape_index_ser
-
-        else:
+        if class_val is None:
             return pd.DataFrame({
                 'class_val': self._patch_class_ser,
                 'shape_index': shape_index_ser
             })
+        else:
+            # ensure that the returned `pd.Series` has a name (so `seaborn`
+            # plots can automatically label the axes)
+            shape_index_ser.name = 'shape_index'
+            return shape_index_ser
 
     def fractal_dimension(self, class_val=None):
         """
@@ -545,17 +544,16 @@ class Landscape:
         fractal_dimension_ser = 2 * np.log(
             .25 * perimeter_ser) / np.log(area_ser)
 
-        if class_val:
-            # ensure that the returned `pd.Series` has a name (so `seaborn`
-            # plots can automatically label the axes)
-            fractal_dimension_ser.name = 'fractal_dimension'
-            return fractal_dimension_ser
-        else:
-            # both `perimeter` and `area` are `pd.DataFrame`
+        if class_val is None:
             return pd.DataFrame({
                 'class_val': self._patch_area_ser,
                 'fractal_dimension': fractal_dimension_ser
             })
+        else:
+            # ensure that the returned `pd.Series` has a name (so `seaborn`
+            # plots can automatically label the axes)
+            fractal_dimension_ser.name = 'fractal_dimension'
+            return fractal_dimension_ser
 
     def continguity_index(self, class_val=None):
         """
@@ -646,11 +644,11 @@ class Landscape:
         ta : float
         """
 
-        if class_val:
+        if class_val is None:
+            total_area = self.landscape_area
+        else:
             area_ser = self._get_patch_area_ser(class_val)
             total_area = np.sum(area_ser)
-        else:
-            total_area = self.landscape_area
 
         if hectares:
             total_area /= 10000
@@ -702,10 +700,10 @@ class Landscape:
         np : int
             np >= 1
         """
-        if class_val:
-            num_patches = self._num_patches_dict[class_val]
-        else:
+        if class_val is None:
             num_patches = np.sum(list(self._num_patches_dict.values()))
+        else:
+            num_patches = self._num_patches_dict[class_val]
 
         return num_patches
 
@@ -738,10 +736,10 @@ class Landscape:
         # TODO: DRY and use `self.number_of_patches` as in:
         # `numerator = self.number_of_patches(class_val)`
         # or avoid reusing metric's methods?
-        if class_val:
-            numerator = self._num_patches_dict[class_val]
-        else:
+        if class_val is None:
             numerator = np.sum(list(self._num_patches_dict.values()))
+        else:
+            numerator = self._num_patches_dict[class_val]
 
         if percent:
             numerator *= 100
@@ -805,7 +803,14 @@ class Landscape:
             consist of the corresponding class
         """
 
-        if class_val:
+        if class_val is None:
+            if count_boundary:
+                total_edge = self.compute_arr_perimeter(
+                    np.pad(self.landscape_arr, pad_width=1, mode='constant',
+                           constant_values=self.nodata))
+            else:
+                total_edge = self.compute_arr_edge(self.landscape_arr)
+        else:
             if count_boundary:
                 # then the total edge is just the sum of the perimeters of all
                 # the patches of the corresponding class
@@ -814,13 +819,6 @@ class Landscape:
             else:
                 total_edge = self.compute_arr_edge(
                     self.landscape_arr == class_val)
-        else:
-            if count_boundary:
-                total_edge = self.compute_arr_perimeter(
-                    np.pad(self.landscape_arr, pad_width=1, mode='constant',
-                           constant_values=self.nodata))
-            else:
-                total_edge = self.compute_arr_edge(self.landscape_arr)
 
         return total_edge
 
@@ -1014,10 +1012,10 @@ class Landscape:
         """
 
         # compute the total area
-        if class_val:
-            area = np.sum(self._get_patch_area_ser(class_val))
-        else:
+        if class_val is None:
             area = self.landscape_area
+        else:
+            area = np.sum(self._get_patch_area_ser(class_val))
 
         # TODO: we make an exception here of the "not reusing other metric's
         # methods within metric's methods" policy, since `total_edge` is a bit

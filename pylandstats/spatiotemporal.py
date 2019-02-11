@@ -42,7 +42,10 @@ class SpatioTemporalAnalysis:
         else:
             self.landscapes = list(map(read_geotiff, landscapes))
 
-        if metrics is not None:
+        if metrics is None:
+            self.class_metrics = Landscape.CLASS_METRICS
+            self.landscape_metrics = Landscape.LANDSCAPE_METRICS
+        else:
             # TODO: how to handle `Landscape.PATCH_METRICS`
             implemented_metrics = np.union1d(Landscape.CLASS_METRICS,
                                              Landscape.LANDSCAPE_METRICS)
@@ -57,9 +60,6 @@ class SpatioTemporalAnalysis:
                                                     Landscape.CLASS_METRICS)
                 self.landscape_metrics = np.intersect1d(
                     metrics, Landscape.LANDSCAPE_METRICS)
-        else:
-            self.class_metrics = Landscape.CLASS_METRICS
-            self.landscape_metrics = Landscape.LANDSCAPE_METRICS
 
         present_classes = reduce(
             np.union1d,
@@ -76,15 +76,15 @@ class SpatioTemporalAnalysis:
             else:
                 self.classes = classes
 
-        if dates is not None:
+        if dates is None:
+            self.dates = ['t{}'.format(i) for i in range(len(self.landscapes))]
+        else:
             if len(landscapes) == len(dates):
                 self.dates = dates
             else:
                 raise ValueError(
                     "The lengths of `landscapes` and `dates` (if provided) "
                     "must coincide")
-        else:
-            self.dates = ['t{}'.format(i) for i in range(len(self.landscapes))]
 
         self.metrics_kws = metrics_kws
 
