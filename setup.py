@@ -4,7 +4,7 @@ from io import open  # compatible enconding parameter
 from setuptools import setup, find_packages
 from os import path
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 classifiers = [
     'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
