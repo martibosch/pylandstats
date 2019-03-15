@@ -181,22 +181,34 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
             pls.Landscape(np.load(fp), res=(250, 250)) for fp in
             ['tests/input_data/ls250_06.npy', 'tests/input_data/ls250_12.npy']
         ]
+        self.landscape_fps = [
+            'tests/input_data/ls250_06.tif', 'tests/input_data/ls250_12.tif'
+        ]
         self.dates = [2006, 2012]
         self.inexistent_class_val = 999
 
     def test_spatiotemporalanalysis_init(self):
-        # test that constructing a SpatioTemporalAnalysis with inexistent
-        # metrics and inexistent classes raises a ValueError
-        self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
-                          self.landscapes, metrics=['foo'])
-        self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
-                          self.landscapes, classes=[self.inexistent_class_val])
+        for landscapes in (self.landscapes, self.landscape_fps):
+            # test that constructing a SpatioTemporalAnalysis with inexistent
+            # metrics and inexistent classes raises a ValueError
+            self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
+                              self.landscapes, metrics=['foo'])
+            self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
+                              self.landscape_fps, metrics=['foo'])
+            self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
+                              self.landscapes,
+                              classes=[self.inexistent_class_val])
+            self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
+                              self.landscape_fps,
+                              classes=[self.inexistent_class_val])
 
-        # test that constructing a SpatioTemporalAnalysis with a `dates`
-        # argument that mismatch the temporal snapshots defined in `landscapes`
-        # raises a ValueError
-        self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
-                          self.landscapes, dates=[2012])
+            # test that constructing a SpatioTemporalAnalysis with a `dates`
+            # argument that mismatch the temporal snapshots defined in
+            # `landscapes` raises a ValueError
+            self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
+                              self.landscapes, dates=[2012])
+            self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
+                              self.landscape_fps, dates=[2012])
 
     def test_spatiotemporalanalysis_dataframes(self):
         # test with the default constructor
