@@ -11,14 +11,16 @@ plt.switch_backend('agg')  # only for testing purposes
 
 class TestLandscape(unittest.TestCase):
     def setUp(self):
-        ls_arr = np.load('tests/input_data/ls.npy')
+        ls_arr = np.load('tests/input_data/ls250_06.npy')
         self.ls = pls.Landscape(ls_arr, res=(250, 250))
 
     def test_io(self):
-        ls = pls.read_geotiff('tests/input_data/ls.tif')
-        self.assertEqual(ls.cell_width, 250)
-        self.assertEqual(ls.cell_height, 250)
-        self.assertEqual(ls.cell_area, 250 * 250)
+        ls = pls.read_geotiff('tests/input_data/ls250_06.tif')
+        # resolutions are not exactly 250, they are between [249, 251], so we
+        # need to use a large delta
+        self.assertAlmostEqual(ls.cell_width, 250, delta=1)
+        self.assertAlmostEqual(ls.cell_height, 250, delta=1)
+        self.assertAlmostEqual(ls.cell_area, 250 * 250, delta=250)
 
     def test_metrics_parameters(self):
         ls = self.ls
@@ -177,9 +179,9 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
     def setUp(self):
         self.landscapes = [
             pls.Landscape(np.load(fp), res=(250, 250)) for fp in
-            ['tests/input_data/ls.npy', 'tests/input_data/ls_future.npy']
+            ['tests/input_data/ls250_06.npy', 'tests/input_data/ls250_12.npy']
         ]
-        self.dates = [2012, 2018]
+        self.dates = [2006, 2012]
         self.inexistent_class_val = 999
 
     def test_spatiotemporalanalysis_init(self):
