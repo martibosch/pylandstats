@@ -318,8 +318,8 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
 
         fig, axes = sta.plot_landscapes()
 
-        # there must be two columns, one for each date
-        self.assertEqual(len(axes), 2)
+        # there must be one column for each landscape
+        self.assertEqual(len(axes), len(sta))
 
         # returned axes must be instances of matplotlib axes
         for ax in axes:

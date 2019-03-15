@@ -88,6 +88,9 @@ class SpatioTemporalAnalysis:
 
         self.metrics_kws = metrics_kws
 
+    def __len__(self):
+        return len(self.landscapes)
+
     @property
     def class_metrics_df(self):
         try:
