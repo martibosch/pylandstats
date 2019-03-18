@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import rasterio
-from scipy import ndimage, stats
+from scipy import ndimage, spatial, stats
 
 __all__ = ['Landscape', 'read_geotiff']
 
@@ -37,8 +37,13 @@ class Landscape:
         self.cell_width, self.cell_height = res
         self.cell_area = res[0] * res[1]
         self.nodata = nodata
-        classes = np.array(sorted(np.unique(landscape_arr)))
-        classes = np.delete(classes, nodata)
+        # by default, numpy creates arrays of floats. Instead, land use/land
+        # cover rasters are often of integer dtypes. Therefore, we will
+        # explicitly set the dtype of the landscape classes to ensure
+        # consistency
+        classes = np.array(
+            sorted(np.unique(landscape_arr)), dtype=self.landscape_arr.dtype)
+        classes = classes[classes != nodata]
         classes = classes[~np.isnan(classes)]
         self.classes = classes
 
@@ -49,8 +54,8 @@ class Landscape:
 
     PATCH_METRICS = [
         'area', 'perimeter', 'perimeter_area_ratio', 'shape_index',
-        'fractal_dimension'
-    ]  # 'contiguity_index', 'euclidean_nearest_neighbor', 'proximity'
+        'fractal_dimension', 'euclidean_nearest_neighbor'
+    ]  # 'contiguity_index', 'proximity'
 
     _suffixes = ['mn', 'am', 'md', 'ra', 'sd', 'cv']
 
@@ -66,7 +71,11 @@ class Landscape:
     ] + ['area_{}'.format(suffix) for suffix in _suffixes] + [
         'perimeter_area_ratio_{}'.format(suffix) for suffix in _suffixes
     ] + ['shape_index_{}'.format(suffix) for suffix in _suffixes
-         ] + ['fractal_dimension_{}'.format(suffix) for suffix in _suffixes]
+         ] + ['fractal_dimension_{}'.format(suffix)
+              for suffix in _suffixes] + [
+                  'euclidean_nearest_neighbor_{}'.format(suffix)
+                  for suffix in _suffixes
+              ]
 
     LANDSCAPE_METRICS = [
         'total_area',
@@ -80,7 +89,10 @@ class Landscape:
         'perimeter_area_ratio_{}'.format(suffix) for suffix in _suffixes
     ] + ['shape_index_{}'.format(suffix) for suffix in _suffixes
          ] + ['fractal_dimension_{}'.format(suffix)
-              for suffix in _suffixes] + ['shannon_diversity_index']
+              for suffix in _suffixes] + [
+                  'euclidean_nearest_neighbor_{}'.format(suffix)
+                  for suffix in _suffixes
+              ] + ['shannon_diversity_index']
 
     # compute methods
 
@@ -151,6 +163,77 @@ class Landscape:
             patch_perimeters.append(self.compute_arr_perimeter(patch_arr))
 
         return patch_perimeters
+
+    def compute_patch_euclidean_nearest_neighbor(self, label_arr):
+        # label_arr, num_patches = self.class_label(class_val)
+
+        if np.max(label_arr) < 2:  # num_patches < 2
+            return np.array([np.nan])
+        else:
+            # get coordinates with non-zero values
+            # Note that `label_arr` will use zero values to indicate nodata
+            # (even if our landscape raster uses a different nodata value,
+            # i.e., `self.nodata`)
+            I, J = np.nonzero(label_arr)
+            labels = label_arr[I, J]  # this gives all the non-zero labels
+            coords = np.column_stack((I, J))
+
+            # sort labels/coordinates by the feature value
+            sorter = np.argsort(labels)
+            labels = labels[sorter]
+            coords = coords[sorter]
+
+            # # begin CDIST
+            # # get feature-vs-feature distance matrix
+            # sq_dists = spatial.distance.cdist(coords, coords,
+            #                                   'sqeuclidean')
+            # start_idx = np.flatnonzero(np.r_[1, np.diff(labels)])
+            # nonzero_vs_feat = np.minimum.reduceat(sq_dists, start_idx,
+            #                                       axis=1)
+            # feat_vs_feat = np.minimum.reduceat(
+            #     nonzero_vs_feat, start_idx, axis=0)
+
+            # # get min edge-to-edge distance to closest patch of the same
+            # # class
+            # feat_vs_feat[feat_vs_feat == 0] = np.nan
+            # enn = np.sqrt(np.nanmin(feat_vs_feat, axis=1))
+            # # end CDIST
+
+            # begin KDTree
+            unique_labels = np.unique(labels)
+
+            enn = np.empty(len(unique_labels))
+            for unique_label in unique_labels:
+                # we build a KDTree with all the coords that are not part of
+                # the current feature
+                tree = spatial.cKDTree(coords[labels != unique_label])
+                # now, for each coord of the current feature, we query the
+                # closest coord of the tree (which does not include points of
+                # the current feature)
+                mindist, minid = tree.query(coords[labels == unique_label])
+                # note that `mindist` and `minid` will be 1D arrays, whose
+                # lengths correspond to the number of pixels within the
+                # current feature.
+                # Each position of `mindist` and `mindid` matches the
+                # corresponding pixel of the current feature to its closest
+                # neighbor from the non-feature tree. Since we are only
+                # interested in the closest distance, we will just get
+                # `min(mindist)`. Note that because of the symmetry, we could
+                # use `minid` to assign this same distance to the counterpart
+                # of `unique_label`.
+                # Nevertheless, the overheads of maintaining the required data
+                # structure would most likely exceed any potential gains.
+                # We use `unique_label - 1` to obtain the corresponding 0-based
+                # index
+                enn[unique_label - 1] = min(mindist)
+            # end KDTree
+
+            if self.cell_width == self.cell_height:
+                enn *= self.cell_width
+            else:
+                enn *= np.sqrt(self.cell_area)
+
+            return enn
 
     # compute metrics from area and perimeter series
 
@@ -270,6 +353,20 @@ class Landscape:
 
             return self._cached_patch_perimeter_ser
 
+    @property
+    def _patch_euclidean_nearest_neighbor_ser(self):
+        try:
+            return self._cached_patch_euclidean_nearest_neighbor_ser
+        except AttributeError:
+            self._cached_patch_euclidean_nearest_neighbor_ser = pd.Series(
+                np.concatenate([
+                    self.compute_patch_euclidean_nearest_neighbor(
+                        self.class_label(class_val)[0])
+                    for class_val in self.classes
+                ]), name='euclidean_nearest_neighbor')
+
+            return self._cached_patch_euclidean_nearest_neighbor_ser
+
     # small utilities to get patch areas/perimeters for a particular class only
 
     def _get_patch_area_ser(self, class_val=None):
@@ -295,6 +392,21 @@ class Landscape:
         # `patch_perimeter_ser` is a slice: although we would not have alias
         # problems, we would get a `SettingWithCopyWarning` form `pandas`
         return patch_perimeter_ser
+
+    def _get_patch_euclidean_nearest_neighbor_ser(self, class_val=None,
+                                                  copy=False):
+        if class_val is None:
+            patch_euclidean_nearest_neighbor_ser = \
+                self._patch_euclidean_nearest_neighbor_ser
+        else:
+            patch_euclidean_nearest_neighbor_ser = \
+                self._patch_euclidean_nearest_neighbor_ser[
+                    self._patch_class_ser == class_val]
+
+        # TODO: return a copy? even when `class_val` is set and thus
+        # `patch_perimeter_ser` is a slice: although we would not have alias
+        # problems, we would get a `SettingWithCopyWarning` form `pandas`
+        return patch_euclidean_nearest_neighbor_ser
 
     # metric distribution statistics
 
@@ -592,8 +704,18 @@ class Landscape:
             nearest neighbors decreases
         """
 
-        # TODO
-        raise NotImplementedError
+        euclidean_nearest_neighbor_ser = \
+            self._get_patch_euclidean_nearest_neighbor_ser(class_val)
+
+        if class_val is None:
+            return pd.DataFrame({
+                'class_val':
+                self._patch_class_ser,
+                'euclidean_nearest_neighbor':
+                euclidean_nearest_neighbor_ser
+            })
+        else:
+            return euclidean_nearest_neighbor_ser
 
     def proximity(self, search_radius, class_val=None):
         """
@@ -1649,38 +1771,7 @@ class Landscape:
         -------
         enn_mn : float
         """
-
-        # TODO
-        # label_arr, num_patches = self.class_label(class_val)
-
-        # if num_patches == 0:
-        #     return np.nan
-        # elif num_patches < 2:
-        #     return 0
-        # else:
-        #     I, J = np.nonzero(label_arr)
-        #     labels = label_arr[I, J]
-        #     coords = np.column_stack((I, J))
-
-        #     sorter = np.argsort(labels)
-        #     labels = labels[sorter]
-        #     coords = coords[sorter]
-
-        #     sq_dists = cdist(coords, coords, 'sqeuclidean')
-
-        #     start_idx = np.flatnonzero(np.r_[1, np.diff(labels)])
-        #     nonzero_vs_feat = np.minimum.reduceat(
-        #         sq_dists, start_idx, axis=1)
-        #     feat_vs_feat = np.minimum.reduceat(nonzero_vs_feat, start_idx,
-        #                                        axis=0)
-
-        #     # Get lower triangle and zero distances to nan
-        #     b = np.tril(np.sqrt(feat_vs_feat))
-        #     b[b == 0] = np.nan
-
-        #     # Calculate mean and multiply with cellsize
-        #     return np.nanmean(b) * self.cell_area
-        raise NotImplementedError
+        return self._metric_mn(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_am(self, class_val=None):
         """
@@ -1698,8 +1789,7 @@ class Landscape:
         enn_am : float
         """
 
-        # TODO
-        raise NotImplementedError
+        return self._metric_am(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_md(self, class_val=None):
         """
@@ -1717,8 +1807,7 @@ class Landscape:
         enn_md : float
         """
 
-        # TODO
-        raise NotImplementedError
+        return self._metric_md(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_ra(self, class_val=None):
         """
@@ -1736,8 +1825,7 @@ class Landscape:
         enn_ra : float
         """
 
-        # TODO
-        raise NotImplementedError
+        return self._metric_ra(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_sd(self, class_val=None):
         """
@@ -1755,10 +1843,9 @@ class Landscape:
         enn_sd :
         """
 
-        # TODO
-        raise NotImplementedError
+        return self._metric_sd(class_val, self.euclidean_nearest_neighbor)
 
-    def euclidean_nearest_neighbor_cv(self, class_val=None):
+    def euclidean_nearest_neighbor_cv(self, class_val=None, percent=True):
         """
         See also the documentation of `Landscape.euclidean_nearest_neighbor`
 
@@ -1768,14 +1855,17 @@ class Landscape:
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
             landscape level
+        percent : bool, default True
+            Whether the index should be expressed as proportion or converted
+            to percentage
 
         Returns
         -------
         enn_cv : float
         """
 
-        # TODO
-        raise NotImplementedError
+        return self._metric_cv(class_val, self.euclidean_nearest_neighbor,
+                               percent=percent)
 
     # contagion, interspersion
 
@@ -2048,7 +2138,7 @@ class Landscape:
         return ax
 
 
-def read_geotiff(fp, nodata=0, **kwargs):
+def read_geotiff(fp, nodata=None, **kwargs):
     """
     See also the documentation of `rasterio.open`
 
@@ -2067,7 +2157,9 @@ def read_geotiff(fp, nodata=0, **kwargs):
     result : Landscape
     """
     with rasterio.open(fp, nodata=nodata, **kwargs) as src:
-        ls_arr = src.read(1)
+        landscape_arr = src.read(1)
         res = src.res
+        if nodata is None:
+            nodata = src.nodata
 
-    return Landscape(ls_arr, res, nodata=nodata)
+    return Landscape(landscape_arr, res, nodata=nodata)
