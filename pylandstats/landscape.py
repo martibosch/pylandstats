@@ -164,6 +164,77 @@ class Landscape:
 
         return patch_perimeters
 
+    def compute_patch_euclidean_nearest_neighbor(self, label_arr):
+        # label_arr, num_patches = self.class_label(class_val)
+
+        if np.max(label_arr) < 2:  # num_patches < 2
+            return np.array([np.nan])
+        else:
+            # get coordinates with non-zero values
+            # Note that `label_arr` will use zero values to indicate nodata
+            # (even if our landscape raster uses a different nodata value,
+            # i.e., `self.nodata`)
+            I, J = np.nonzero(label_arr)
+            labels = label_arr[I, J]  # this gives all the non-zero labels
+            coords = np.column_stack((I, J))
+
+            # sort labels/coordinates by the feature value
+            sorter = np.argsort(labels)
+            labels = labels[sorter]
+            coords = coords[sorter]
+
+            # # begin CDIST
+            # # get feature-vs-feature distance matrix
+            # sq_dists = spatial.distance.cdist(coords, coords,
+            #                                   'sqeuclidean')
+            # start_idx = np.flatnonzero(np.r_[1, np.diff(labels)])
+            # nonzero_vs_feat = np.minimum.reduceat(sq_dists, start_idx,
+            #                                       axis=1)
+            # feat_vs_feat = np.minimum.reduceat(
+            #     nonzero_vs_feat, start_idx, axis=0)
+
+            # # get min edge-to-edge distance to closest patch of the same
+            # # class
+            # feat_vs_feat[feat_vs_feat == 0] = np.nan
+            # enn = np.sqrt(np.nanmin(feat_vs_feat, axis=1))
+            # # end CDIST
+
+            # begin KDTree
+            unique_labels = np.unique(labels)
+
+            enn = np.empty(len(unique_labels))
+            for unique_label in unique_labels:
+                # we build a KDTree with all the coords that are not part of
+                # the current feature
+                tree = spatial.cKDTree(coords[labels != unique_label])
+                # now, for each coord of the current feature, we query the
+                # closest coord of the tree (which does not include points of
+                # the current feature)
+                mindist, minid = tree.query(coords[labels == unique_label])
+                # note that `mindist` and `minid` will be 1D arrays, whose
+                # lengths correspond to the number of pixels within the
+                # current feature.
+                # Each position of `mindist` and `mindid` matches the
+                # corresponding pixel of the current feature to its closest
+                # neighbor from the non-feature tree. Since we are only
+                # interested in the closest distance, we will just get
+                # `min(mindist)`. Note that because of the symmetry, we could
+                # use `minid` to assign this same distance to the counterpart
+                # of `unique_label`.
+                # Nevertheless, the overheads of maintaining the required data
+                # structure would most likely exceed any potential gains.
+                # We use `unique_label - 1` to obtain the corresponding 0-based
+                # index
+                enn[unique_label - 1] = min(mindist)
+            # end KDTree
+
+            if self.cell_width == self.cell_height:
+                enn *= self.cell_width
+            else:
+                enn *= np.sqrt(self.cell_area)
+
+            return enn
+
     # compute metrics from area and perimeter series
 
     def compute_shape_index(self, area_ser, perimeter_ser):
@@ -282,6 +353,20 @@ class Landscape:
 
             return self._cached_patch_perimeter_ser
 
+    @property
+    def _patch_euclidean_nearest_neighbor_ser(self):
+        try:
+            return self._cached_patch_euclidean_nearest_neighbor_ser
+        except AttributeError:
+            self._cached_patch_euclidean_nearest_neighbor_ser = pd.Series(
+                np.concatenate([
+                    self.compute_patch_euclidean_nearest_neighbor(
+                        self.class_label(class_val)[0])
+                    for class_val in self.classes
+                ]), name='euclidean_nearest_neighbor')
+
+            return self._cached_patch_euclidean_nearest_neighbor_ser
+
     # small utilities to get patch areas/perimeters for a particular class only
 
     def _get_patch_area_ser(self, class_val=None):
@@ -307,6 +392,21 @@ class Landscape:
         # `patch_perimeter_ser` is a slice: although we would not have alias
         # problems, we would get a `SettingWithCopyWarning` form `pandas`
         return patch_perimeter_ser
+
+    def _get_patch_euclidean_nearest_neighbor_ser(self, class_val=None,
+                                                  copy=False):
+        if class_val is None:
+            patch_euclidean_nearest_neighbor_ser = \
+                self._patch_euclidean_nearest_neighbor_ser
+        else:
+            patch_euclidean_nearest_neighbor_ser = \
+                self._patch_euclidean_nearest_neighbor_ser[
+                    self._patch_class_ser == class_val]
+
+        # TODO: return a copy? even when `class_val` is set and thus
+        # `patch_perimeter_ser` is a slice: although we would not have alias
+        # problems, we would get a `SettingWithCopyWarning` form `pandas`
+        return patch_euclidean_nearest_neighbor_ser
 
     # metric distribution statistics
 
@@ -604,93 +704,18 @@ class Landscape:
             nearest neighbors decreases
         """
 
-        def _enn(class_val):
-            label_arr, num_patches = self.class_label(class_val)
-
-            if num_patches < 2:
-                return np.array([np.nan])
-            else:
-                # get coordinates with non-zero values
-                # Note that `label_arr` will use zero values to indicate nodata
-                # (even if our landscape raster uses a different nodata value,
-                # i.e., `self.nodata`)
-                I, J = np.nonzero(label_arr)
-                labels = label_arr[I, J]  # this gives all the non-zero labels
-                coords = np.column_stack((I, J))
-
-                # sort labels/coordinates by the feature value
-                sorter = np.argsort(labels)
-                labels = labels[sorter]
-                coords = coords[sorter]
-
-                # # begin CDIST
-                # # get feature-vs-feature distance matrix
-                # sq_dists = spatial.distance.cdist(coords, coords,
-                #                                   'sqeuclidean')
-                # start_idx = np.flatnonzero(np.r_[1, np.diff(labels)])
-                # nonzero_vs_feat = np.minimum.reduceat(sq_dists, start_idx,
-                #                                       axis=1)
-                # feat_vs_feat = np.minimum.reduceat(
-                #     nonzero_vs_feat, start_idx, axis=0)
-
-                # # get min edge-to-edge distance to closest patch of the same
-                # # class
-                # feat_vs_feat[feat_vs_feat == 0] = np.nan
-                # enn = np.sqrt(np.nanmin(feat_vs_feat, axis=1))
-                # # end CDIST
-
-                # begin KDTree
-                unique_labels = np.unique(labels)
-
-                enn = np.empty(len(unique_labels))
-                for unique_label in unique_labels:
-                    # we build a KDTree with all the coords that are not part
-                    # of the current feature
-                    tree = spatial.cKDTree(coords[labels != unique_label])
-                    # now, for each coord of the current feature, we query the
-                    # closest coord of the tree (which does not include points
-                    # of the current feature)
-                    mindist, minid = tree.query(coords[labels == unique_label])
-                    # note that `mindist` and `minid` will be 1D arrays, whose
-                    # lengths corresponds to the number of pixels within the
-                    # current feature. Each position of `mindist` and `mindid`
-                    # matches the corresponding pixel of the current feature
-                    # to its closest neighbor from the non-feature tree. Since
-                    # we're only interested in the closest distance, we will
-                    # just get `min(mindist)`.
-                    # Note that because of the symmetry, we could use `minid`
-                    # to assign this same distance to the counterpart of
-                    # `unique_label`. Nevertheless, the overheads of
-                    # maintaining the required data structure would most
-                    # likely exceed any potential gains.
-                    # We use `unique_label - 1` to obtain the corresponding
-                    # 0-based index
-                    enn[unique_label - 1] = min(mindist)
-                # end KDTree
-
-                if self.cell_width == self.cell_height:
-                    enn *= self.cell_width
-                else:
-                    enn *= np.sqrt(self.cell_area)
-
-                return enn
-
-        patch_class_ser = self._patch_class_ser
+        euclidean_nearest_neighbor_ser = \
+            self._get_patch_euclidean_nearest_neighbor_ser(class_val)
 
         if class_val is None:
             return pd.DataFrame({
                 'class_val':
-                patch_class_ser,
+                self._patch_class_ser,
                 'euclidean_nearest_neighbor':
-                np.concatenate([_enn(class_val) for class_val in self.classes])
+                euclidean_nearest_neighbor_ser
             })
         else:
-            # we have to use `patch_class_ser` to ensure that the indices
-            # match the computed ENN metric to the right patch
-            return pd.Series(
-                _enn(class_val),
-                index=patch_class_ser[patch_class_ser == class_val].index,
-                name='euclidean_nearest_neighbor')
+            return euclidean_nearest_neighbor_ser
 
     def proximity(self, search_radius, class_val=None):
         """
