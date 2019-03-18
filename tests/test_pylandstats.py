@@ -80,7 +80,10 @@ class TestLandscape(unittest.TestCase):
         assert (_fractal_dimension_ser >= 1).all() and (_fractal_dimension_ser
                                                         <= 2).all()
         # TODO: assert 0 <= ls.contiguity_index(patch_arr) <= 1
-        # TODO: assert 0 <= ls.euclidean_nearest_neighbor(patch_arr) <= 1
+        # ACHTUNG: euclidean nearest neighbor can be nan for classes with less
+        # than two patches
+        assert (ls.euclidean_nearest_neighbor()['euclidean_nearest_neighbor']
+                .dropna() > 0).all()
         # TODO: assert 0 <= ls.proximity(patch_arr) <= 1
 
         # class-level metrics
@@ -110,8 +113,11 @@ class TestLandscape(unittest.TestCase):
             # assert 0 <= getattr(
             #     ls, 'contiguity_index' + mean_suffix)(class_val) <= 1
             # assert getattr(ls, 'proximity' + mean_suffix)(class_val) >= 0
-            # assert getattr(
-            #     ls, 'euclidean_nearest_neighbor' + mean_suffix)(class_val) >
+            # ACHTUNG: euclidean nearest neighbor can be nan for classes with
+            # less than two patches
+            enn = getattr(
+                ls, 'euclidean_nearest_neighbor' + mean_suffix)(class_val)
+            assert enn > 0 or np.isnan(enn)
 
         for var_suffix in var_suffixes:
             assert getattr(ls, 'area' + mean_suffix)(class_val) >= 0
@@ -123,9 +129,11 @@ class TestLandscape(unittest.TestCase):
             # assert getattr(
             #    ls, 'contiguity_index' + var_suffix)(class_val) >= 0
             # assert getattr(ls, 'proximity' + var_suffix)(class_val) >= 0
-            # assert getattr(
-            #     ls, 'euclidean_nearest_neighbor' + var_suffix)(
-            #         class_val) >= 0
+            # ACHTUNG: euclidean nearest neighbor can be nan for classes with
+            # less than two patches
+            enn = getattr(ls,
+                          'euclidean_nearest_neighbor' + var_suffix)(class_val)
+            assert enn >= 0 or np.isnan(enn)
 
         # TODO: assert 0 < ls.interspersion_juxtaposition_index(
         #           class_val) <= 100
@@ -154,8 +162,10 @@ class TestLandscape(unittest.TestCase):
             assert 1 <= getattr(ls, 'fractal_dimension' + mean_suffix)() <= 2
             # assert 0 <= getattr(ls, 'contiguity_index' + mean_suffix)() <= 1
             # assert getattr(ls, 'proximity' + mean_suffix)() >= 0
-            # assert getattr(ls,
-            #                'euclidean_nearest_neighbor' + mean_suffix)() > 0
+            # ACHTUNG: euclidean nearest neighbor can be nan for classes with
+            # less than two patches
+            enn = getattr(ls, 'euclidean_nearest_neighbor' + mean_suffix)()
+            assert enn > 0 or np.isnan(enn)
         for var_suffix in var_suffixes:
             assert getattr(ls, 'area' + var_suffix)() > 0
             assert getattr(ls, 'perimeter_area_ratio' + var_suffix)() >= 0
@@ -163,8 +173,10 @@ class TestLandscape(unittest.TestCase):
             assert getattr(ls, 'fractal_dimension' + var_suffix)() >= 0
             # assert getattr(ls, 'contiguity_index' + var_suffix)() >= 0
             # assert getattr(ls, 'proximity' + var_suffix)() >= 0
-            # assert getattr(ls,
-            #                'euclidean_nearest_neighbor' + var_suffix)() >= 0
+            # ACHTUNG: euclidean nearest neighbor can be nan for classes with
+            # less than two patches
+            enn = getattr(ls, 'euclidean_nearest_neighbor' + var_suffix)()
+            assert enn >= 0 or np.isnan(enn)
 
         # TODO: assert 0 < ls.contagion() <= 100
         # TODO: assert 0 < ls.interspersion_juxtaposition_index() <= 100
