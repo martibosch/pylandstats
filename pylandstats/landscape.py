@@ -2053,7 +2053,7 @@ class Landscape:
         return ax
 
 
-def read_geotiff(fp, nodata=0, **kwargs):
+def read_geotiff(fp, nodata=None, **kwargs):
     """
     See also the documentation of `rasterio.open`
 
@@ -2072,7 +2072,9 @@ def read_geotiff(fp, nodata=0, **kwargs):
     result : Landscape
     """
     with rasterio.open(fp, nodata=nodata, **kwargs) as src:
-        ls_arr = src.read(1)
+        landscape_arr = src.read(1)
         res = src.res
+        if nodata is None:
+            nodata = src.nodata
 
-    return Landscape(ls_arr, res, nodata=nodata)
+    return Landscape(landscape_arr, res, nodata=nodata)
