@@ -37,8 +37,13 @@ class Landscape:
         self.cell_width, self.cell_height = res
         self.cell_area = res[0] * res[1]
         self.nodata = nodata
-        classes = np.array(sorted(np.unique(landscape_arr)))
-        classes = np.delete(classes, nodata)
+        # by default, numpy creates arrays of floats. Instead, land use/land
+        # cover rasters are often of integer dtypes. Therefore, we will
+        # explicitly set the dtype of the landscape classes to ensure
+        # consistency
+        classes = np.array(
+            sorted(np.unique(landscape_arr)), dtype=self.landscape_arr.dtype)
+        classes = classes[classes != nodata]
         classes = classes[~np.isnan(classes)]
         self.classes = classes
 
