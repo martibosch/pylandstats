@@ -1,6 +1,7 @@
 from __future__ import division
 
 from functools import partial
+from itertools import combinations_with_replacement
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,6 +13,10 @@ __all__ = ['Landscape', 'read_geotiff']
 
 KERNEL_HORIZONTAL = np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]], dtype=np.int8)
 KERNEL_VERTICAL = np.array([[0, 1, 0], [0, 1, 0], [0, 1, 0]], dtype=np.int8)
+KERNEL_ABOVE = np.array([[0, 0, 0], [0, 1, 0], [0, 1, 0]], dtype=np.int8)
+KERNEL_BELOW = np.array([[0, 1, 0], [0, 1, 0], [0, 0, 0]], dtype=np.int8)
+KERNEL_LEFT = np.array([[0, 0, 0], [0, 1, 1], [0, 0, 0]], dtype=np.int8)
+KERNEL_RIGHT = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 0]], dtype=np.int8)
 KERNEL_MOORE = ndimage.generate_binary_structure(2, 2)
 
 
@@ -365,6 +370,65 @@ class Landscape:
                 ]), name='euclidean_nearest_neighbor')
 
             return self._cached_patch_euclidean_nearest_neighbor_ser
+
+    @property
+    def _adjacency_df(self):
+        try:
+            return self._cached_adjacency_df
+        except AttributeError:
+            num_classes = len(self.classes)
+            # first prepare a reclassified array of the landscape where we can
+            # use a convolution to determine the adjacencies
+            reclassified_arr = np.copy(self.landscape_arr)
+            for i, class_val in enumerate(self.classes, start=1):
+                reclassified_arr[self.landscape_arr == class_val] = i
+            reclassified_arr[self.landscape_arr == self.
+                             nodata] = num_classes + 1
+            # now let's prepare the adjacency table. The +1 is to add the
+            # border/nodata column at the end
+            adjacency_table_arr = np.zeros((num_classes, num_classes + 1),
+                                           dtype=np.int)
+
+            # let's define this function to get the number of adjacencies in
+            # `arr` between classes `i` and `j` through a convolution
+            def _num_adjacencies(arr, i, j, cval=0):
+                arr_ik = np.where(np.isin(arr, [i, j]), arr, 0)
+                c = i + j
+                adj_ik_above = (ndimage.convolve(
+                    arr_ik, KERNEL_ABOVE, mode='constant',
+                    cval=cval) == c) & (arr_ik == i)
+                adj_ik_below = (ndimage.convolve(
+                    arr_ik, KERNEL_BELOW, mode='constant',
+                    cval=cval) == c) & (arr_ik == i)
+                adj_ik_left = (ndimage.convolve(
+                    arr_ik, KERNEL_LEFT, mode='constant',
+                    cval=cval) == c) & (arr_ik == i)
+                adj_ik_right = (ndimage.convolve(
+                    arr_ik, KERNEL_RIGHT, mode='constant',
+                    cval=cval) == c) & (arr_ik == i)
+                return np.sum(adj_ik_above) + np.sum(adj_ik_below) + np.sum(
+                    adj_ik_left) + np.sum(adj_ik_right)
+
+            # finally let's iterate over all the combinations of classes to
+            # apply the convolution and obtain all the adjacencies
+            class_range = range(1, num_classes + 1)
+
+            for i, j in combinations_with_replacement(class_range, 2):
+                num_adjacencies = _num_adjacencies(reclassified_arr, i, j)
+                adjacency_table_arr[i - 1, j - 1] = num_adjacencies
+                adjacency_table_arr[j - 1, i - 1] = num_adjacencies
+
+            # nodata
+            for i in class_range:
+                nodata_j = num_classes + 1
+                adjacency_table_arr[i - 1, nodata_j - 1] = _num_adjacencies(
+                    reclassified_arr, i, nodata_j, cval=nodata_j)
+
+            self._cached_adjacency_df = pd.DataFrame(
+                adjacency_table_arr, index=self.classes,
+                columns=np.concatenate([self.classes, [self.nodata]]))
+
+            return self._cached_adjacency_df
 
     # small utilities to get patch areas/perimeters for a particular class only
 
