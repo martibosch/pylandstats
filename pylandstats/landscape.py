@@ -107,11 +107,10 @@ class Landscape:
 
     def compute_arr_edge(self, arr):
         """
-        Computes the edge of a feature considering the landscape background in
-        order to exclude the edges between the feature and nodata values
+        Computes the edge of a feature (boolean array) considering the
+        landscape background in order to exclude the edges between the feature
+        and nodata values
         """
-        # check self.nodata in class_arr?
-        class_cond = arr != self.nodata
         # class_with_bg_arr = np.copy(self.landscape_arr)
         # class_with_bg_arr[~class_cond] = self.landscape_arr[~class_cond]
         # get a 'boolean-like' integer array where one indicates that the cell
@@ -122,9 +121,9 @@ class Landscape:
         # use a convolution to determine which edges should be exluded from the
         # perimeter's width and height
         perimeter_width = np.sum(arr[1:, :] != arr[:-1, :]) + np.sum(
-            ndimage.convolve(data_arr, KERNEL_VERTICAL)[class_cond] - 3)
+            ndimage.convolve(data_arr, KERNEL_VERTICAL)[arr] - 3)
         perimeter_height = np.sum(arr[:, 1:] != arr[:, :-1]) + np.sum(
-            ndimage.convolve(data_arr, KERNEL_HORIZONTAL)[class_cond] - 3)
+            ndimage.convolve(data_arr, KERNEL_HORIZONTAL)[arr] - 3)
 
         return perimeter_width * self.cell_width + \
             perimeter_height * self.cell_height
@@ -931,7 +930,8 @@ class Landscape:
                     np.pad(self.landscape_arr, pad_width=1, mode='constant',
                            constant_values=self.nodata))
             else:
-                total_edge = self.compute_arr_edge(self.landscape_arr)
+                total_edge = self.compute_arr_edge(
+                    self.landscape_arr != self.nodata)
         else:
             if count_boundary:
                 # then the total edge is just the sum of the perimeters of all
