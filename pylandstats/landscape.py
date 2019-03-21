@@ -97,7 +97,7 @@ class Landscape:
               for suffix in _suffixes] + [
                   'euclidean_nearest_neighbor_{}'.format(suffix)
                   for suffix in _suffixes
-              ] + ['shannon_diversity_index']
+              ] + ['contagion', 'shannon_diversity_index']
 
     # compute methods
 
@@ -1985,8 +1985,27 @@ class Landscape:
             landscape consists of a single patch.
         """
 
-        # TODO
-        raise NotImplementedError
+        _contag = 0
+
+        for i in self.classes:
+            p_i = np.sum(self._get_patch_area_ser(i)) / self.landscape_area
+            # use `.loc` to get the row with `nodata` column ; also so that we
+            # can then get the items by column in the for loop below
+            g_i = self._adjacency_df.loc[i]
+            # print(g_i)
+            g_i_sum = np.sum(g_i)
+            # print(g_i_sum)
+            for k in self.classes:
+                q = p_i * g_i[k] / g_i_sum
+                if q > 0:  # avoid zero-logarithm
+                    _contag += q * np.log(q)
+
+        contag = 1 + _contag / (2 * np.log(len(self.classes)))
+
+        if percent:
+            contag *= 100
+
+        return contag
 
     # diversity
 
