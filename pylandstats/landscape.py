@@ -1,6 +1,7 @@
 from __future__ import division
 
 from functools import partial
+from itertools import combinations_with_replacement
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,6 +13,10 @@ __all__ = ['Landscape', 'read_geotiff']
 
 KERNEL_HORIZONTAL = np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]], dtype=np.int8)
 KERNEL_VERTICAL = np.array([[0, 1, 0], [0, 1, 0], [0, 1, 0]], dtype=np.int8)
+KERNEL_ABOVE = np.array([[0, 0, 0], [0, 1, 0], [0, 1, 0]], dtype=np.int8)
+KERNEL_BELOW = np.array([[0, 1, 0], [0, 1, 0], [0, 0, 0]], dtype=np.int8)
+KERNEL_LEFT = np.array([[0, 0, 0], [0, 1, 1], [0, 0, 0]], dtype=np.int8)
+KERNEL_RIGHT = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 0]], dtype=np.int8)
 KERNEL_MOORE = ndimage.generate_binary_structure(2, 2)
 
 
@@ -92,7 +97,7 @@ class Landscape:
               for suffix in _suffixes] + [
                   'euclidean_nearest_neighbor_{}'.format(suffix)
                   for suffix in _suffixes
-              ] + ['shannon_diversity_index']
+              ] + ['contagion', 'shannon_diversity_index']
 
     # compute methods
 
@@ -107,11 +112,10 @@ class Landscape:
 
     def compute_arr_edge(self, arr):
         """
-        Computes the edge of a feature considering the landscape background in
-        order to exclude the edges between the feature and nodata values
+        Computes the edge of a feature (boolean array) considering the
+        landscape background in order to exclude the edges between the feature
+        and nodata values
         """
-        # check self.nodata in class_arr?
-        class_cond = arr != self.nodata
         # class_with_bg_arr = np.copy(self.landscape_arr)
         # class_with_bg_arr[~class_cond] = self.landscape_arr[~class_cond]
         # get a 'boolean-like' integer array where one indicates that the cell
@@ -122,9 +126,9 @@ class Landscape:
         # use a convolution to determine which edges should be exluded from the
         # perimeter's width and height
         perimeter_width = np.sum(arr[1:, :] != arr[:-1, :]) + np.sum(
-            ndimage.convolve(data_arr, KERNEL_VERTICAL)[class_cond] - 3)
+            ndimage.convolve(data_arr, KERNEL_VERTICAL)[arr] - 3)
         perimeter_height = np.sum(arr[:, 1:] != arr[:, :-1]) + np.sum(
-            ndimage.convolve(data_arr, KERNEL_HORIZONTAL)[class_cond] - 3)
+            ndimage.convolve(data_arr, KERNEL_HORIZONTAL)[arr] - 3)
 
         return perimeter_width * self.cell_width + \
             perimeter_height * self.cell_height
@@ -366,6 +370,65 @@ class Landscape:
                 ]), name='euclidean_nearest_neighbor')
 
             return self._cached_patch_euclidean_nearest_neighbor_ser
+
+    @property
+    def _adjacency_df(self):
+        try:
+            return self._cached_adjacency_df
+        except AttributeError:
+            num_classes = len(self.classes)
+            # first prepare a reclassified array of the landscape where we can
+            # use a convolution to determine the adjacencies
+            reclassified_arr = np.copy(self.landscape_arr)
+            for i, class_val in enumerate(self.classes, start=1):
+                reclassified_arr[self.landscape_arr == class_val] = i
+            reclassified_arr[self.landscape_arr == self.
+                             nodata] = num_classes + 1
+            # now let's prepare the adjacency table. The +1 is to add the
+            # border/nodata column at the end
+            adjacency_table_arr = np.zeros((num_classes, num_classes + 1),
+                                           dtype=np.int)
+
+            # let's define this function to get the number of adjacencies in
+            # `arr` between classes `i` and `j` through a convolution
+            def _num_adjacencies(arr, i, j, cval=0):
+                arr_ik = np.where(np.isin(arr, [i, j]), arr, 0)
+                c = i + j
+                adj_ik_above = (ndimage.convolve(
+                    arr_ik, KERNEL_ABOVE, mode='constant',
+                    cval=cval) == c) & (arr_ik == i)
+                adj_ik_below = (ndimage.convolve(
+                    arr_ik, KERNEL_BELOW, mode='constant',
+                    cval=cval) == c) & (arr_ik == i)
+                adj_ik_left = (ndimage.convolve(
+                    arr_ik, KERNEL_LEFT, mode='constant',
+                    cval=cval) == c) & (arr_ik == i)
+                adj_ik_right = (ndimage.convolve(
+                    arr_ik, KERNEL_RIGHT, mode='constant',
+                    cval=cval) == c) & (arr_ik == i)
+                return np.sum(adj_ik_above) + np.sum(adj_ik_below) + np.sum(
+                    adj_ik_left) + np.sum(adj_ik_right)
+
+            # finally let's iterate over all the combinations of classes to
+            # apply the convolution and obtain all the adjacencies
+            class_range = range(1, num_classes + 1)
+
+            for i, j in combinations_with_replacement(class_range, 2):
+                num_adjacencies = _num_adjacencies(reclassified_arr, i, j)
+                adjacency_table_arr[i - 1, j - 1] = num_adjacencies
+                adjacency_table_arr[j - 1, i - 1] = num_adjacencies
+
+            # nodata
+            for i in class_range:
+                nodata_j = num_classes + 1
+                adjacency_table_arr[i - 1, nodata_j - 1] = _num_adjacencies(
+                    reclassified_arr, i, nodata_j, cval=nodata_j)
+
+            self._cached_adjacency_df = pd.DataFrame(
+                adjacency_table_arr, index=self.classes,
+                columns=np.concatenate([self.classes, [self.nodata]]))
+
+            return self._cached_adjacency_df
 
     # small utilities to get patch areas/perimeters for a particular class only
 
@@ -931,7 +994,8 @@ class Landscape:
                     np.pad(self.landscape_arr, pad_width=1, mode='constant',
                            constant_values=self.nodata))
             else:
-                total_edge = self.compute_arr_edge(self.landscape_arr)
+                total_edge = self.compute_arr_edge(
+                    self.landscape_arr != self.nodata)
         else:
             if count_boundary:
                 # then the total edge is just the sum of the perimeters of all
@@ -1921,8 +1985,27 @@ class Landscape:
             landscape consists of a single patch.
         """
 
-        # TODO
-        raise NotImplementedError
+        _contag = 0
+
+        for i in self.classes:
+            p_i = np.sum(self._get_patch_area_ser(i)) / self.landscape_area
+            # use `.loc` to get the row with `nodata` column ; also so that we
+            # can then get the items by column in the for loop below
+            g_i = self._adjacency_df.loc[i]
+            # print(g_i)
+            g_i_sum = np.sum(g_i)
+            # print(g_i_sum)
+            for k in self.classes:
+                q = p_i * g_i[k] / g_i_sum
+                if q > 0:  # avoid zero-logarithm
+                    _contag += q * np.log(q)
+
+        contag = 1 + _contag / (2 * np.log(len(self.classes)))
+
+        if percent:
+            contag *= 100
+
+        return contag
 
     # diversity
 

@@ -42,8 +42,8 @@ class TestLandscape(unittest.TestCase):
         patch_df = ls.compute_patch_metrics_df()
         self.assertTrue(
             np.all(
-                patch_df.columns.drop('class_val') ==
-                pls.Landscape.PATCH_METRICS))
+                patch_df.columns.drop('class_val') == pls.Landscape.
+                PATCH_METRICS))
         self.assertEqual(patch_df.index.name, 'patch_id')
         self.assertRaises(ValueError, ls.compute_patch_metrics_df, ['foo'])
 
@@ -82,8 +82,8 @@ class TestLandscape(unittest.TestCase):
         # TODO: assert 0 <= ls.contiguity_index(patch_arr) <= 1
         # ACHTUNG: euclidean nearest neighbor can be nan for classes with less
         # than two patches
-        assert (ls.euclidean_nearest_neighbor()['euclidean_nearest_neighbor']
-                .dropna() > 0).all()
+        assert (ls.euclidean_nearest_neighbor()['euclidean_nearest_neighbor'].
+                dropna() > 0).all()
         # TODO: assert 0 <= ls.proximity(patch_arr) <= 1
 
         # class-level metrics
@@ -178,7 +178,7 @@ class TestLandscape(unittest.TestCase):
             enn = getattr(ls, 'euclidean_nearest_neighbor' + var_suffix)()
             assert enn >= 0 or np.isnan(enn)
 
-        # TODO: assert 0 < ls.contagion() <= 100
+        assert 0 < ls.contagion() <= 100
         # TODO: assert 0 < ls.interspersion_juxtaposition_index() <= 100
         assert ls.shannon_diversity_index() >= 0
 
@@ -236,8 +236,8 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
                 [sta.classes, sta.dates])))
         landscape_metrics_df = sta.landscape_metrics_df
         self.assertTrue(
-            np.all(landscape_metrics_df.columns ==
-                   pls.Landscape.LANDSCAPE_METRICS))
+            np.all(landscape_metrics_df.columns == pls.Landscape.
+                   LANDSCAPE_METRICS))
         self.assertTrue(np.all(landscape_metrics_df.index == sta.dates))
 
         # now test the same but with an analysis that only considers a subset

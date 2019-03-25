@@ -1,6 +1,6 @@
 # Change log
 
-## 0.2.1 (18/03/2019)
+## 0.2.0 (18/03/2019)
 
 * implemented `euclidean_nearest_neighbor` and all its corresponding class/landscape distribution statistic metrics
 * fixed dtype of `self.classes` in `landscape.Landscape`
