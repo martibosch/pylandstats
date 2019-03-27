@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from .landscape import Landscape, read_geotiff
+from .landscape import Landscape
 
 __all__ = ['SpatioTemporalAnalysis']
 
@@ -17,8 +17,7 @@ class SpatioTemporalAnalysis:
         ----------
         landscapes : list-like
             A list-like of `Landscape` objects or of strings/file objects/
-            pathlib.Path objects so that each is passed as the `fp` argument of
-            `pls.read_geotiff`
+            pathlib.Path objects
         metrics : list-like, optional
             A list-like of strings with the names of the metrics that should
             be computed in the context of this analysis case
@@ -40,7 +39,7 @@ class SpatioTemporalAnalysis:
         if isinstance(landscapes[0], Landscape):
             self.landscapes = landscapes
         else:
-            self.landscapes = list(map(read_geotiff, landscapes))
+            self.landscapes = list(map(Landscape, landscapes))
 
         if metrics is None:
             self.class_metrics = Landscape.CLASS_METRICS

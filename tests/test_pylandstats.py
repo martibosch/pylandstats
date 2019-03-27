@@ -15,7 +15,7 @@ class TestLandscape(unittest.TestCase):
         self.ls = pls.Landscape(ls_arr, res=(250, 250))
 
     def test_io(self):
-        ls = pls.read_geotiff('tests/input_data/ls250_06.tif')
+        ls = pls.Landscape('tests/input_data/ls250_06.tif')
         # resolutions are not exactly 250, they are between [249, 251], so we
         # need to use a large delta
         self.assertAlmostEqual(ls.cell_width, 250, delta=1)

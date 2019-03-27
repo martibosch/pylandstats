@@ -9,7 +9,7 @@ import pandas as pd
 import rasterio
 from scipy import ndimage, spatial, stats
 
-__all__ = ['Landscape', 'read_geotiff']
+__all__ = ['Landscape']
 
 KERNEL_HORIZONTAL = np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]], dtype=np.int8)
 KERNEL_VERTICAL = np.array([[0, 1, 0], [0, 1, 0], [0, 1, 0]], dtype=np.int8)
@@ -25,18 +25,39 @@ class Landscape:
     will be computed
     """
 
-    def __init__(self, landscape_arr, res, nodata=0):
+    def __init__(self, landscape, res=None, nodata=None, **kwargs):
         """
         Parameters
         ----------
-        landscape_arr : np.ndarray
+        landscape : np.ndarray or str, file object or pathlib.Path object
             A landscape array with pixel values corresponding to a set of land
-            use/land cover classes
-        res : tuple
-            The (x, y) resolution of the dataset
-        nodata : int, default 0
-            Value to be assigned to pixels with no data
+            use/land cover classes, or a filename or URL, a file object opened
+            in binary ('rb') mode, or a Path object. If not a `np.ndarray`,
+            `landscape` will be passed to `rasterio.open`
+        res : tuple, optional
+            The (x, y) resolution of the dataset. Required if `landscape` is a
+            `np.ndarray`
+        nodata : int, optional
+            Value to be assigned to pixels with no data. It will be set to 0
+            if `landscape` is a `np.ndarray`
+        **kwargs : optional
+            Keyword arguments to be passed to `rasterio.open`. Ignored if
+            `landscape` is an `np.ndarray`
         """
+        if isinstance(landscape, np.ndarray):
+            landscape_arr = np.copy(landscape)
+            if res is None:
+                raise ValueError(
+                    "If `landscape` is a `np.ndarray`, `res` must be provided")
+            if nodata is None:
+                nodata = 0
+        else:
+            with rasterio.open(landscape, nodata=nodata, **kwargs) as src:
+                landscape_arr = src.read(1)
+                if res is None:
+                    res = src.res
+                if nodata is None:
+                    nodata = src.nodata
 
         self.landscape_arr = landscape_arr
         self.cell_width, self.cell_height = res
@@ -2219,30 +2240,3 @@ class Landscape:
             ax.legend()
 
         return ax
-
-
-def read_geotiff(fp, nodata=None, **kwargs):
-    """
-    See also the documentation of `rasterio.open`
-
-    Parameters
-    ----------
-    fp : str, file object or pathlib.Path object
-        A filename or URL, a file object opened in binary ('rb') mode,
-        or a Path object. It will be passed to `rasterio.open`
-    nodata : int, float, or nan; default 0
-        Defines the pixel value to be interpreted as not valid data.
-    **kwargs : optional
-        Keyword arguments to be passed to `rasterio.open`
-
-    Returns
-    -------
-    result : Landscape
-    """
-    with rasterio.open(fp, nodata=nodata, **kwargs) as src:
-        landscape_arr = src.read(1)
-        res = src.res
-        if nodata is None:
-            nodata = src.nodata
-
-    return Landscape(landscape_arr, res, nodata=nodata)
