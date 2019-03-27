@@ -187,87 +187,113 @@ class TestLandscape(unittest.TestCase):
         self.assertIsInstance(self.ls.plot_landscape(), plt.Axes)
 
 
-class TestSpatioTemporalAnalysis(unittest.TestCase):
+class TestMultiLandscape(unittest.TestCase):
     def setUp(self):
+        from pylandstats.multilandscape import MultiLandscape
+
         self.landscapes = [
-            pls.Landscape(np.load(fp), res=(250, 250)) for fp in
-            ['tests/input_data/ls250_06.npy', 'tests/input_data/ls250_12.npy']
+            pls.Landscape(
+                np.load('tests/input_data/ls100_06.npy'), res=(100, 100)),
+            pls.Landscape(
+                np.load('tests/input_data/ls250_06.npy'), res=(250, 250))
         ]
         self.landscape_fps = [
-            'tests/input_data/ls250_06.tif', 'tests/input_data/ls250_12.tif'
+            'tests/input_data/ls100_06.tif', 'tests/input_data/ls250_06.tif'
         ]
-        self.dates = [2006, 2012]
+        self.feature_name = 'resolution'
+        self.feature_values = [100, 250]
         self.inexistent_class_val = 999
 
-    def test_spatiotemporalanalysis_init(self):
-        for landscapes in (self.landscapes, self.landscape_fps):
-            # test that constructing a SpatioTemporalAnalysis with inexistent
-            # metrics and inexistent classes raises a ValueError
-            self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
-                              self.landscapes, metrics=['foo'])
-            self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
-                              self.landscape_fps, metrics=['foo'])
-            self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
-                              self.landscapes,
-                              classes=[self.inexistent_class_val])
-            self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
-                              self.landscape_fps,
-                              classes=[self.inexistent_class_val])
+        # use this class just for testing purposes
+        class InstantiableMultiLandscape(MultiLandscape):
+            def __init__(self, *args, **kwargs):
+                super(InstantiableMultiLandscape, self).__init__(
+                    *args, **kwargs)
 
-            # test that constructing a SpatioTemporalAnalysis with a `dates`
-            # argument that mismatch the temporal snapshots defined in
-            # `landscapes` raises a ValueError
-            self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
-                              self.landscapes, dates=[2012])
-            self.assertRaises(ValueError, pls.SpatioTemporalAnalysis,
-                              self.landscape_fps, dates=[2012])
+        self.InstantiableMultiLandscape = InstantiableMultiLandscape
 
-    def test_spatiotemporalanalysis_dataframes(self):
-        # test with the default constructor
-        sta = pls.SpatioTemporalAnalysis(self.landscapes)
+    def test_multilandscape_init(self):
+        from pylandstats.multilandscape import MultiLandscape
 
+        # test that we cannot instantiate an abstract class
+        self.assertRaises(TypeError, MultiLandscape)
+
+        # test that if we init a MultiLandscape from filepaths, Landscape
+        # instances are automaticaly built
+        ml = self.InstantiableMultiLandscape(
+            self.landscape_fps, self.feature_name, self.feature_values)
+        for landscape in ml.landscapes:
+            self.assertIsInstance(landscape, pls.Landscape)
+
+        # from this point on, always instantiate from filepaths
+
+        # test that constructing a MultiLandscape with inexistent metrics and
+        # inexistent classes raises a ValueError
+        self.assertRaises(ValueError, self.InstantiableMultiLandscape,
+                          self.landscape_fps, self.feature_name,
+                          self.feature_values, metrics=['foo'])
+        self.assertRaises(ValueError, self.InstantiableMultiLandscape,
+                          self.landscape_fps, self.feature_name,
+                          self.feature_values,
+                          classes=[self.inexistent_class_val])
+
+        # test that constructing a MultiLandscape where the list of values of
+        # the identifying features `feature_values` (in this example, the list
+        # of resolutions `[100, 250]`) mismatches the length of the list of
+        # landscapes raises a ValueError
+        self.assertRaises(ValueError, self.InstantiableMultiLandscape,
+                          self.landscape_fps, self.feature_name, [250])
+
+    def test_multilandscape_dataframes(self):
+        ml = self.InstantiableMultiLandscape(
+            self.landscape_fps, self.feature_name, self.feature_values)
         # test that `class_metrics_df` and `landscape_metrics_df` are well
         # constructed
-        class_metrics_df = sta.class_metrics_df
+        class_metrics_df = ml.class_metrics_df
+        feature_values = getattr(ml, ml.feature_name)
         self.assertTrue(
             np.all(class_metrics_df.columns == pls.Landscape.CLASS_METRICS))
         self.assertTrue(
             np.all(class_metrics_df.index == pd.MultiIndex.from_product(
-                [sta.classes, sta.dates])))
-        landscape_metrics_df = sta.landscape_metrics_df
+                [ml.classes, feature_values])))
+        landscape_metrics_df = ml.landscape_metrics_df
         self.assertTrue(
             np.all(landscape_metrics_df.columns == pls.Landscape.
                    LANDSCAPE_METRICS))
-        self.assertTrue(np.all(landscape_metrics_df.index == sta.dates))
+        self.assertTrue(np.all(landscape_metrics_df.index == feature_values))
 
         # now test the same but with an analysis that only considers a subset
         # of metrics and a subset of classes
-        sta_metrics = ['total_area', 'edge_density', 'proportion_of_landscape']
-        sta_classes = self.landscapes[0].classes[:2]
-        sta = pls.SpatioTemporalAnalysis(self.landscapes, metrics=sta_metrics,
-                                         classes=sta_classes, dates=self.dates)
+        ml_metrics = ['total_area', 'edge_density', 'proportion_of_landscape']
+        ml_classes = self.landscapes[0].classes[:2]
+        ml = self.InstantiableMultiLandscape(
+            self.landscapes, self.feature_name, self.feature_values,
+            metrics=ml_metrics, classes=ml_classes)
 
-        class_metrics_df = sta.class_metrics_df
+        class_metrics_df = ml.class_metrics_df
+        feature_values = getattr(ml, ml.feature_name)
         self.assertTrue(
             np.all(class_metrics_df.columns == np.intersect1d(
-                sta_metrics, pls.Landscape.CLASS_METRICS)))
+                ml_metrics, pls.Landscape.CLASS_METRICS)))
         self.assertTrue(
             np.all(class_metrics_df.index == pd.MultiIndex.from_product(
-                [sta_classes, self.dates])))
-        landscape_metrics_df = sta.landscape_metrics_df
+                [ml_classes, feature_values])))
+        landscape_metrics_df = ml.landscape_metrics_df
         self.assertTrue(
             np.all(landscape_metrics_df.columns == np.intersect1d(
-                sta_metrics, pls.Landscape.LANDSCAPE_METRICS)))
-        self.assertTrue(np.all(landscape_metrics_df.index == self.dates))
+                ml_metrics, pls.Landscape.LANDSCAPE_METRICS)))
+        self.assertTrue(np.all(landscape_metrics_df.index == feature_values))
 
-    def test_spatiotemporalanalysis_metric_kws(self):
-        # Instantiate two spatiotemporal analysises, one with FRAGSTATS'
+    def test_multilandscape_metric_kws(self):
+        # Instantiate two multilandscape analyses, one with FRAGSTATS'
         # defaults and the other with keyword arguments specifying the total
         # area in meters and including the boundary in the computation of the
         # total edge.
-        sta = pls.SpatioTemporalAnalysis(self.landscapes)
-        sta_kws = pls.SpatioTemporalAnalysis(
-            self.landscapes, metrics_kws={
+        ml = self.InstantiableMultiLandscape(
+            self.landscape_fps, self.feature_name, self.feature_values)
+        ml_kws = self.InstantiableMultiLandscape(
+            self.landscape_fps, self.feature_name, self.feature_values,
+            metrics_kws={
                 'total_area': {
                     'hectares': False
                 },
@@ -276,24 +302,26 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
                 }
             })
 
-        # For all dates and all classes, metric values in hectares should be
-        # less than in meters, and excluding boundaries should be less or
-        # equal than including them
-        for date in sta.dates:
-            landscape_metrics = sta.landscape_metrics_df.loc[date]
-            landscape_metrics_kws = sta_kws.landscape_metrics_df.loc[date]
+        # For all feature values and all classes, metric values in hectares
+        # should be less than in meters, and excluding boundaries should be
+        # less or equal than including them
+        for feature_value in getattr(ml, ml.feature_name):
+            landscape_metrics = ml.landscape_metrics_df.loc[feature_value]
+            landscape_metrics_kws = ml_kws.landscape_metrics_df.loc[
+                feature_value]
             self.assertLess(landscape_metrics['total_area'],
                             landscape_metrics_kws['total_area'])
             self.assertLessEqual(landscape_metrics['total_edge'],
                                  landscape_metrics_kws['total_edge'])
 
-            for class_val in sta.classes:
-                class_metrics = sta.class_metrics_df.loc[class_val, date]
-                class_metrics_kws = sta_kws.class_metrics_df.loc[class_val,
-                                                                 date]
+            for class_val in ml.classes:
+                class_metrics = ml.class_metrics_df.loc[class_val,
+                                                        feature_value]
+                class_metrics_kws = ml_kws.class_metrics_df.loc[class_val,
+                                                                feature_value]
 
-                # It could be that for some dates, some classes are not
-                # present within the landscape snapshot. In such case, all of
+                # It could be that for some feature values, some classes are
+                # not present within the respective Landscape. If so, all of
                 # the metrics will be `nan`, both for the analysis with and
                 # without keyword arguments. Otherwise, we just perform the
                 # usual checks
@@ -302,51 +330,123 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
                 else:
                     self.assertLess(class_metrics['total_area'],
                                     class_metrics_kws['total_area'])
-                    self.assertLessEqual(class_metrics['total_edge'],
-                                         class_metrics_kws['total_edge'])
+                    self.assertLessEqual(
+                        class_metrics['total_edge'],
+                        class_metrics_kws['total_edge'] + .0004)
 
-    def test_spatiotemporalanalysis_plot_metrics(self):
-        sta = pls.SpatioTemporalAnalysis(self.landscapes, dates=self.dates)
+    def test_multilandscape_plot_metrics(self):
+        ml = self.InstantiableMultiLandscape(
+            self.landscape_fps, self.feature_name, self.feature_values)
 
-        existent_class_val = sta.classes[0]
+        existent_class_val = ml.classes[0]
 
         # inexistent metrics should raise a ValueError
-        self.assertRaises(ValueError, sta.plot_metric, 'foo')
+        self.assertRaises(ValueError, ml.plot_metric, 'foo')
         # inexistent classes should raise a ValueError
-        self.assertRaises(ValueError, sta.plot_metric, 'patch_density',
+        self.assertRaises(ValueError, ml.plot_metric, 'patch_density',
                           {'class_val': self.inexistent_class_val})
         # `proportion_of_landscape` can only be computed at the class level,
         # so plotting it at the landscape level (with the default argument
         # `class_val=None`) must raise a ValueError
-        self.assertRaises(ValueError, sta.plot_metric,
+        self.assertRaises(ValueError, ml.plot_metric,
                           'proportion_of_landscape')
         # conversely, `shannon_diversity_index` can only be computed at the
         # landscape level, so plotting it at the class level must raise a
         # ValueError
-        self.assertRaises(ValueError, sta.plot_metric,
+        self.assertRaises(ValueError, ml.plot_metric,
                           'shannon_diversity_index',
                           {'class_val': existent_class_val})
 
         # TODO: test legend and figsize
 
-        ax = sta.plot_metric('patch_density', class_val=None)
+        # test that there is only one line when plotting a single metric at
+        # the landscape level
+        ax = ml.plot_metric('patch_density', class_val=None)
         self.assertEqual(len(ax.lines), 1)
-        ax = sta.plot_metric('patch_density', class_val=existent_class_val,
-                             ax=ax)
+        # test that there are two lines if we add the plot of a single metric
+        # (e.g., at the level of an existent class) to the previous axis
+        ax = ml.plot_metric('patch_density', class_val=existent_class_val,
+                            ax=ax)
         self.assertEqual(len(ax.lines), 2)
+        # test that the x data of any line corresponds to the feature values
+        for line in ax.lines:
+            self.assertTrue(
+                np.all(line.get_xdata() == getattr(ml, ml.feature_name)))
 
-        fig, axes = sta.plot_metrics(class_val=existent_class_val,
-                                     metrics=['edge_density', 'patch_density'])
+        # test that there are two axes if we plot two metrics
+        fig, axes = ml.plot_metrics(class_val=existent_class_val,
+                                    metrics=['edge_density', 'patch_density'])
         self.assertEqual(len(axes), 2)
 
-    def test_plot_landscape(self):
-        sta = pls.SpatioTemporalAnalysis(self.landscapes)
+    def test_plot_landscapes(self):
+        ml = self.InstantiableMultiLandscape(
+            self.landscape_fps, self.feature_name, self.feature_values)
 
-        fig, axes = sta.plot_landscapes()
+        fig, axes = ml.plot_landscapes()
 
         # there must be one column for each landscape
-        self.assertEqual(len(axes), len(sta))
+        self.assertEqual(len(axes), len(ml))
 
         # returned axes must be instances of matplotlib axes
         for ax in axes:
             self.assertIsInstance(ax, plt.Axes)
+
+
+class TestSpatioTemporalAnalysis(unittest.TestCase):
+    def setUp(self):
+        # we will only test reading from filepaths because the consistency
+        # between passing `Landscape` objects or filepaths is already tested
+        # in `TestMultiLandscape`
+        self.landscape_fps = [
+            'tests/input_data/ls250_06.tif', 'tests/input_data/ls250_12.tif'
+        ]
+        self.dates = [2006, 2012]
+        self.inexistent_class_val = 999
+
+    def test_spatiotemporalanalysis_init(self):
+        # test that the `feature_name` is dates, and that if the `dates`
+        # argument is not provided when instantiating a
+        # `SpatioTemporalAnalysis`, the dates attribute is properly and
+        # automatically generated
+        sta = pls.SpatioTemporalAnalysis(self.landscape_fps)
+        self.assertEqual(sta.feature_name, 'dates')
+        self.assertEqual(len(sta), len(sta.dates))
+
+    def test_spatiotemporalanalysis_dataframes(self):
+        # test with the default constructor
+        sta = pls.SpatioTemporalAnalysis(self.landscape_fps)
+
+        # test that `class_metrics_df` and `landscape_metrics_df` are well
+        # constructed
+        class_metrics_df = sta.class_metrics_df
+        self.assertTrue(
+            np.all(class_metrics_df.index == pd.MultiIndex.from_product(
+                [sta.classes, sta.dates])))
+        landscape_metrics_df = sta.landscape_metrics_df
+        self.assertTrue(np.all(landscape_metrics_df.index == sta.dates))
+
+        # now test the same but with an analysis that only considers a
+        # subset of metrics and a subset of classes
+        sta_metrics = ['total_area', 'edge_density', 'proportion_of_landscape']
+        sta_classes = sta.classes[:2]
+        sta = pls.SpatioTemporalAnalysis(self.landscape_fps,
+                                         metrics=sta_metrics,
+                                         classes=sta_classes, dates=self.dates)
+
+        class_metrics_df = sta.class_metrics_df
+        self.assertTrue(
+            np.all(class_metrics_df.index == pd.MultiIndex.from_product(
+                [sta_classes, self.dates])))
+        landscape_metrics_df = sta.landscape_metrics_df
+        self.assertTrue(np.all(landscape_metrics_df.index == self.dates))
+
+    def test_spatiotemporalanalysis_plot_metrics(self):
+        sta = pls.SpatioTemporalAnalysis(self.landscape_fps, dates=self.dates)
+
+        # test for `None` (landscape-level) and an existing class (class-level)
+        for class_val in [None, sta.classes[0]]:
+            # test that the x data of the line corresponds to the dates
+            self.assertTrue(
+                np.all(
+                    sta.plot_metric('patch_density', class_val=class_val).
+                    lines[0].get_xdata() == self.dates))
