@@ -1,8 +1,9 @@
 # coding=utf-8
 
 from io import open  # compatible enconding parameter
-from setuptools import setup, find_packages
 from os import path
+
+from setuptools import find_packages, setup
 
 __version__ = '0.2.0'
 
@@ -25,6 +26,11 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
     all_reqs = f.read().split('\n')
 
+# Extra dependencies for geometric operations
+# we deliberately do not set any lower nor upper bounds on `geopandas`
+# dependency so that people might install its cythonized version
+geo = ["geopandas", "shapely >= 1.0.0"]
+
 install_requires = [x.strip() for x in all_reqs if 'git+' not in x]
 dependency_links = [
     x.strip().replace('git+', '') for x in all_reqs if x.startswith('git+')
@@ -44,5 +50,6 @@ setup(
     packages=find_packages(exclude=['docs', 'tests*']),
     include_package_data=True,
     install_requires=install_requires,
+    extras_require={'geo': geo},
     dependency_links=dependency_links,
 )

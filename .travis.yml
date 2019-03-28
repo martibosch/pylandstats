@@ -5,14 +5,30 @@ python:
   - 2.7
   - 3.6
 
+before_install:
+  - pip install --upgrade pip
+  - pip install --upgrade wheel
+  - wget http://bit.ly/miniconda -O miniconda.sh
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set show_channel_urls true
+  - conda update conda
+  - conda config --add channels conda-forge --force
+  - conda create --quiet --name TESTENV python=$TRAVIS_PYTHON_VERSION
+  - source activate TESTENV
+  - conda install -c conda-forge geopandas
+  - conda info --all
+  - conda list
+
 # command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install:
+  - pip install .[geo]
   - pip install -r requirements-dev.txt
-  - pip install -r requirements.txt
+  - pip show pylandstats
 
 # command to run tests, e.g. python setup.py test
 script:
-  - tox
   - coverage run --source pylandstats -m py.test
 
 after_success:

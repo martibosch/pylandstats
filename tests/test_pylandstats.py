@@ -9,6 +9,19 @@ import pylandstats as pls
 plt.switch_backend('agg')  # only for testing purposes
 
 
+class TestImports(unittest.TestCase):
+    def test_base_imports(self):
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import pandas as pd
+        import rasterio
+        from scipy import ndimage, spatial, stats
+
+    def test_geo_imports(self):
+        import geopandas as gpd
+        from shapely.geometry.base import BaseGeometry
+
+
 class TestLandscape(unittest.TestCase):
     def setUp(self):
         ls_arr = np.load('tests/input_data/ls250_06.npy')
