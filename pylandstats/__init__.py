@@ -1,3 +1,4 @@
+from .gradient import *
 from .landscape import *
 from .spatiotemporal import *
 

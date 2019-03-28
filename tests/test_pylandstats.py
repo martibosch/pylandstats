@@ -1,8 +1,11 @@
 import unittest
 
+import affine
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from shapely import geometry
 
 import pylandstats as pls
 
@@ -463,3 +466,108 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
                 np.all(
                     sta.plot_metric('patch_density', class_val=class_val).
                     lines[0].get_xdata() == self.dates))
+
+
+class TestGradientAnalysis(unittest.TestCase):
+    def setUp(self):
+        self.masks_arr = np.load('tests/input_data/masks_arr.npy')
+        self.landscape = pls.Landscape(
+            np.load('tests/input_data/ls250_06.npy'), res=(250, 250))
+        self.landscape_fp = 'tests/input_data/ls250_06.tif'
+        self.landscape_transform = affine.Affine(
+            249.96431809611167, 0.0, 4037084.1862939927, 0.0,
+            -250.7188576750866, 2631436.6068059015)
+        self.landscape_crs = {'init': 'epsg:3035'}
+        # for buffer analysis
+        self.geom = geometry.Point(6.6327025, 46.5218269)
+        self.geom_crs = {'init': 'epsg:4326'}
+        self.buffer_dists = [10000, 15000, 20000]
+
+    def test_gradient_init(self):
+        # test that the feature names and values are consistent with the
+        # provided `masks_arr`
+        ga = pls.GradientAnalysis(self.landscape, self.masks_arr)
+        self.assertEqual(ga.feature_name, 'feature_values')
+        self.assertEqual(len(ga), len(self.masks_arr))
+        self.assertEqual(len(ga), len(ga.feature_values))
+
+        # test that if we init a GradientAnalysis from filepaths, Landscape
+        # instances are automaticaly built, and the feature names and values
+        # are also consistent with the provided `masks_arr`
+        ga = pls.GradientAnalysis(self.landscape_fp, self.masks_arr)
+        for landscape in ga.landscapes:
+            self.assertIsInstance(landscape, pls.Landscape)
+        self.assertEqual(ga.feature_name, 'feature_values')
+        self.assertEqual(len(ga), len(self.masks_arr))
+        self.assertEqual(len(ga), len(ga.feature_values))
+
+        # from this point on, always instantiate from filepaths
+
+    def test_buffer_init(self):
+        naive_gser = gpd.GeoSeries([self.geom])
+        gser = gpd.GeoSeries([self.geom], crs=self.geom_crs)
+
+        # test that we cannot init from a shapely geometry without providing
+        # its crs
+        self.assertRaises(ValueError, pls.BufferAnalysis, self.landscape_fp,
+                          self.geom, self.buffer_dists)
+        # test that we cannot init with a landscape that does not have crs and
+        # transform information, even when providing the `base_mask` arguments
+        # properly
+        for base_mask in [self.geom, naive_gser, gser]:
+            self.assertRaises(ValueError, pls.BufferAnalysis, self.landscape,
+                              base_mask, self.buffer_dists,
+                              {'base_mask_crs': self.geom_crs})
+            self.assertRaises(
+                ValueError, pls.BufferAnalysis, self.landscape, base_mask,
+                self.buffer_dists, {
+                    'base_mask_crs': self.geom_crs,
+                    'landscape_crs': self.landscape_crs
+                })
+            self.assertRaises(
+                ValueError, pls.BufferAnalysis, self.landscape, base_mask,
+                self.buffer_dists, {
+                    'base_mask_crs': self.geom_crs,
+                    'landscape_transform': self.landscape_transform
+                })
+
+        # test that we can properly instantiate it from:
+        # 1. a landscape filepath, shapely geometry, and its crs
+        # 2. a landscape filepath, naive geopandas GeoSeries (with no crs set)
+        #    and its crs
+        # 3. a landscape filepath, geopandas GeoSeries with crs set
+        # 4. a landscape filepath, geopandas GeoSeries with crs set and a crs (
+        #    which will override the crs of the GeoSeries)
+        # 5. any of the above but changing the landscape filepath for a
+        #    Landscape instance with its crs and transform
+        for ba in [
+                pls.BufferAnalysis(self.landscape_fp, self.geom,
+                                   self.buffer_dists,
+                                   base_mask_crs=self.geom_crs),
+                pls.BufferAnalysis(self.landscape_fp, naive_gser,
+                                   self.buffer_dists,
+                                   base_mask_crs=self.geom_crs),
+                pls.BufferAnalysis(self.landscape_fp, gser, self.buffer_dists),
+                pls.BufferAnalysis(self.landscape_fp, gser, self.buffer_dists,
+                                   base_mask_crs=self.geom_crs),
+                pls.BufferAnalysis(
+                    self.landscape, gser, self.buffer_dists,
+                    base_mask_crs=self.geom_crs,
+                    landscape_crs=self.landscape_crs,
+                    landscape_transform=self.landscape_transform)
+        ]:
+            self.assertEqual(ba.feature_name, 'buffer_dists')
+            self.assertEqual(len(ba), len(ba.masks_arr))
+            self.assertEqual(len(ba), len(ba.buffer_dists))
+
+    def test_buffer_plot_metrics(self):
+        ba = pls.BufferAnalysis(self.landscape_fp, self.geom,
+                                self.buffer_dists, base_mask_crs=self.geom_crs)
+
+        # test for `None` (landscape-level) and an existing class (class-level)
+        for class_val in [None, ba.classes[0]]:
+            # test that the x data of the line corresponds to `buffer_dists`
+            self.assertTrue(
+                np.all(
+                    ba.plot_metric('patch_density', class_val=class_val).
+                    lines[0].get_xdata() == self.buffer_dists))
