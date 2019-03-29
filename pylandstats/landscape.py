@@ -253,7 +253,7 @@ class Landscape:
                 enn[unique_label - 1] = min(mindist)
             # end KDTree
 
-            if self.cell_width == self.cell_height:
+            if np.isclose(self.cell_width, self.cell_height):
                 enn *= self.cell_width
             else:
                 enn *= np.sqrt(self.cell_area)
@@ -301,7 +301,7 @@ class Landscape:
             n = np.floor(np.sqrt(area_cells_ser))
             m = area_cells_ser - n**2
             min_p = np.ones(len(area_cells_ser))
-            min_p = np.where(m == 0, 4 * n, min_p)
+            min_p = np.where(np.isclose(m, 0), 4 * n, min_p)
             min_p = np.where(
                 (n**2 < area_cells_ser) & (area_cells_ser <= n * (n + 1)),
                 4 * n + 2, min_p)
