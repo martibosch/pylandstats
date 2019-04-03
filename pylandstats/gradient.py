@@ -7,6 +7,7 @@ from .multilandscape import MultiLandscape
 
 try:
     import geopandas as gpd
+    from shapely.geometry import Point
     from shapely.geometry.base import BaseGeometry
     geo_imports = True
 except ImportError:
@@ -120,18 +121,21 @@ class BufferAnalysis(GradientAnalysis):
         }
         base_mask_geom = base_mask_gser.to_crs(utm_crs).iloc[0]
         if buffer_rings:
-            # consider doghnut-like buffer rings
+            if not isinstance(base_mask_geom, Point):
+                raise ValueError(
+                    "Buffer rings can only work when `base_mask_geom` is a "
+                    "`Point`")
             _buffer_dists = np.concatenate([[0], buffer_dists])
             buffer_dists = list(
                 map(lambda d: '{}-{}'.format(d[0], d[1]),
                     zip(_buffer_dists[:-1], _buffer_dists[1:])))
-            base_masks_gser = gpd.GeoSeries([
+            masks_gser = gpd.GeoSeries([
                 base_mask_geom.buffer(_buffer_dists[i + 1]) -
                 base_mask_geom.buffer(_buffer_dists[i])
                 for i in range(len(_buffer_dists) - 1)
             ], index=buffer_dists, crs=utm_crs).to_crs(landscape_crs)
         else:
-            base_masks_gser = gpd.GeoSeries([
+            masks_gser = gpd.GeoSeries([
                 base_mask_geom.buffer(buffer_dist)
                 for buffer_dist in buffer_dists
             ], index=buffer_dists, crs=utm_crs).to_crs(landscape_crs)
@@ -140,9 +144,9 @@ class BufferAnalysis(GradientAnalysis):
         num_rows, num_cols = landscape_shape
         buffer_masks_arr = np.zeros((len(buffer_dists), num_rows, num_cols),
                                     dtype=np.uint8)
-        for i in range(len(base_masks_gser)):
+        for i in range(len(masks_gser)):
             buffer_masks_arr[i] = features.rasterize(
-                [base_masks_gser.iloc[i]], out_shape=landscape_shape,
+                [masks_gser.iloc[i]], out_shape=landscape_shape,
                 transform=landscape_transform, dtype=np.uint8)
 
         buffer_masks_arr = buffer_masks_arr.astype(bool)

@@ -560,7 +560,22 @@ class TestGradientAnalysis(unittest.TestCase):
             self.assertEqual(len(ba), len(ba.masks_arr))
             self.assertEqual(len(ba), len(ba.buffer_dists))
 
-        # test that buffer rings are properly instantiated
+        # test that we cannot instantiate a `BufferAnalysis` with
+        # `buffer_rings=True` if `base_mask` is a polygon or a GeoSeries
+        # containing a polygon
+        polygon = self.geom.buffer(1000)  # this will return a polygon instance
+        self.assertRaises(ValueError, pls.BufferAnalysis, self.landscape_fp,
+                          polygon, self.buffer_dists, {
+                              'buffer_rings': True,
+                              'base_mask_crs': self.geom_crs
+                          })
+        polygon_gser = gpd.GeoSeries([polygon], crs=self.geom_crs)
+        self.assertRaises(ValueError, pls.BufferAnalysis, self.landscape_fp,
+                          polygon_gser, self.buffer_dists, {
+                              'buffer_rings': True,
+                          })
+
+        # test that otherwise, buffer rings are properly instantiated
         ba_rings = pls.BufferAnalysis(self.landscape_fp, gser,
                                       self.buffer_dists, buffer_rings=True)
         # the `buffer_dists` attribute must be a string of the form '{r}-{R}'
