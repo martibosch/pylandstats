@@ -1,5 +1,10 @@
 # Change log
 
+## 0.4.1 (03/04/2019)
+
+* added docstrings for `MultiLandscape`, `GradientAnalysis` and `BufferAnalysis`
+* raise `ValueError` when using buffer rings around a polygon geometry
+
 ## 0.4.0 (03/04/2019)
 
 * implemented `SpatioTemporalBufferAnalysis` with a dedicated `plot_metric` method
