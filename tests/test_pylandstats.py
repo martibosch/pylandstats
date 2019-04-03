@@ -560,6 +560,27 @@ class TestGradientAnalysis(unittest.TestCase):
             self.assertEqual(len(ba), len(ba.masks_arr))
             self.assertEqual(len(ba), len(ba.buffer_dists))
 
+        # test that buffer rings are properly instantiated
+        ba_rings = pls.BufferAnalysis(self.landscape_fp, gser,
+                                      self.buffer_dists, buffer_rings=True)
+        # the `buffer_dists` attribute must be a string of the form '{r}-{R}'
+        # where r and R respectively represent the smaller and larger radius
+        # that compose each ring
+        for buffer_ring_str in ba_rings.buffer_dists:
+            self.assertIn('-', buffer_ring_str)
+
+        # compare it with the default instance (with the argument
+        # `buffer_rings=False`) that does not consider rings but cumulatively
+        # considers the inner areas in each mask. The first mask will in fact
+        # be the same in both cases (the region that goes from 0 to the first
+        # item of `self.buffer_dists`), but the successive masks will be
+        # always larger in the default instance (since they will have the
+        # surface of the corresponding ring plus the surface of the inner
+        # region that is excluded when `buffer_rings=True`)
+        ba = pls.BufferAnalysis(self.landscape_fp, gser, self.buffer_dists)
+        for mask_arr, ring_mask_arr in zip(ba.masks_arr, ba_rings.masks_arr):
+            self.assertGreaterEqual(np.sum(mask_arr), np.sum(ring_mask_arr))
+
     def test_buffer_plot_metrics(self):
         ba = pls.BufferAnalysis(self.landscape_fp, self.geom,
                                 self.buffer_dists, base_mask_crs=self.geom_crs)
