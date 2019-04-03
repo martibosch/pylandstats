@@ -19,6 +19,25 @@ __all__ = ['GradientAnalysis', 'BufferAnalysis']
 class GradientAnalysis(MultiLandscape):
     def __init__(self, landscape, masks_arr, feature_name=None,
                  feature_values=None, **kwargs):
+        """
+        Parameters
+        ----------
+        landscapes : list-like
+            A list-like of `Landscape` objects or of strings/file objects/
+            pathlib.Path objects so that each is passed as the `landscape`
+            argument of `Landscape.__init__`
+        masks_arr : list-like or np.ndarray
+            A list-like of numpy arrays of shape (width, height), i.e., of the
+            same shape as the landscape raster image. Each array will serve to
+            mask the base landscape and define a region of study for which the
+            metrics will be computed separately. The same information can also
+            be provided as a single array of shape (num_masks, width, height).
+        feature_name : str, optional
+            Name of the feature that will distinguish each landscape
+        feature_values : str, optional
+            Values of the feature that correspond to each of the landscapes
+        """
+
         if not isinstance(landscape, Landscape):
             landscape = Landscape(landscape)
 
@@ -54,6 +73,49 @@ class BufferAnalysis(GradientAnalysis):
                  base_mask_crs=None, landscape_crs=None,
                  landscape_transform=None, metrics=None, classes=None,
                  metrics_kws={}):
+        """
+        Parameters
+        ----------
+        landscapes : list-like
+            A list-like of `Landscape` objects or of strings/file objects/
+            pathlib.Path objects so that each is passed as the `landscape`
+            argument of `Landscape.__init__`
+        base_mask : shapely geometry or geopandas GeoSeries
+            Geometry that will serve as a base mask to buffer around
+        buffer_dists : list-like
+            Buffer distances
+        buffer_rings : bool, default False
+            If `False`, each buffer zone will consist of the whole region that
+            lies within the respective buffer distance around the base mask.
+            If `True`, buffer zones will take the form of rings around the
+            base mask.
+        base_mask_crs : dict, optional
+            The coordinate reference system of the base mask. Required if the
+            base mask is a shapely geometry or a geopandas GeoSeries without
+            the `crs` attribute set
+        landscape_crs : dict, optional
+            The coordinate reference system of the landscapes. Required if the
+            passed-in landscapes are `Landscape` objects, ignored if they are
+            paths to GeoTiff rasters that already contain such information.
+        landscape_transform : affine.Affine
+            Transformation from pixel coordinates to coordinate reference
+            system. Required if the passed-in landscapes are `Landscape`
+            objects, ignored if they are paths to GeoTiff rasters that already
+            contain such information.
+        metrics : list-like, optional
+            A list-like of strings with the names of the metrics that should
+            be computed in the context of this analysis case
+        classes : list-like, optional
+            A list-like of ints or strings with the class values that should
+            be considered in the context of this analysis case
+        metrics_kws : dict, optional
+            Dictionary mapping the keyword arguments (values) that should be
+            passed to each metric method (key), e.g., to exclude the boundary
+            from the computation of `total_edge`, metric_kws should map the
+            string 'total_edge' (method name) to {'count_boundary': False}.
+            The default empty dictionary will compute each metric according to
+            FRAGSTATS defaults.
+        """
 
         # first check that we meet the package dependencies
         if not geo_imports:

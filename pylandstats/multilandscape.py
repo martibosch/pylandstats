@@ -21,6 +21,10 @@ class MultiLandscape:
             A list-like of `Landscape` objects or of strings/file objects/
             pathlib.Path objects so that each is passed as the `landscape`
             argument of `Landscape.__init__`
+        feature_name : str
+            Name of the feature that will distinguish each landscape
+        feature_values : list-like
+            Values of the feature that correspond to each of the landscapes
         metrics : list-like, optional
             A list-like of strings with the names of the metrics that should
             be computed in the context of this analysis case
