@@ -1,5 +1,10 @@
 # Change log
 
+## 0.4.0 (03/04/2019)
+
+* implemented `SpatioTemporalBufferAnalysis` with a dedicated `plot_metric` method
+* added buffer ring-wise analysis through a `buffer_rings` boolean argument in `BufferAnalysis`
+
 ## 0.3.1 (29/03/2019)
 
 * float equality comparations with numpy `isclose` method
