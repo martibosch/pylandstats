@@ -1,5 +1,19 @@
 # Change log
 
+## 0.3.1 (29/03/2019)
+
+* float equality comparations with numpy `isclose` method
+
+## 0.3.0 (28/03/2019)
+
+* implemented `GradientAnalysis` and `BufferAnalysis`
+* added optional `geopandas` dependences
+* created abstract `MultiLandscape` class
+* `Landscape` initialization from ndarray or geotiff (dropped `read_geotiff` method)
+* implemented `contagion`
+* convolution-based adjacency dataframe
+* fixed bug with `class_cond` in `Landscape.compute_arr_edge`
+
 ## 0.2.0 (18/03/2019)
 
 * implemented `euclidean_nearest_neighbor` and all its corresponding class/landscape distribution statistic metrics

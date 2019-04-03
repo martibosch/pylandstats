@@ -34,13 +34,13 @@ patch_metrics_df = ls.compute_patch_metrics_df()
 patch_metrics_df.head()
 ```
 
-| patch_id | class_val | area | perimeter | perimeter_area_ratio | shape_index | fractal_dimension |
-| -------: | --------: | ---: | --------: | -------------------: | ----------: | ----------------: |
-|        0 |         1 |  115 |     10600 |                92.17 |       2.409 |             1.130 |
-|        1 |         1 |   13 |      2600 |               200.00 |       1.625 |             1.100 |
-|        2 |         1 |    2 |       600 |               300.00 |       1.000 |             1.012 |
-|        3 |         1 |   69 |      6000 |                86.96 |       1.765 |             1.088 |
-|        4 |         1 |   76 |      8800 |               115.79 |       2.444 |             1.137 |
+| patch_id | class_val | area | perimeter | perimeter_area_ratio | shape_index | fractal_dimension | euclidean_nearest_neighbor |
+| -------: | --------: | ---: | --------: | -------------------: | ----------: | ----------------: | -------------------------: |
+|        0 |         1 |  115 |     10600 |                92.17 |       2.409 |             1.130 |                   1431.782 |
+|        1 |         1 |   13 |      2600 |               200.00 |       1.625 |             1.100 |                    223.607 |
+|        2 |         1 |    2 |       600 |               300.00 |       1.000 |             1.012 |                    223.607 |
+|        3 |         1 |   69 |      6000 |                86.96 |       1.765 |             1.088 |                    316.228 |
+|        4 |         1 |   76 |      8800 |               115.79 |       2.444 |             1.137 |                    316.228 |
 
 ```python
 class_metrics_df = ls.compute_class_metrics_df(metrics=['proportion_of_landscape', 'edge_density'])
@@ -90,7 +90,10 @@ To install use pip:
     $ pip install pylandstats
 
 
-Or clone the repo:
+If you want to use the `BufferAnalysis`, you will need [geopandas](https://github.com/geopandas/geopandas). The easiest to install it is via [conda-forge](https://conda-forge.org/) as in:
 
-    $ git clone https://github.com/martibosch/pylandstats.git
-    $ python setup.py install
+    $ conda install -c conda-forge geopandas
+    
+and then install PyLandStats with the `geo` extras as in:
+
+    $ pip install pylandstats[geo]

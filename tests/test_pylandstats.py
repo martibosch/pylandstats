@@ -58,8 +58,8 @@ class TestLandscape(unittest.TestCase):
         patch_df = ls.compute_patch_metrics_df()
         self.assertTrue(
             np.all(
-                patch_df.columns.drop('class_val') == pls.Landscape.
-                PATCH_METRICS))
+                patch_df.columns.drop('class_val') ==
+                pls.Landscape.PATCH_METRICS))
         self.assertEqual(patch_df.index.name, 'patch_id')
         self.assertRaises(ValueError, ls.compute_patch_metrics_df, ['foo'])
 
@@ -98,8 +98,8 @@ class TestLandscape(unittest.TestCase):
         # TODO: assert 0 <= ls.contiguity_index(patch_arr) <= 1
         # ACHTUNG: euclidean nearest neighbor can be nan for classes with less
         # than two patches
-        assert (ls.euclidean_nearest_neighbor()['euclidean_nearest_neighbor'].
-                dropna() > 0).all()
+        assert (ls.euclidean_nearest_neighbor()['euclidean_nearest_neighbor']
+                .dropna() > 0).all()
         # TODO: assert 0 <= ls.proximity(patch_arr) <= 1
 
         # class-level metrics
@@ -274,8 +274,8 @@ class TestMultiLandscape(unittest.TestCase):
                 [ml.classes, feature_values])))
         landscape_metrics_df = ml.landscape_metrics_df
         self.assertTrue(
-            np.all(landscape_metrics_df.columns == pls.Landscape.
-                   LANDSCAPE_METRICS))
+            np.all(landscape_metrics_df.columns ==
+                   pls.Landscape.LANDSCAPE_METRICS))
         self.assertTrue(np.all(landscape_metrics_df.index == feature_values))
 
         # now test the same but with an analysis that only considers a subset
@@ -464,8 +464,8 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
             # test that the x data of the line corresponds to the dates
             self.assertTrue(
                 np.all(
-                    sta.plot_metric('patch_density', class_val=class_val).
-                    lines[0].get_xdata() == self.dates))
+                    sta.plot_metric('patch_density', class_val=class_val)
+                    .lines[0].get_xdata() == self.dates))
 
 
 class TestGradientAnalysis(unittest.TestCase):
@@ -560,6 +560,27 @@ class TestGradientAnalysis(unittest.TestCase):
             self.assertEqual(len(ba), len(ba.masks_arr))
             self.assertEqual(len(ba), len(ba.buffer_dists))
 
+        # test that buffer rings are properly instantiated
+        ba_rings = pls.BufferAnalysis(self.landscape_fp, gser,
+                                      self.buffer_dists, buffer_rings=True)
+        # the `buffer_dists` attribute must be a string of the form '{r}-{R}'
+        # where r and R respectively represent the smaller and larger radius
+        # that compose each ring
+        for buffer_ring_str in ba_rings.buffer_dists:
+            self.assertIn('-', buffer_ring_str)
+
+        # compare it with the default instance (with the argument
+        # `buffer_rings=False`) that does not consider rings but cumulatively
+        # considers the inner areas in each mask. The first mask will in fact
+        # be the same in both cases (the region that goes from 0 to the first
+        # item of `self.buffer_dists`), but the successive masks will be
+        # always larger in the default instance (since they will have the
+        # surface of the corresponding ring plus the surface of the inner
+        # region that is excluded when `buffer_rings=True`)
+        ba = pls.BufferAnalysis(self.landscape_fp, gser, self.buffer_dists)
+        for mask_arr, ring_mask_arr in zip(ba.masks_arr, ba_rings.masks_arr):
+            self.assertGreaterEqual(np.sum(mask_arr), np.sum(ring_mask_arr))
+
     def test_buffer_plot_metrics(self):
         ba = pls.BufferAnalysis(self.landscape_fp, self.geom,
                                 self.buffer_dists, base_mask_crs=self.geom_crs)
@@ -569,5 +590,40 @@ class TestGradientAnalysis(unittest.TestCase):
             # test that the x data of the line corresponds to `buffer_dists`
             self.assertTrue(
                 np.all(
-                    ba.plot_metric('patch_density', class_val=class_val).
-                    lines[0].get_xdata() == self.buffer_dists))
+                    ba.plot_metric('patch_density', class_val=class_val).lines[
+                        0].get_xdata() == self.buffer_dists))
+
+
+class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
+    def setUp(self):
+        self.landscape_fps = [
+            'tests/input_data/ls250_06.tif', 'tests/input_data/ls250_12.tif'
+        ]
+        self.dates = [2006, 2012]
+        self.base_mask = gpd.GeoSeries([geometry.Point(6.6327025, 46.5218269)],
+                                       crs={'init': 'epsg:4326'})
+        self.buffer_dists = [10000, 15000, 20000]
+
+    def test_spatiotemporalbufferanalysis_init(self):
+        # we will just test the base init, the rest of functionalities have
+        # already been tested above (in `TestSpatioTemporalAnalysis` and
+        # `TestGradientAnalysis`)
+        stba = pls.SpatioTemporalBufferAnalysis(
+            self.landscape_fps, self.base_mask, self.buffer_dists,
+            dates=self.dates)
+        self.assertEqual(len(stba.buffer_dists), len(stba.stas))
+        for sta in stba.stas:
+            self.assertEqual(sta.dates, self.dates)
+
+    def test_spatiotemporalbufferanalysis_plot_metric(self):
+        stba = pls.SpatioTemporalBufferAnalysis(
+            self.landscape_fps, self.base_mask, self.buffer_dists)
+
+        # test for `None` (landscape-level) and an existing class (class-level)
+        for class_val in [None, stba.stas[0].classes[0]]:
+            ax = stba.plot_metric('patch_density', class_val=class_val)
+            # test that there is a line for each buffer distance
+            self.assertEqual(len(ax.lines), len(self.buffer_dists))
+            # test that there is a legend label for each buffer distance
+            handles, labels = ax.get_legend_handles_labels()
+            self.assertEqual(len(labels), len(self.buffer_dists))
