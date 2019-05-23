@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 import affine
 import geopandas as gpd
@@ -53,13 +54,42 @@ class TestLandscape(unittest.TestCase):
         for landscape_metric in pls.Landscape.LANDSCAPE_METRICS:
             self.assertTrue(np.isreal(getattr(ls, landscape_metric)()))
 
+    def test_metrics_warnings(self):
+        # test that warnings are raised
+
+        # class-level metrics
+        # euclidean nearest neighbor will return nan (and raise an informative
+        # warning) if there is not at least two patches of each class. Let us
+        # test this by creating a landscape with a background of class 1 and a
+        # single patch of class 2
+        arr = np.ones((4, 4))
+        arr[1:-1, 1:-1] = 2
+        ls = pls.Landscape(arr, res=(1, 1))
+
+        # let us test that both the computation at the class-level (1 and 2)
+        # and at the landscape level (`class_val` of `None`) raise at least one
+        # warning (the exact number of warnings raised can be different in
+        # Python 2 and 3)
+        for class_val in [1, 2, None]:
+            with warnings.catch_warnings(record=True) as w:
+                ls.euclidean_nearest_neighbor(class_val)
+                self.assertGreater(len(w), 0)
+
+        # landscape-level metrics
+        # some landscape-level metrics require at least two classes.
+        ls = pls.Landscape(np.ones((4, 4)), res=(1, 1))
+        for method in ['contagion', 'shannon_diversity_index']:
+            with warnings.catch_warnings(record=True) as w:
+                getattr(ls, method)()
+                self.assertGreater(len(w), 0)
+
     def test_metric_dataframes(self):
         ls = self.ls
         patch_df = ls.compute_patch_metrics_df()
         self.assertTrue(
             np.all(
-                patch_df.columns.drop('class_val') == pls.Landscape.
-                PATCH_METRICS))
+                patch_df.columns.drop('class_val') ==
+                pls.Landscape.PATCH_METRICS))
         self.assertEqual(patch_df.index.name, 'patch_id')
         self.assertRaises(ValueError, ls.compute_patch_metrics_df, ['foo'])
 
@@ -127,15 +157,15 @@ class TestLandscape(unittest.TestCase):
                 0)
             self.assertGreaterEqual(
                 getattr(ls, 'shape_index' + mean_suffix)(class_val), 1)
-            self.assertTrue(1 <= getattr(ls, 'fractal_dimension' + mean_suffix)
-                            (class_val) <= 2)
+            self.assertTrue(1 <= getattr(ls, 'fractal_dimension' +
+                                         mean_suffix)(class_val) <= 2)
             # assert 0 <= getattr(
             #     ls, 'contiguity_index' + mean_suffix)(class_val) <= 1
             # assert getattr(ls, 'proximity' + mean_suffix)(class_val) >= 0
             # ACHTUNG: euclidean nearest neighbor can be nan for classes with
             # less than two patches
-            enn = getattr(
-                ls, 'euclidean_nearest_neighbor' + mean_suffix)(class_val)
+            enn = getattr(ls, 'euclidean_nearest_neighbor' +
+                          mean_suffix)(class_val)
             self.assertTrue(enn > 0 or np.isnan(enn))
 
         for var_suffix in var_suffixes:
@@ -219,10 +249,10 @@ class TestMultiLandscape(unittest.TestCase):
         from pylandstats.multilandscape import MultiLandscape
 
         self.landscapes = [
-            pls.Landscape(
-                np.load('tests/input_data/ls100_06.npy'), res=(100, 100)),
-            pls.Landscape(
-                np.load('tests/input_data/ls250_06.npy'), res=(250, 250))
+            pls.Landscape(np.load('tests/input_data/ls100_06.npy'),
+                          res=(100, 100)),
+            pls.Landscape(np.load('tests/input_data/ls250_06.npy'),
+                          res=(250, 250))
         ]
         self.landscape_fps = [
             'tests/input_data/ls100_06.tif', 'tests/input_data/ls250_06.tif'
@@ -234,8 +264,8 @@ class TestMultiLandscape(unittest.TestCase):
         # use this class just for testing purposes
         class InstantiableMultiLandscape(MultiLandscape):
             def __init__(self, *args, **kwargs):
-                super(InstantiableMultiLandscape, self).__init__(
-                    *args, **kwargs)
+                super(InstantiableMultiLandscape,
+                      self).__init__(*args, **kwargs)
 
         self.InstantiableMultiLandscape = InstantiableMultiLandscape
 
@@ -247,8 +277,9 @@ class TestMultiLandscape(unittest.TestCase):
 
         # test that if we init a MultiLandscape from filepaths, Landscape
         # instances are automaticaly built
-        ml = self.InstantiableMultiLandscape(
-            self.landscape_fps, self.feature_name, self.feature_values)
+        ml = self.InstantiableMultiLandscape(self.landscape_fps,
+                                             self.feature_name,
+                                             self.feature_values)
         for landscape in ml.landscapes:
             self.assertIsInstance(landscape, pls.Landscape)
 
@@ -272,8 +303,9 @@ class TestMultiLandscape(unittest.TestCase):
                           self.landscape_fps, self.feature_name, [250])
 
     def test_multilandscape_dataframes(self):
-        ml = self.InstantiableMultiLandscape(
-            self.landscape_fps, self.feature_name, self.feature_values)
+        ml = self.InstantiableMultiLandscape(self.landscape_fps,
+                                             self.feature_name,
+                                             self.feature_values)
         # test that `class_metrics_df` and `landscape_metrics_df` are well
         # constructed
         class_metrics_df = ml.class_metrics_df
@@ -285,17 +317,19 @@ class TestMultiLandscape(unittest.TestCase):
                 [ml.classes, feature_values])))
         landscape_metrics_df = ml.landscape_metrics_df
         self.assertTrue(
-            np.all(landscape_metrics_df.columns == pls.Landscape.
-                   LANDSCAPE_METRICS))
+            np.all(landscape_metrics_df.columns ==
+                   pls.Landscape.LANDSCAPE_METRICS))
         self.assertTrue(np.all(landscape_metrics_df.index == feature_values))
 
         # now test the same but with an analysis that only considers a subset
         # of metrics and a subset of classes
         ml_metrics = ['total_area', 'edge_density', 'proportion_of_landscape']
         ml_classes = self.landscapes[0].classes[:2]
-        ml = self.InstantiableMultiLandscape(
-            self.landscapes, self.feature_name, self.feature_values,
-            metrics=ml_metrics, classes=ml_classes)
+        ml = self.InstantiableMultiLandscape(self.landscapes,
+                                             self.feature_name,
+                                             self.feature_values,
+                                             metrics=ml_metrics,
+                                             classes=ml_classes)
 
         class_metrics_df = ml.class_metrics_df
         feature_values = getattr(ml, ml.feature_name)
@@ -316,8 +350,9 @@ class TestMultiLandscape(unittest.TestCase):
         # defaults and the other with keyword arguments specifying the total
         # area in meters and including the boundary in the computation of the
         # total edge.
-        ml = self.InstantiableMultiLandscape(
-            self.landscape_fps, self.feature_name, self.feature_values)
+        ml = self.InstantiableMultiLandscape(self.landscape_fps,
+                                             self.feature_name,
+                                             self.feature_values)
         ml_kws = self.InstantiableMultiLandscape(
             self.landscape_fps, self.feature_name, self.feature_values,
             metrics_kws={
@@ -362,8 +397,9 @@ class TestMultiLandscape(unittest.TestCase):
                         class_metrics_kws['total_edge'] + .0004)
 
     def test_multilandscape_plot_metrics(self):
-        ml = self.InstantiableMultiLandscape(
-            self.landscape_fps, self.feature_name, self.feature_values)
+        ml = self.InstantiableMultiLandscape(self.landscape_fps,
+                                             self.feature_name,
+                                             self.feature_values)
 
         existent_class_val = ml.classes[0]
 
@@ -406,8 +442,9 @@ class TestMultiLandscape(unittest.TestCase):
         self.assertEqual(len(axes), 2)
 
     def test_plot_landscapes(self):
-        ml = self.InstantiableMultiLandscape(
-            self.landscape_fps, self.feature_name, self.feature_values)
+        ml = self.InstantiableMultiLandscape(self.landscape_fps,
+                                             self.feature_name,
+                                             self.feature_values)
 
         fig, axes = ml.plot_landscapes()
 
@@ -485,9 +522,10 @@ class TestGradientAnalysis(unittest.TestCase):
         self.landscape = pls.Landscape(
             np.load('tests/input_data/ls250_06.npy'), res=(250, 250))
         self.landscape_fp = 'tests/input_data/ls250_06.tif'
-        self.landscape_transform = affine.Affine(
-            249.96431809611167, 0.0, 4037084.1862939927, 0.0,
-            -250.7188576750866, 2631436.6068059015)
+        self.landscape_transform = affine.Affine(249.96431809611167, 0.0,
+                                                 4037084.1862939927, 0.0,
+                                                 -250.7188576750866,
+                                                 2631436.6068059015)
         self.landscape_crs = {'init': 'epsg:3035'}
         # for buffer analysis
         self.geom = geometry.Point(6.6327025, 46.5218269)
@@ -634,16 +672,18 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
         # we will just test the base init, the rest of functionalities have
         # already been tested above (in `TestSpatioTemporalAnalysis` and
         # `TestGradientAnalysis`)
-        stba = pls.SpatioTemporalBufferAnalysis(
-            self.landscape_fps, self.base_mask, self.buffer_dists,
-            dates=self.dates)
+        stba = pls.SpatioTemporalBufferAnalysis(self.landscape_fps,
+                                                self.base_mask,
+                                                self.buffer_dists,
+                                                dates=self.dates)
         self.assertEqual(len(stba.buffer_dists), len(stba.stas))
         for sta in stba.stas:
             self.assertEqual(sta.dates, self.dates)
 
     def test_spatiotemporalbufferanalysis_plot_metric(self):
-        stba = pls.SpatioTemporalBufferAnalysis(
-            self.landscape_fps, self.base_mask, self.buffer_dists)
+        stba = pls.SpatioTemporalBufferAnalysis(self.landscape_fps,
+                                                self.base_mask,
+                                                self.buffer_dists)
 
         # test for `None` (landscape-level) and an existing class (class-level)
         for class_val in [None, stba.stas[0].classes[0]]:

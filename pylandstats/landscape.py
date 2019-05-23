@@ -1,5 +1,6 @@
 from __future__ import division
 
+import warnings
 from functools import partial
 from itertools import combinations_with_replacement
 
@@ -792,6 +793,15 @@ class Landscape:
             self._get_patch_euclidean_nearest_neighbor_ser(class_val)
 
         if class_val is None:
+            for class_val in self.classes:
+                num_patches = self._num_patches_dict[class_val]
+                if num_patches < 2:
+                    warnings.warn(
+                        "Class {} has less than 2 patches. ".format(class_val)
+                        +
+                        "Euclidean-nearest-neighbor might contain nan values",
+                        RuntimeWarning)
+
             return pd.DataFrame({
                 'class_val':
                 self._patch_class_ser,
@@ -799,6 +809,13 @@ class Landscape:
                 euclidean_nearest_neighbor_ser
             })
         else:
+            num_patches = self._num_patches_dict[class_val]
+            if num_patches < 2:
+                warnings.warn(
+                    "Class {} has less than 2 patches. ".format(class_val) +
+                    "Euclidean-nearest-neighbor might contain nan values",
+                    RuntimeWarning)
+
             return euclidean_nearest_neighbor_ser
 
     def proximity(self, search_radius, class_val=None):
@@ -2006,6 +2023,12 @@ class Landscape:
             landscape consists of a single patch.
         """
 
+        if len(self.classes) < 2:
+            warnings.warn(
+                "Contagion can only be computed in landscapes with more than "
+                "two classes of patches. Returning nan", RuntimeWarning)
+            return np.nan
+
         _contag = 0
 
         for i in self.classes:
@@ -2020,6 +2043,10 @@ class Landscape:
                 q = p_i * g_i[k] / g_i_sum
                 if q > 0:  # avoid zero-logarithm
                     _contag += q * np.log(q)
+                # else:
+                #     warnings.warn(
+                #         "No adjacencies between classes {i} and {k}.".format(
+                #             i=i, k=k) + "Ignoring nan", RuntimeWarning)
 
         contag = 1 + _contag / (2 * np.log(len(self.classes)))
 
@@ -2041,6 +2068,13 @@ class Landscape:
             increases and/or the proportional distribution of area among
             classes becomes more equitable.
         """
+
+        if len(self.classes) < 2:
+            warnings.warn(
+                "Shannon's Diversity Index can only be computed in landscapes "
+                "with more than two classes of patches. Returning nan",
+                RuntimeWarning)
+            return np.nan
 
         shdi = 0
         for class_val in self.classes:
