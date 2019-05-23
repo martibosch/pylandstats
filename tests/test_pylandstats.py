@@ -58,8 +58,8 @@ class TestLandscape(unittest.TestCase):
         patch_df = ls.compute_patch_metrics_df()
         self.assertTrue(
             np.all(
-                patch_df.columns.drop('class_val') ==
-                pls.Landscape.PATCH_METRICS))
+                patch_df.columns.drop('class_val') == pls.Landscape.
+                PATCH_METRICS))
         self.assertEqual(patch_df.index.name, 'patch_id')
         self.assertRaises(ValueError, ls.compute_patch_metrics_df, ['foo'])
 
@@ -88,27 +88,28 @@ class TestLandscape(unittest.TestCase):
         # label_arr = ls._get_label_arr(class_val)
 
         # patch-level metrics
-        assert (ls.area()['area'] > 0).all()
-        assert (ls.perimeter()['perimeter'] > 0).all()
-        assert (ls.perimeter_area_ratio()['perimeter_area_ratio'] > 0).all()
-        assert (ls.shape_index()['shape_index'] >= 1).all()
+        self.assertTrue((ls.area()['area'] > 0).all())
+        self.assertTrue((ls.perimeter()['perimeter'] > 0).all())
+        self.assertTrue(
+            (ls.perimeter_area_ratio()['perimeter_area_ratio'] > 0).all())
+        self.assertTrue((ls.shape_index()['shape_index'] >= 1).all())
         _fractal_dimension_ser = ls.fractal_dimension()['fractal_dimension']
-        assert (_fractal_dimension_ser >= 1).all() and (_fractal_dimension_ser
-                                                        <= 2).all()
+        self.assertTrue((_fractal_dimension_ser >= 1).all()
+                        and (_fractal_dimension_ser <= 2).all())
         # TODO: assert 0 <= ls.contiguity_index(patch_arr) <= 1
         # ACHTUNG: euclidean nearest neighbor can be nan for classes with less
         # than two patches
-        assert (ls.euclidean_nearest_neighbor()['euclidean_nearest_neighbor']
-                .dropna() > 0).all()
+        self.assertTrue((ls.euclidean_nearest_neighbor()
+                         ['euclidean_nearest_neighbor'].dropna() > 0).all())
         # TODO: assert 0 <= ls.proximity(patch_arr) <= 1
 
         # class-level metrics
-        assert ls.total_area(class_val) > 0
-        assert 0 < ls.proportion_of_landscape(class_val) < 100
-        assert ls.patch_density(class_val) > 0
-        assert 0 < ls.largest_patch_index(class_val) < 100
-        assert ls.total_edge(class_val) >= 0
-        assert ls.edge_density(class_val) >= 0
+        self.assertGreater(ls.total_area(class_val), 0)
+        self.assertTrue(0 < ls.proportion_of_landscape(class_val) < 100)
+        self.assertTrue(ls.patch_density(class_val) > 0)
+        self.assertTrue(0 < ls.largest_patch_index(class_val) < 100)
+        self.assertGreaterEqual(ls.total_edge(class_val), 0)
+        self.assertGreaterEqual(ls.edge_density(class_val), 0)
 
         # the value ranges of mean, area-weighted mean and median aggregations
         # are going to be the same as their respective original metrics
@@ -120,12 +121,14 @@ class TestLandscape(unittest.TestCase):
         var_suffixes = ['_ra', '_sd', '_cv']
 
         for mean_suffix in mean_suffixes:
-            assert getattr(ls, 'area' + mean_suffix)(class_val) > 0
-            assert getattr(ls,
-                           'perimeter_area_ratio' + mean_suffix)(class_val) > 0
-            assert getattr(ls, 'shape_index' + mean_suffix)(class_val) >= 1
-            assert 1 <= getattr(
-                ls, 'fractal_dimension' + mean_suffix)(class_val) <= 2
+            self.assertGreater(getattr(ls, 'area' + mean_suffix)(class_val), 0)
+            self.assertGreater(
+                getattr(ls, 'perimeter_area_ratio' + mean_suffix)(class_val),
+                0)
+            self.assertGreaterEqual(
+                getattr(ls, 'shape_index' + mean_suffix)(class_val), 1)
+            self.assertTrue(1 <= getattr(ls, 'fractal_dimension' + mean_suffix)
+                            (class_val) <= 2)
             # assert 0 <= getattr(
             #     ls, 'contiguity_index' + mean_suffix)(class_val) <= 1
             # assert getattr(ls, 'proximity' + mean_suffix)(class_val) >= 0
@@ -133,15 +136,17 @@ class TestLandscape(unittest.TestCase):
             # less than two patches
             enn = getattr(
                 ls, 'euclidean_nearest_neighbor' + mean_suffix)(class_val)
-            assert enn > 0 or np.isnan(enn)
+            self.assertTrue(enn > 0 or np.isnan(enn))
 
         for var_suffix in var_suffixes:
-            assert getattr(ls, 'area' + mean_suffix)(class_val) >= 0
-            assert getattr(ls,
-                           'perimeter_area_ratio' + var_suffix)(class_val) >= 0
-            assert getattr(ls, 'shape_index' + var_suffix)(class_val) >= 0
-            assert getattr(ls,
-                           'fractal_dimension' + var_suffix)(class_val) >= 0
+            self.assertGreaterEqual(
+                getattr(ls, 'area' + mean_suffix)(class_val), 0)
+            self.assertGreaterEqual(
+                getattr(ls, 'perimeter_area_ratio' + var_suffix)(class_val), 0)
+            self.assertGreaterEqual(
+                getattr(ls, 'shape_index' + var_suffix)(class_val), 0)
+            self.assertGreaterEqual(
+                getattr(ls, 'fractal_dimension' + var_suffix)(class_val), 0)
             # assert getattr(
             #    ls, 'contiguity_index' + var_suffix)(class_val) >= 0
             # assert getattr(ls, 'proximity' + var_suffix)(class_val) >= 0
@@ -149,21 +154,21 @@ class TestLandscape(unittest.TestCase):
             # less than two patches
             enn = getattr(ls,
                           'euclidean_nearest_neighbor' + var_suffix)(class_val)
-            assert enn >= 0 or np.isnan(enn)
+            self.assertTrue(enn >= 0 or np.isnan(enn))
 
         # TODO: assert 0 < ls.interspersion_juxtaposition_index(
         #           class_val) <= 100
-        assert ls.landscape_shape_index(class_val) >= 1
+        self.assertGreaterEqual(ls.landscape_shape_index(class_val), 1)
 
         # landscape-level metrics
-        assert ls.total_area() > 0
-        assert ls.patch_density() > 0
-        assert 0 < ls.largest_patch_index() < 100
-        assert ls.total_edge() >= 0
-        assert ls.edge_density() >= 0
-        assert 0 < ls.largest_patch_index() <= 100
-        assert ls.total_edge() >= 0
-        assert ls.edge_density() >= 0
+        self.assertGreater(ls.total_area(), 0)
+        self.assertGreater(ls.patch_density(), 0)
+        self.assertTrue(0 < ls.largest_patch_index() < 100)
+        self.assertGreaterEqual(ls.total_edge(), 0)
+        self.assertGreaterEqual(ls.edge_density(), 0)
+        self.assertTrue(0 < ls.largest_patch_index() <= 100)
+        self.assertGreaterEqual(ls.total_edge(), 0)
+        self.assertGreaterEqual(ls.edge_density(), 0)
 
         # for class_val in ls.classes:
         #     print('num_patches', class_val, ls._get_num_patches(class_val))
@@ -172,31 +177,37 @@ class TestLandscape(unittest.TestCase):
         # raise ValueError
 
         for mean_suffix in mean_suffixes:
-            assert getattr(ls, 'area' + mean_suffix)() > 0
-            assert getattr(ls, 'perimeter_area_ratio' + mean_suffix)() > 0
-            assert getattr(ls, 'shape_index' + mean_suffix)() >= 1
-            assert 1 <= getattr(ls, 'fractal_dimension' + mean_suffix)() <= 2
+            self.assertGreater(getattr(ls, 'area' + mean_suffix)(), 0)
+            self.assertGreater(
+                getattr(ls, 'perimeter_area_ratio' + mean_suffix)(), 0)
+            self.assertGreaterEqual(
+                getattr(ls, 'shape_index' + mean_suffix)(), 1)
+            self.assertTrue(
+                1 <= getattr(ls, 'fractal_dimension' + mean_suffix)() <= 2)
             # assert 0 <= getattr(ls, 'contiguity_index' + mean_suffix)() <= 1
             # assert getattr(ls, 'proximity' + mean_suffix)() >= 0
             # ACHTUNG: euclidean nearest neighbor can be nan for classes with
             # less than two patches
             enn = getattr(ls, 'euclidean_nearest_neighbor' + mean_suffix)()
-            assert enn > 0 or np.isnan(enn)
+            self.assertTrue(enn > 0 or np.isnan(enn))
         for var_suffix in var_suffixes:
-            assert getattr(ls, 'area' + var_suffix)() > 0
-            assert getattr(ls, 'perimeter_area_ratio' + var_suffix)() >= 0
-            assert getattr(ls, 'shape_index' + var_suffix)() >= 0
-            assert getattr(ls, 'fractal_dimension' + var_suffix)() >= 0
+            self.assertGreater(getattr(ls, 'area' + var_suffix)(), 0)
+            self.assertGreaterEqual(
+                getattr(ls, 'perimeter_area_ratio' + var_suffix)(), 0)
+            self.assertGreaterEqual(
+                getattr(ls, 'shape_index' + var_suffix)(), 0)
+            self.assertGreaterEqual(
+                getattr(ls, 'fractal_dimension' + var_suffix)(), 0)
             # assert getattr(ls, 'contiguity_index' + var_suffix)() >= 0
             # assert getattr(ls, 'proximity' + var_suffix)() >= 0
             # ACHTUNG: euclidean nearest neighbor can be nan for classes with
             # less than two patches
             enn = getattr(ls, 'euclidean_nearest_neighbor' + var_suffix)()
-            assert enn >= 0 or np.isnan(enn)
+            self.assertTrue(enn >= 0 or np.isnan(enn))
 
-        assert 0 < ls.contagion() <= 100
+        self.assertTrue(0 < ls.contagion() <= 100)
         # TODO: assert 0 < ls.interspersion_juxtaposition_index() <= 100
-        assert ls.shannon_diversity_index() >= 0
+        self.assertGreaterEqual(ls.shannon_diversity_index(), 0)
 
     def test_plot_landscape(self):
         # returned axis must be instances of matplotlib axes
@@ -274,8 +285,8 @@ class TestMultiLandscape(unittest.TestCase):
                 [ml.classes, feature_values])))
         landscape_metrics_df = ml.landscape_metrics_df
         self.assertTrue(
-            np.all(landscape_metrics_df.columns ==
-                   pls.Landscape.LANDSCAPE_METRICS))
+            np.all(landscape_metrics_df.columns == pls.Landscape.
+                   LANDSCAPE_METRICS))
         self.assertTrue(np.all(landscape_metrics_df.index == feature_values))
 
         # now test the same but with an analysis that only considers a subset
@@ -464,8 +475,8 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
             # test that the x data of the line corresponds to the dates
             self.assertTrue(
                 np.all(
-                    sta.plot_metric('patch_density', class_val=class_val)
-                    .lines[0].get_xdata() == self.dates))
+                    sta.plot_metric('patch_density', class_val=class_val).
+                    lines[0].get_xdata() == self.dates))
 
 
 class TestGradientAnalysis(unittest.TestCase):
@@ -605,8 +616,8 @@ class TestGradientAnalysis(unittest.TestCase):
             # test that the x data of the line corresponds to `buffer_dists`
             self.assertTrue(
                 np.all(
-                    ba.plot_metric('patch_density', class_val=class_val).lines[
-                        0].get_xdata() == self.buffer_dists))
+                    ba.plot_metric('patch_density', class_val=class_val).
+                    lines[0].get_xdata() == self.buffer_dists))
 
 
 class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
