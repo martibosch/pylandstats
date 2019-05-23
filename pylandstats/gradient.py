@@ -144,10 +144,9 @@ class BufferAnalysis(GradientAnalysis):
                     raise ValueError(
                         "If `base_mask` is a naive geopandas GeoSeries (with "
                         "no crs set), `base_mask_crs` must be provided")
-                else:
-                    base_mask_gser = base_mask.copy(
-                    )  # avoid alias/ref problems
-                    base_mask_gser.crs = base_mask_crs
+
+                base_mask_gser = base_mask.copy()  # avoid alias/ref problems
+                base_mask_gser.crs = base_mask_crs
             else:
                 base_mask_gser = base_mask
 

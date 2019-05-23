@@ -48,17 +48,17 @@ class MultiLandscape:
             raise ValueError(
                 "The lengths of `landscapes` and `{}` must coincide".format(
                     feature_name))
-        else:
-            # set a `feature_name` attribute with the value `feature_values`,
-            # so children classes can access it (e.g., for
-            # `SpatioTemporalAnalysis`, `feature_name` will be 'dates' and
-            # `feature_values` will be a list of dates that will therefore be
-            # accessible as an attribute as in `instance.dates`
-            setattr(self, feature_name, feature_values)
-            # also set a `feature_name` attribute so that the methods of this
-            # class know how to access such attribute, i.e., as in
-            # `getattr(self, self.feature_name)`
-            setattr(self, 'feature_name', feature_name)
+
+        # set a `feature_name` attribute with the value `feature_values`, so
+        # children classes can access it (e.g., for `SpatioTemporalAnalysis`,
+        # `feature_name` will be 'dates' and `feature_values` will be a list
+        # of dates that will therefore be accessible as an attribute as in
+        # `instance.dates`
+        setattr(self, feature_name, feature_values)
+        # also set a `feature_name` attribute so that the methods of this
+        # class know how to access such attribute, i.e., as in
+        # `getattr(self, self.feature_name)`
+        setattr(self, 'feature_name', feature_name)
 
         if metrics is None:
             self.class_metrics = Landscape.CLASS_METRICS
@@ -73,11 +73,11 @@ class MultiLandscape:
                     "The metrics {} are not among the implemented metrics ".
                     format(inexistent_metrics) +
                     "(that is {})".format(implemented_metrics))
-            else:
-                self.class_metrics = np.intersect1d(metrics,
-                                                    Landscape.CLASS_METRICS)
-                self.landscape_metrics = np.intersect1d(
-                    metrics, Landscape.LANDSCAPE_METRICS)
+
+            self.class_metrics = np.intersect1d(metrics,
+                                                Landscape.CLASS_METRICS)
+            self.landscape_metrics = np.intersect1d(
+                metrics, Landscape.LANDSCAPE_METRICS)
 
         present_classes = reduce(
             np.union1d,
@@ -91,8 +91,8 @@ class MultiLandscape:
                     "The classes {} are not among the classes present on the ".
                     format(inexistent_classes) +
                     "landscapes (that is {})".format(present_classes))
-            else:
-                self.classes = classes
+
+            self.classes = classes
 
         self.metrics_kws = metrics_kws
 
@@ -200,15 +200,16 @@ class MultiLandscape:
                 raise ValueError(
                     "Metric '{metric}' is not among {metrics}".format(
                         metric=metric, metrics=self.landscape_metrics))
-            else:
-                if class_val not in self.classes:
-                    raise ValueError(
-                        "Class '{class_val}' is not among {classes}".format(
-                            class_val=class_val, classes=self.classes))
-                else:
-                    raise ValueError(
-                        "Metric '{metric}' is not among {metrics}".format(
-                            metric=metric, metrics=self.class_metrics))
+
+            if class_val not in self.classes:
+                raise ValueError(
+                    "Class '{class_val}' is not among {classes}".format(
+                        class_val=class_val, classes=self.classes))
+
+            # if `class_val` is provided and is in `self.classes`, the
+            # captured `KeyError` comes from an inexistent `metric` column
+            raise ValueError("Metric '{metric}' is not among {metrics}".format(
+                metric=metric, metrics=self.class_metrics))
 
         if ax is None:
             fig, ax = plt.subplots(**subplots_kws)

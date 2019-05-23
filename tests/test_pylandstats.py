@@ -28,7 +28,7 @@ class TestImports(unittest.TestCase):
 
 class TestLandscape(unittest.TestCase):
     def setUp(self):
-        ls_arr = np.load('tests/input_data/ls250_06.npy')
+        ls_arr = np.load('tests/input_data/ls250_06.npy', allow_pickle=True)
         self.ls = pls.Landscape(ls_arr, res=(250, 250))
 
     def test_io(self):
@@ -249,10 +249,12 @@ class TestMultiLandscape(unittest.TestCase):
         from pylandstats.multilandscape import MultiLandscape
 
         self.landscapes = [
-            pls.Landscape(np.load('tests/input_data/ls100_06.npy'),
-                          res=(100, 100)),
-            pls.Landscape(np.load('tests/input_data/ls250_06.npy'),
-                          res=(250, 250))
+            pls.Landscape(
+                np.load('tests/input_data/ls100_06.npy', allow_pickle=True),
+                res=(100, 100)),
+            pls.Landscape(
+                np.load('tests/input_data/ls250_06.npy', allow_pickle=True),
+                res=(250, 250))
         ]
         self.landscape_fps = [
             'tests/input_data/ls100_06.tif', 'tests/input_data/ls250_06.tif'
@@ -518,9 +520,11 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
 
 class TestGradientAnalysis(unittest.TestCase):
     def setUp(self):
-        self.masks_arr = np.load('tests/input_data/masks_arr.npy')
+        self.masks_arr = np.load('tests/input_data/masks_arr.npy',
+                                 allow_pickle=True)
         self.landscape = pls.Landscape(
-            np.load('tests/input_data/ls250_06.npy'), res=(250, 250))
+            np.load('tests/input_data/ls250_06.npy', allow_pickle=True),
+            res=(250, 250))
         self.landscape_fp = 'tests/input_data/ls250_06.tif'
         self.landscape_transform = affine.Affine(249.96431809611167, 0.0,
                                                  4037084.1862939927, 0.0,
