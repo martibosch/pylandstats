@@ -273,10 +273,10 @@ class MultiLandscape:
         else:
             num_rows = int(np.ceil(len(metrics) / num_cols))
 
-        figwidth, figlength = plt.rcParams['figure.figsize']
+        figwidth, figheight = plt.rcParams['figure.figsize']
         fig, axes = plt.subplots(
             num_rows, num_cols, sharex=True, figsize=(figwidth * num_cols,
-                                                      figlength * num_rows))
+                                                      figheight * num_rows))
 
         if num_rows == 1 and num_cols == 1:
             flat_axes = [axes]
@@ -328,10 +328,10 @@ class MultiLandscape:
         """
 
         feature_values = getattr(self, self.feature_name)
-        figwidth, figlength = plt.rcParams['figure.figsize']
+        figwidth, figheight = plt.rcParams['figure.figsize']
         fig, axes = plt.subplots(
             1, len(feature_values), figsize=(figwidth * len(feature_values),
-                                             figlength))
+                                             figheight))
 
         for feature_value, landscape, ax in zip(feature_values,
                                                 self.landscapes, axes):
