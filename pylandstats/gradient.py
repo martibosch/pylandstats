@@ -44,9 +44,8 @@ class GradientAnalysis(MultiLandscape):
         landscapes = [
             Landscape(
                 np.where(mask_arr, landscape.landscape_arr, landscape.nodata),
-                res=(landscape.cell_width,
-                     landscape.cell_height), nodata=landscape.nodata)
-            for mask_arr in masks_arr
+                res=(landscape.cell_width, landscape.cell_height),
+                nodata=landscape.nodata) for mask_arr in masks_arr
         ]
 
         # TODO: is it useful to store `masks_arr` as instance attribute?
@@ -168,9 +167,9 @@ class BufferAnalysis(GradientAnalysis):
                 landscape_shape = src.height, src.width
 
         # 3. buffer around base mask
-        avg_longitude = base_mask_gser.to_crs({
-            'init': 'epsg:4326'
-        }).unary_union.centroid.x
+        avg_longitude = base_mask_gser.to_crs(
+            '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs'
+        ).unary_union.centroid.x
         # trick from OSMnx to be able to buffer in meters
         utm_zone = int(np.floor((avg_longitude + 180) / 6.) + 1)
         utm_crs = {
@@ -214,6 +213,7 @@ class BufferAnalysis(GradientAnalysis):
 
         # now we can call the parent's init with the landscape and the
         # constructed buffer_masks_arr
-        super(BufferAnalysis, self).__init__(
-            landscape, buffer_masks_arr, 'buffer_dists', buffer_dists,
-            metrics=metrics, classes=classes, metrics_kws=metrics_kws)
+        super(BufferAnalysis,
+              self).__init__(landscape, buffer_masks_arr, 'buffer_dists',
+                             buffer_dists, metrics=metrics, classes=classes,
+                             metrics_kws=metrics_kws)

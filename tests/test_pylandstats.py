@@ -11,6 +11,17 @@ from shapely import geometry
 import pylandstats as pls
 
 plt.switch_backend('agg')  # only for testing purposes
+geom_crs = '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs'
+landscape_crs = 'PROJCS["ETRS_1989_LAEA",GEOGCS["GCS_ETRS_1989",DATUM[' \
+                '"European_Terrestrial_Reference_System_1989",SPHEROID['\
+                '"GRS_1980",6378137,298.257222101,AUTHORITY["EPSG","7019"]],'\
+                'AUTHORITY["EPSG","6258"]],PRIMEM["Greenwich",0],UNIT['\
+                '"degree",0.0174532925199433]],PROJECTION['\
+                '"Lambert_Azimuthal_Equal_Area"],PARAMETER['\
+                '"latitude_of_center",52],PARAMETER["longitude_of_center",'\
+                '10],PARAMETER["false_easting",4321000],PARAMETER['\
+                '"false_northing",3210000],UNIT["metre",1,AUTHORITY['\
+                '"EPSG","9001"]]]'
 
 
 class TestImports(unittest.TestCase):
@@ -530,10 +541,8 @@ class TestGradientAnalysis(unittest.TestCase):
                                                  4037084.1862939927, 0.0,
                                                  -250.7188576750866,
                                                  2631436.6068059015)
-        self.landscape_crs = {'init': 'epsg:3035'}
         # for buffer analysis
         self.geom = geometry.Point(6.6327025, 46.5218269)
-        self.geom_crs = {'init': 'epsg:4326'}
         self.buffer_dists = [10000, 15000, 20000]
 
     def test_gradient_init(self):
@@ -558,7 +567,7 @@ class TestGradientAnalysis(unittest.TestCase):
 
     def test_buffer_init(self):
         naive_gser = gpd.GeoSeries([self.geom])
-        gser = gpd.GeoSeries([self.geom], crs=self.geom_crs)
+        gser = gpd.GeoSeries([self.geom], crs=geom_crs)
 
         # test that we cannot init from a shapely geometry without providing
         # its crs
@@ -570,17 +579,16 @@ class TestGradientAnalysis(unittest.TestCase):
         for base_mask in [self.geom, naive_gser, gser]:
             self.assertRaises(ValueError, pls.BufferAnalysis, self.landscape,
                               base_mask, self.buffer_dists,
-                              {'base_mask_crs': self.geom_crs})
+                              {'base_mask_crs': geom_crs})
+            self.assertRaises(ValueError, pls.BufferAnalysis, self.landscape,
+                              base_mask, self.buffer_dists, {
+                                  'base_mask_crs': geom_crs,
+                                  'landscape_crs': landscape_crs
+                              })
             self.assertRaises(
                 ValueError, pls.BufferAnalysis, self.landscape, base_mask,
                 self.buffer_dists, {
-                    'base_mask_crs': self.geom_crs,
-                    'landscape_crs': self.landscape_crs
-                })
-            self.assertRaises(
-                ValueError, pls.BufferAnalysis, self.landscape, base_mask,
-                self.buffer_dists, {
-                    'base_mask_crs': self.geom_crs,
+                    'base_mask_crs': geom_crs,
                     'landscape_transform': self.landscape_transform
                 })
 
@@ -595,18 +603,15 @@ class TestGradientAnalysis(unittest.TestCase):
         #    Landscape instance with its crs and transform
         for ba in [
                 pls.BufferAnalysis(self.landscape_fp, self.geom,
-                                   self.buffer_dists,
-                                   base_mask_crs=self.geom_crs),
+                                   self.buffer_dists, base_mask_crs=geom_crs),
                 pls.BufferAnalysis(self.landscape_fp, naive_gser,
-                                   self.buffer_dists,
-                                   base_mask_crs=self.geom_crs),
+                                   self.buffer_dists, base_mask_crs=geom_crs),
                 pls.BufferAnalysis(self.landscape_fp, gser, self.buffer_dists),
                 pls.BufferAnalysis(self.landscape_fp, gser, self.buffer_dists,
-                                   base_mask_crs=self.geom_crs),
+                                   base_mask_crs=geom_crs),
                 pls.BufferAnalysis(
                     self.landscape, gser, self.buffer_dists,
-                    base_mask_crs=self.geom_crs,
-                    landscape_crs=self.landscape_crs,
+                    base_mask_crs=geom_crs, landscape_crs=landscape_crs,
                     landscape_transform=self.landscape_transform)
         ]:
             self.assertEqual(ba.feature_name, 'buffer_dists')
@@ -620,9 +625,9 @@ class TestGradientAnalysis(unittest.TestCase):
         self.assertRaises(ValueError, pls.BufferAnalysis, self.landscape_fp,
                           polygon, self.buffer_dists, {
                               'buffer_rings': True,
-                              'base_mask_crs': self.geom_crs
+                              'base_mask_crs': geom_crs
                           })
-        polygon_gser = gpd.GeoSeries([polygon], crs=self.geom_crs)
+        polygon_gser = gpd.GeoSeries([polygon], crs=geom_crs)
         self.assertRaises(ValueError, pls.BufferAnalysis, self.landscape_fp,
                           polygon_gser, self.buffer_dists, {
                               'buffer_rings': True,
@@ -651,7 +656,7 @@ class TestGradientAnalysis(unittest.TestCase):
 
     def test_buffer_plot_metrics(self):
         ba = pls.BufferAnalysis(self.landscape_fp, self.geom,
-                                self.buffer_dists, base_mask_crs=self.geom_crs)
+                                self.buffer_dists, base_mask_crs=geom_crs)
 
         # test for `None` (landscape-level) and an existing class (class-level)
         for class_val in [None, ba.classes[0]]:
@@ -669,7 +674,7 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
         ]
         self.dates = [2006, 2012]
         self.base_mask = gpd.GeoSeries([geometry.Point(6.6327025, 46.5218269)],
-                                       crs={'init': 'epsg:4326'})
+                                       crs=geom_crs)
         self.buffer_dists = [10000, 15000, 20000]
 
     def test_spatiotemporalbufferanalysis_init(self):
