@@ -85,7 +85,8 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
                                        metrics_kws=metrics_kws))
 
     def plot_metric(self, metric, class_val=None, ax=None, metric_legend=True,
-                    fmt='--o', plot_kws={}, subplots_kws={}):
+                    metric_label=None, fmt='--o', plot_kws={},
+                    subplots_kws={}):
         # for buffer_analysis in self.buffer_analyses
         if ax is None:
             fig, ax = plt.subplots(**subplots_kws)
@@ -96,12 +97,14 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             for buffer_dist, sta in zip(self.buffer_dists, self.stas):
                 _plot_kws['label'] = buffer_dist
                 ax = sta.plot_metric(metric, class_val=class_val, ax=ax,
-                                     metric_legend=metric_legend, fmt=fmt,
+                                     metric_legend=metric_legend,
+                                     metric_label=metric_label, fmt=fmt,
                                      plot_kws=_plot_kws)
         else:
             for sta in self.stas:
                 ax = sta.plot_metric(metric, class_val=class_val, ax=ax,
-                                     metric_legend=metric_legend, fmt=fmt,
+                                     metric_legend=metric_legend,
+                                     metric_label=metric_label, fmt=fmt,
                                      plot_kws=plot_kws)
 
         return ax

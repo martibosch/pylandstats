@@ -454,6 +454,34 @@ class TestMultiLandscape(unittest.TestCase):
                                     metrics=['edge_density', 'patch_density'])
         self.assertEqual(len(axes), 2)
 
+        # test metric label arguments/settings
+        # when passing default arguments, the axis ylabel must be the one set
+        # within the settings module
+        self.assertEqual(
+            ml.plot_metric('edge_density').get_ylabel(),
+            pls.settings.metric_label_dict['edge_density'])
+        # when passing `metric_legend=False`, the axis ylabel must be an empty
+        # string
+        self.assertEqual(
+            ml.plot_metric('edge_density', metric_legend=False).get_ylabel(),
+            '')
+        # when passing an non-empty string as `metric_label`, the axis ylabel
+        # must be such string
+        self.assertEqual(
+            ml.plot_metric('edge_density', metric_label='foo').get_ylabel(),
+            'foo')
+
+        # when passing an empty dict as `metric_label_dict` in `plot_metrics`,
+        # the axis ylabel must be the name of the metric's method, and
+        # warnings should be raised
+        with warnings.catch_warnings(record=True) as w:
+            metrics = ['edge_density', 'patch_density']
+            fig, axes = ml.plot_metrics(class_val=existent_class_val,
+                                        metrics=metrics, metric_label_dict={})
+            for metric, ax in zip(metrics, axes):
+                self.assertEqual(ax.get_ylabel(), metric)
+            self.assertGreater(len(w), 0)
+
     def test_plot_landscapes(self):
         ml = self.InstantiableMultiLandscape(self.landscape_fps,
                                              self.feature_name,

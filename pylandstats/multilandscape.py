@@ -1,4 +1,5 @@
 import abc
+import warnings
 from functools import reduce
 
 import matplotlib.pyplot as plt
@@ -6,6 +7,7 @@ import numpy as np
 import pandas as pd
 import six
 
+from . import settings
 from .landscape import Landscape
 
 
@@ -154,7 +156,8 @@ class MultiLandscape:
             return self._landscape_metrics_df
 
     def plot_metric(self, metric, class_val=None, ax=None, metric_legend=True,
-                    fmt='--o', plot_kws={}, subplots_kws={}):
+                    metric_label=None, fmt='--o', plot_kws={},
+                    subplots_kws={}):
         """
         Parameters
         ----------
@@ -169,6 +172,10 @@ class MultiLandscape:
         metric_legend : bool, default True
             Whether the metric label should be displayed within the plot (as
             label of the y-axis)
+        metric_label : str, optional
+            Label of the y-axis to be displayed if `metric_legend` is `True`.
+            If the provided value is `None`, the label will be taken from the
+            `settings` module
         fmt : str, default '--o'
             A format string for `plt.plot`
         plot_kws : dict
@@ -221,13 +228,19 @@ class MultiLandscape:
         ax.plot(feature_values, metric_values, fmt, **plot_kws)
 
         if metric_legend:
-            ax.set_ylabel(metric)
+            if metric_label is None:
+                # get the metric label from the settings, otherwise use the
+                # metric method name, i.e., metric name in camel-case
+                metric_label = settings.metric_label_dict.get(metric, metric)
+
+            ax.set_ylabel(metric_label)
 
         return ax
 
     def plot_metrics(self, class_val=None, metrics=None, num_cols=3,
-                     metric_legend=True, xtick_labelbottom=False, fmt='--o',
-                     plot_kws={}, subplots_adjust_kws={}):
+                     metric_legend=True, metric_label_dict=None,
+                     xtick_labelbottom=False, fmt='--o', plot_kws={},
+                     subplots_adjust_kws={}):
         """
         Parameters
         ----------
@@ -245,6 +258,11 @@ class MultiLandscape:
         metric_legend : bool, default True
             Whether the metric label should be displayed within the plot (as
             label of the y-axis)
+        metric_label_dict : dict, optional
+            A mapping of metric method names to the labels their respective
+            labels that should be displayed as y-axis of each plot if
+            `metric_legend` is `True`. If not provided, it will be taken from
+            the `settings` module.
         xtick_labelbottom : bool, default False
             If True, the label ticks (dates) in the xaxis will be displayed at
             each row. Otherwise they will only be displayed at the bottom row
@@ -276,17 +294,28 @@ class MultiLandscape:
 
         figwidth, figheight = plt.rcParams['figure.figsize']
         fig, axes = plt.subplots(
-            num_rows, num_cols, sharex=True, figsize=(figwidth * num_cols,
-                                                      figheight * num_rows))
+            num_rows, num_cols, sharex=True,
+            figsize=(figwidth * num_cols, figheight * num_rows))
 
         if num_rows == 1 and num_cols == 1:
             flat_axes = [axes]
         else:
             flat_axes = axes.flatten()
 
+        if metric_label_dict is None:
+            metric_label_dict = settings.metric_label_dict
         for metric, ax in zip(metrics, flat_axes):
+            try:
+                metric_label = metric_label_dict[metric]
+            except KeyError:
+                warnings.warn(
+                    "Could not find label for metric '{}' in ".format(metric) +
+                    "`metric_label_dict`. Using metric method name",
+                    RuntimeWarning)
+                metric_label = metric
             self.plot_metric(metric, class_val=class_val, ax=ax,
-                             metric_legend=metric_legend, fmt=fmt,
+                             metric_legend=metric_legend,
+                             metric_label=metric_label, fmt=fmt,
                              plot_kws=plot_kws)
 
         if xtick_labelbottom:
@@ -331,8 +360,8 @@ class MultiLandscape:
         feature_values = getattr(self, self.feature_name)
         figwidth, figheight = plt.rcParams['figure.figsize']
         fig, axes = plt.subplots(
-            1, len(feature_values), figsize=(figwidth * len(feature_values),
-                                             figheight))
+            1, len(feature_values),
+            figsize=(figwidth * len(feature_values), figheight))
 
         for feature_value, landscape, ax in zip(feature_values,
                                                 self.landscapes, axes):
