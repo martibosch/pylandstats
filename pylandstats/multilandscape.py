@@ -275,9 +275,8 @@ class MultiLandscape:
 
         Returns
         -------
-        fig, ax : tuple
-            - figure object
-            - axis object with the plot drawn onto it
+        fig : `matplotlib.figure.Figure`
+            The figure with its corresponding plots drawn into its axes
         """
 
         if metrics is None:
@@ -332,7 +331,7 @@ class MultiLandscape:
         if subplots_adjust_kws:
             fig.subplots_adjust(**subplots_adjust_kws)
 
-        return fig, axes
+        return fig
 
     def plot_landscapes(self, cmap=None, legend=True, imshow_kws={},
                         subplots_adjust_kws={}):
@@ -352,9 +351,8 @@ class MultiLandscape:
 
         Returns
         -------
-        fig, ax : tuple
-            - figure object
-            - axis object with the plot drawn onto it
+        fig : `matplotlib.figure.Figure`
+            The figure with its corresponding plots drawn into its axes
         """
 
         feature_values = getattr(self, self.feature_name)
@@ -372,4 +370,4 @@ class MultiLandscape:
         if subplots_adjust_kws:
             fig.subplots_adjust(**subplots_adjust_kws)
 
-        return fig, axes
+        return fig

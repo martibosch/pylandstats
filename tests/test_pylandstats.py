@@ -450,9 +450,9 @@ class TestMultiLandscape(unittest.TestCase):
                 np.all(line.get_xdata() == getattr(ml, ml.feature_name)))
 
         # test that there are two axes if we plot two metrics
-        fig, axes = ml.plot_metrics(class_val=existent_class_val,
-                                    metrics=['edge_density', 'patch_density'])
-        self.assertEqual(len(axes), 2)
+        fig = ml.plot_metrics(class_val=existent_class_val,
+                              metrics=['edge_density', 'patch_density'])
+        self.assertEqual(len(fig.axes), 2)
 
         # test metric label arguments/settings
         # when passing default arguments, the axis ylabel must be the one set
@@ -476,9 +476,9 @@ class TestMultiLandscape(unittest.TestCase):
         # warnings should be raised
         with warnings.catch_warnings(record=True) as w:
             metrics = ['edge_density', 'patch_density']
-            fig, axes = ml.plot_metrics(class_val=existent_class_val,
-                                        metrics=metrics, metric_label_dict={})
-            for metric, ax in zip(metrics, axes):
+            fig = ml.plot_metrics(class_val=existent_class_val,
+                                  metrics=metrics, metric_label_dict={})
+            for metric, ax in zip(metrics, fig.axes):
                 self.assertEqual(ax.get_ylabel(), metric)
             self.assertGreater(len(w), 0)
 
@@ -487,13 +487,13 @@ class TestMultiLandscape(unittest.TestCase):
                                              self.feature_name,
                                              self.feature_values)
 
-        fig, axes = ml.plot_landscapes()
+        fig = ml.plot_landscapes()
 
         # there must be one column for each landscape
-        self.assertEqual(len(axes), len(ml))
+        self.assertEqual(len(fig.axes), len(ml))
 
         # returned axes must be instances of matplotlib axes
-        for ax in axes:
+        for ax in fig.axes:
             self.assertIsInstance(ax, plt.Axes)
 
 
