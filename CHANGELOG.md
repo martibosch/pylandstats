@@ -1,5 +1,14 @@
 # Change log
 
+## 0.5.0 (28/05/2019)
+
+* methods plotting multiple axes return only the figure instead of a tuple with the figure and the axes
+* settings module that allow configuring metrics' labels in plots, defaulting to FRAGSTATS abbreviations
+* chaged CRS in tests to work with pyproj >= 2.0.0
+* corrected `figlength` for `figwidth`
+* warn when computing metrics that require an unmet minimum number of patches or classes (and their computation returns nan)
+* all tests with `unittest.TestCase` assert methods
+
 ## 0.4.1 (03/04/2019)
 
 * added docstrings for `MultiLandscape`, `GradientAnalysis` and `BufferAnalysis`
