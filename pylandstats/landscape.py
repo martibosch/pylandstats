@@ -232,7 +232,9 @@ class Landscape:
             for unique_label in unique_labels:
                 # we build a KDTree with all the coords that are not part of
                 # the current feature
-                tree = spatial.cKDTree(coords[labels != unique_label])
+                tree = spatial.cKDTree(coords[labels != unique_label],
+                                       balanced_tree=False,
+                                       compact_nodes=False)
                 # now, for each coord of the current feature, we query the
                 # closest coord of the tree (which does not include points of
                 # the current feature)
