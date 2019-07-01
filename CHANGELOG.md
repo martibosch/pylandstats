@@ -1,5 +1,10 @@
 # Change log
 
+## 0.6.0 (01/07/2019)
+
+* flat array approach to the computation of the adjacency matrix with pythran to improve performance (plus fixes a bug on the computation of `total_edge`)
+* initialization of `scipy.spatial.cKDTree` with keyword arguments `balanced_tree` and `compact_nodes` set to `False`
+
 ## 0.5.0 (28/05/2019)
 
 * methods plotting multiple axes return only the figure instead of a tuple with the figure and the axes
