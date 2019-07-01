@@ -405,9 +405,12 @@ class TestMultiLandscape(unittest.TestCase):
                 else:
                     self.assertLess(class_metrics['total_area'],
                                     class_metrics_kws['total_area'])
+                    # we need quite some tolerance because pixel resolutions in
+                    # raster files might be wierd float values, e.g., 99.13213
+                    # instead of 100 (meters)
                     self.assertLessEqual(
                         class_metrics['total_edge'],
-                        class_metrics_kws['total_edge'] + .0004)
+                        1.01 * class_metrics_kws['total_edge'])
 
     def test_multilandscape_plot_metrics(self):
         ml = self.InstantiableMultiLandscape(self.landscape_fps,

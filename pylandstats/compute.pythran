@@ -1,0 +1,1 @@
+export compute_adjacency_arr(uint32[:,:], int)

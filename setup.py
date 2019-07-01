@@ -5,6 +5,10 @@ from os import path
 
 from setuptools import find_packages, setup
 
+# pythran imports must go AFTER setuptools imports
+# See: https://github.com/pypa/setuptools/issues/309 and https://bit.ly/300HKtK
+from pythran.dist import PythranExtension
+
 __version__ = '0.5.0'
 
 classifiers = [
@@ -52,4 +56,8 @@ setup(
     install_requires=install_requires,
     extras_require={'geo': geo},
     dependency_links=dependency_links,
+    ext_modules=[
+        PythranExtension('pylandstats_compute',
+                         sources=['pylandstats/compute.py'])
+    ],
 )

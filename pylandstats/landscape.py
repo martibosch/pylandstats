@@ -2,7 +2,6 @@ from __future__ import division
 
 import warnings
 from functools import partial
-from itertools import combinations_with_replacement
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,14 +9,10 @@ import pandas as pd
 import rasterio
 from scipy import ndimage, spatial, stats
 
+import pylandstats_compute as pls_compute
+
 __all__ = ['Landscape']
 
-KERNEL_HORIZONTAL = np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]], dtype=np.int8)
-KERNEL_VERTICAL = np.array([[0, 1, 0], [0, 1, 0], [0, 1, 0]], dtype=np.int8)
-KERNEL_ABOVE = np.array([[0, 0, 0], [0, 1, 0], [0, 1, 0]], dtype=np.int8)
-KERNEL_BELOW = np.array([[0, 1, 0], [0, 1, 0], [0, 0, 0]], dtype=np.int8)
-KERNEL_LEFT = np.array([[0, 0, 0], [0, 1, 1], [0, 0, 0]], dtype=np.int8)
-KERNEL_RIGHT = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 0]], dtype=np.int8)
 KERNEL_MOORE = ndimage.generate_binary_structure(2, 2)
 
 
@@ -68,8 +63,8 @@ class Landscape:
         # cover rasters are often of integer dtypes. Therefore, we will
         # explicitly set the dtype of the landscape classes to ensure
         # consistency
-        classes = np.array(
-            sorted(np.unique(landscape_arr)), dtype=self.landscape_arr.dtype)
+        classes = np.array(sorted(np.unique(landscape_arr)),
+                           dtype=self.landscape_arr.dtype)
         classes = classes[classes != nodata]
         classes = classes[~np.isnan(classes)]
         self.classes = classes
@@ -132,29 +127,6 @@ class Landscape:
         return np.sum(arr[1:, :] != arr[:-1, :]) * self.cell_width + np.sum(
             arr[:, 1:] != arr[:, :-1]) * self.cell_height
 
-    def compute_arr_edge(self, arr):
-        """
-        Computes the edge of a feature (boolean array) considering the
-        landscape background in order to exclude the edges between the feature
-        and nodata values
-        """
-        # class_with_bg_arr = np.copy(self.landscape_arr)
-        # class_with_bg_arr[~class_cond] = self.landscape_arr[~class_cond]
-        # get a 'boolean-like' integer array where one indicates that the cell
-        # corresponds to some class value whereas zero indicates that the cell
-        # corresponds to a nodata value
-        data_arr = (self.landscape_arr != self.nodata).astype(np.int8)
-
-        # use a convolution to determine which edges should be exluded from the
-        # perimeter's width and height
-        perimeter_width = np.sum(arr[1:, :] != arr[:-1, :]) + np.sum(
-            ndimage.convolve(data_arr, KERNEL_VERTICAL)[arr] - 3)
-        perimeter_height = np.sum(arr[:, 1:] != arr[:, :-1]) + np.sum(
-            ndimage.convolve(data_arr, KERNEL_HORIZONTAL)[arr] - 3)
-
-        return perimeter_width * self.cell_width + \
-            perimeter_height * self.cell_height
-
     # compute methods to obtain patchwise scalars
 
     def compute_patch_areas(self, label_arr):
@@ -180,8 +152,8 @@ class Landscape:
         # ?
         # I suspect no, because each feature array is flattened, which does
         # not allow for the computation of the perimeter or other shape metrics
-        for i, patch_slice in enumerate(
-                ndimage.find_objects(label_arr), start=1):
+        for i, patch_slice in enumerate(ndimage.find_objects(label_arr),
+                                        start=1):
             patch_arr = np.pad(label_arr[patch_slice] == i, pad_width=1,
                                mode='constant',
                                constant_values=False)  # self.nodata
@@ -401,56 +373,37 @@ class Landscape:
             return self._cached_adjacency_df
         except AttributeError:
             num_classes = len(self.classes)
-            # first prepare a reclassified array of the landscape where we can
-            # use a convolution to determine the adjacencies
+            # first create a reclassified array with the landscape's shape
+            # where each class value will be an int from 0 to `num_classes - 1`
+            # and the nodata value will be an int of value `num_classes`
             reclassified_arr = np.copy(self.landscape_arr)
-            for i, class_val in enumerate(self.classes, start=1):
+            for i, class_val in enumerate(self.classes):
                 reclassified_arr[self.landscape_arr == class_val] = i
-            reclassified_arr[self.landscape_arr == self.
-                             nodata] = num_classes + 1
-            # now let's prepare the adjacency table. The +1 is to add the
-            # border/nodata column at the end
-            adjacency_table_arr = np.zeros((num_classes, num_classes + 1),
-                                           dtype=np.int)
+                reclassified_arr[self.landscape_arr ==
+                                 self.nodata] = num_classes
 
-            # let's define this function to get the number of adjacencies in
-            # `arr` between classes `i` and `j` through a convolution
-            def _num_adjacencies(arr, i, j, cval=0):
-                arr_ik = np.where(np.isin(arr, [i, j]), arr, 0)
-                c = i + j
-                adj_ik_above = (ndimage.convolve(
-                    arr_ik, KERNEL_ABOVE, mode='constant',
-                    cval=cval) == c) & (arr_ik == i)
-                adj_ik_below = (ndimage.convolve(
-                    arr_ik, KERNEL_BELOW, mode='constant',
-                    cval=cval) == c) & (arr_ik == i)
-                adj_ik_left = (ndimage.convolve(
-                    arr_ik, KERNEL_LEFT, mode='constant',
-                    cval=cval) == c) & (arr_ik == i)
-                adj_ik_right = (ndimage.convolve(
-                    arr_ik, KERNEL_RIGHT, mode='constant',
-                    cval=cval) == c) & (arr_ik == i)
-                return np.sum(adj_ik_above) + np.sum(adj_ik_below) + np.sum(
-                    adj_ik_left) + np.sum(adj_ik_right)
+            # pad the reclassified array with the nodata value (i.e.,
+            # `num_classes` see comment above). Set dtype to `np.uint32` to
+            # match the numba method signature of
+            # `pylandstats_compute.compute_adjacency_arr`
+            padded_arr = np.pad(reclassified_arr, pad_width=1, mode='constant',
+                                constant_values=num_classes).astype(np.uint32)
 
-            # finally let's iterate over all the combinations of classes to
-            # apply the convolution and obtain all the adjacencies
-            class_range = range(1, num_classes + 1)
+            # compute the adjacency array
+            adjacency_arr = pls_compute.compute_adjacency_arr(
+                padded_arr, num_classes)  # .sum(axis=0)
 
-            for i, j in combinations_with_replacement(class_range, 2):
-                num_adjacencies = _num_adjacencies(reclassified_arr, i, j)
-                adjacency_table_arr[i - 1, j - 1] = num_adjacencies
-                adjacency_table_arr[j - 1, i - 1] = num_adjacencies
+            # put the adjacency array in the form of a pandas DataFrame
+            adjacency_cols = np.concatenate([self.classes, [self.nodata]])
+            adjacency_df = pd.DataFrame(
+                index=pd.MultiIndex.from_product(
+                    [['horizontal', 'vertical'], adjacency_cols],
+                    names=['direction', 'class_val']), columns=adjacency_cols)
+            adjacency_df.loc['horizontal'] = adjacency_arr[0]
+            adjacency_df.loc['vertical'] = adjacency_arr[1]
 
-            # nodata
-            for i in class_range:
-                nodata_j = num_classes + 1
-                adjacency_table_arr[i - 1, nodata_j - 1] = _num_adjacencies(
-                    reclassified_arr, i, nodata_j, cval=nodata_j)
-
-            self._cached_adjacency_df = pd.DataFrame(
-                adjacency_table_arr, index=self.classes,
-                columns=np.concatenate([self.classes, [self.nodata]]))
+            # cache it
+            self._cached_adjacency_df = adjacency_df
 
             return self._cached_adjacency_df
 
@@ -533,9 +486,9 @@ class Landscape:
 
     def _metric_ra(self, class_val, patch_metric_method,
                    patch_metric_method_kwargs={}):
-        return self._metric_reduce(class_val, patch_metric_method,
-                                   patch_metric_method_kwargs,
-                                   lambda ser: ser.max() - ser.min())
+        return self._metric_reduce(
+            class_val, patch_metric_method,
+            patch_metric_method_kwargs, lambda ser: ser.max() - ser.min())
 
     def _metric_sd(self, class_val, patch_metric_method,
                    patch_metric_method_kwargs={}):
@@ -1034,8 +987,27 @@ class Landscape:
                     np.pad(self.landscape_arr, pad_width=1, mode='constant',
                            constant_values=self.nodata))
             else:
-                total_edge = self.compute_arr_edge(
-                    self.landscape_arr != self.nodata)
+                # total_edge = self.compute_arr_edge(
+                #     self.landscape_arr != self.nodata)
+                if self.cell_width != self.cell_height:
+                    total_edge = 0
+                    for direction, length in [('horizontal', self.cell_width),
+                                              ('vertical', self.cell_height)]:
+                        adjacency_arr = np.triu(
+                            self._adjacency_df.loc[direction].drop(
+                                self.nodata).drop(self.nodata, axis=1))
+                        # `np.fill_diagonal` acts inplace, however `np.triu`
+                        # returns a copy so we do not need to worry about
+                        # inadvently modfying `self._adjacency_df`
+                        np.fill_diagonal(adjacency_arr, 0)
+                        total_edge += np.sum(adjacency_arr) * length
+                else:
+                    adjacency_arr = np.triu(
+                        self._adjacency_df.groupby(
+                            level=1, sort=False).sum().drop(self.nodata).drop(
+                                self.nodata, axis=1))
+                    np.fill_diagonal(adjacency_arr, 0)
+                    total_edge = np.sum(adjacency_arr) * self.cell_width
         else:
             if count_boundary:
                 # then the total edge is just the sum of the perimeters of all
@@ -1043,8 +1015,21 @@ class Landscape:
                 perimeter_ser = self._get_patch_perimeter_ser(class_val)
                 total_edge = np.sum(perimeter_ser)
             else:
-                total_edge = self.compute_arr_edge(
-                    self.landscape_arr == class_val)
+                # total_edge = self.compute_arr_edge(
+                #     self.landscape_arr == class_val)
+                if self.cell_width != self.cell_height:
+                    total_edge = 0
+                    for direction, length in [('horizontal', self.cell_width),
+                                              ('vertical', self.cell_height)]:
+                        total_edge += np.sum(
+                            self._adjacency_df.loc[direction].drop(
+                                [class_val, self.nodata])[class_val]) * length
+                else:
+                    total_edge = np.sum(
+                        self._adjacency_df.groupby(
+                            level=1, sort=False).sum().drop([
+                                class_val, self.nodata
+                            ])[class_val]) * self.cell_width
 
         return total_edge
 
@@ -1252,8 +1237,8 @@ class Landscape:
         # arguments and then extract its first (and only element) in order to
         # return a scalar
         # TODO: use np.vectorize
-        return self.compute_shape_index(
-            np.array([area]), np.array([perimeter]))[0]
+        return self.compute_shape_index(np.array([area]),
+                                        np.array([perimeter]))[0]
 
     # shape
 
@@ -2035,9 +2020,7 @@ class Landscape:
 
         for i in self.classes:
             p_i = np.sum(self._get_patch_area_ser(i)) / self.landscape_area
-            # use `.loc` to get the row with `nodata` column ; also so that we
-            # can then get the items by column in the for loop below
-            g_i = self._adjacency_df.loc[i]
+            g_i = self._adjacency_df.groupby(level=1, sort=False).sum()[i]
             # print(g_i)
             g_i_sum = np.sum(g_i)
             # print(g_i_sum)
@@ -2129,8 +2112,8 @@ class Landscape:
                     metric_kws = {}
 
                 metrics_dfs.append(
-                    getattr(self, metric)(**metric_kws).drop(
-                        'class_val', axis=1))
+                    getattr(self,
+                            metric)(**metric_kws).drop('class_val', axis=1))
 
         except AttributeError:
             raise ValueError("{metric} is not among {Landscape.PATCH_METRICS}")
@@ -2177,11 +2160,12 @@ class Landscape:
                     metric_kws = {}
 
                 metrics_sers.append(
-                    pd.Series({
-                        class_val: getattr(self, metric)(class_val, **
-                                                         metric_kws)
-                        for class_val in self.classes
-                    }, name=metric))
+                    pd.Series(
+                        {
+                            class_val: getattr(self, metric)(class_val, **
+                                                             metric_kws)
+                            for class_val in self.classes
+                        }, name=metric))
 
         except AttributeError:
             raise ValueError("{metric} is not among {metrics}".format(
