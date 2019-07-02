@@ -452,11 +452,6 @@ class TestMultiLandscape(unittest.TestCase):
             self.assertTrue(
                 np.all(line.get_xdata() == getattr(ml, ml.attribute_name)))
 
-        # test that there are two axes if we plot two metrics
-        fig = ml.plot_metrics(class_val=existent_class_val,
-                              metrics=['edge_density', 'patch_density'])
-        self.assertEqual(len(fig.axes), 2)
-
         # test metric label arguments/settings
         # when passing default arguments, the axis ylabel must be the one set
         # within the settings module
@@ -473,17 +468,6 @@ class TestMultiLandscape(unittest.TestCase):
         self.assertEqual(
             ml.plot_metric('edge_density', metric_label='foo').get_ylabel(),
             'foo')
-
-        # when passing an empty dict as `metric_label_dict` in `plot_metrics`,
-        # the axis ylabel must be the name of the metric's method, and
-        # warnings should be raised
-        with warnings.catch_warnings(record=True) as w:
-            metrics = ['edge_density', 'patch_density']
-            fig = ml.plot_metrics(class_val=existent_class_val,
-                                  metrics=metrics, metric_label_dict={})
-            for metric, ax in zip(metrics, fig.axes):
-                self.assertEqual(ax.get_ylabel(), metric)
-            self.assertGreater(len(w), 0)
 
     def test_plot_landscapes(self):
         ml = self.InstantiableMultiLandscape(self.landscape_fps,

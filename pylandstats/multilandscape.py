@@ -1,5 +1,4 @@
 import abc
-import warnings
 from functools import reduce
 
 import matplotlib.pyplot as plt
@@ -236,102 +235,6 @@ class MultiLandscape:
             ax.set_ylabel(metric_label)
 
         return ax
-
-    def plot_metrics(self, class_val=None, metrics=None, num_cols=3,
-                     metric_legend=True, metric_label_dict=None,
-                     xtick_labelbottom=False, fmt='--o', plot_kws={},
-                     subplots_adjust_kws={}):
-        """
-        Parameters
-        ----------
-        class_val : int, optional
-            If provided, the metrics will be plotted at the level of the
-            corresponding class, otherwise it will be plotted at the landscape
-            level
-        metrics : list-like, optional
-            A list-like of strings with the names of the metrics that should
-            be plotted. The metrics should have been passed within the
-            initialization of this `SpatioTemporalAnalysis` instance
-        num_cols : int, default 3
-            Number of columns for the figure; the rows will be deduced
-            accordingly
-        metric_legend : bool, default True
-            Whether the metric label should be displayed within the plot (as
-            label of the y-axis)
-        metric_label_dict : dict, optional
-            A mapping of metric method names to the labels their respective
-            labels that should be displayed as y-axis of each plot if
-            `metric_legend` is `True`. If not provided, it will be taken from
-            the `settings` module.
-        xtick_labelbottom : bool, default False
-            If True, the label ticks (dates) in the xaxis will be displayed at
-            each row. Otherwise they will only be displayed at the bottom row
-        fmt : str, default '--o'
-            A format string for `plt.plot`
-        plot_kws : dict
-            Keyword arguments to be passed to `plt.plot`
-        subplots_adjust_kws: dict, optional
-            Keyword arguments to be passed to `plt.subplots_adjust`
-
-        Returns
-        -------
-        fig : `matplotlib.figure.Figure`
-            The figure with its corresponding plots drawn into its axes
-        """
-
-        if metrics is None:
-            if class_val is None:
-                metrics = self.landscape_metrics
-            else:
-                metrics = self.class_metrics
-
-        if len(metrics) < num_cols:
-            num_cols = len(metrics)
-            num_rows = 1
-        else:
-            num_rows = int(np.ceil(len(metrics) / num_cols))
-
-        figwidth, figheight = plt.rcParams['figure.figsize']
-        fig, axes = plt.subplots(
-            num_rows, num_cols, sharex=True,
-            figsize=(figwidth * num_cols, figheight * num_rows))
-
-        if num_rows == 1 and num_cols == 1:
-            flat_axes = [axes]
-        else:
-            flat_axes = axes.flatten()
-
-        if metric_label_dict is None:
-            metric_label_dict = settings.metric_label_dict
-        for metric, ax in zip(metrics, flat_axes):
-            try:
-                metric_label = metric_label_dict[metric]
-            except KeyError:
-                warnings.warn(
-                    "Could not find label for metric '{}' in ".format(metric) +
-                    "`metric_label_dict`. Using metric method name",
-                    RuntimeWarning)
-                metric_label = metric
-            self.plot_metric(metric, class_val=class_val, ax=ax,
-                             metric_legend=metric_legend,
-                             metric_label=metric_label, fmt=fmt,
-                             plot_kws=plot_kws)
-
-        if xtick_labelbottom:
-            for ax in flat_axes:
-                # this requires matplotlib >= 2.2
-                ax.xaxis.set_tick_params(labelbottom=True)
-
-        # disable axis for the latest cells that correspond to no metric (i.e.,
-        # when len(metrics) < num_rows * num_cols)
-        for i in range(len(metrics), len(flat_axes)):
-            flat_axes[i].axis('off')
-
-        # adjust spacing between axes
-        if subplots_adjust_kws:
-            fig.subplots_adjust(**subplots_adjust_kws)
-
-        return fig
 
     def plot_landscapes(self, cmap=None, legend=True, imshow_kws={},
                         subplots_adjust_kws={}):
