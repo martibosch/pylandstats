@@ -13,6 +13,10 @@ from . import compute
 
 __all__ = ['Landscape']
 
+# sometimes pixel resolutions in GeoTIFF files are floats therefore
+# compparisons (e.g., `cell_width == cell_height`) should allow for some
+# tolerance (i.e., using `np.isclose`)
+CELLLENGTH_RTOL = .001
 KERNEL_MOORE = ndimage.generate_binary_structure(2, 2)
 
 
@@ -228,7 +232,8 @@ class Landscape:
                 enn[unique_label - 1] = min(mindist)
             # end KDTree
 
-            if np.isclose(self.cell_width, self.cell_height):
+            if np.isclose(self.cell_width, self.cell_height,
+                          rtol=CELLLENGTH_RTOL):
                 enn *= self.cell_width
             else:
                 enn *= np.sqrt(self.cell_area)
@@ -261,15 +266,8 @@ class Landscape:
         #         min_p = 4 * n + 4
 
         #     return perimeter_cells / min_p
-        if self.cell_width != self.cell_height:
-            # this is rare and not even supported in FRAGSTATS. We could
-            # calculate the perimeter in terms of cell counts in a
-            # dedicated function and then adjust for a square standard,
-            # but I believe it is not worth the effort. So we will just
-            # return the base formula without adjusting for the square
-            # standard
-            return .25 * perimeter_ser / np.sqrt(area_ser)
-        else:
+
+        if np.isclose(self.cell_width, self.cell_height, rtol=CELLLENGTH_RTOL):
             area_cells_ser = area_ser / self.cell_area
             # we could also divide by `self.cell_height`
             perimeter_cells_ser = perimeter_ser / self.cell_width
@@ -283,6 +281,14 @@ class Landscape:
             min_p = np.where(area_cells_ser > n * (n + 1), 4 * n + 4, min_p)
 
             return perimeter_cells_ser / min_p
+        else:
+            # this is rare and not even supported in FRAGSTATS. We could
+            # calculate the perimeter in terms of cell counts in a
+            # dedicated function and then adjust for a square standard,
+            # but I believe it is not worth the effort. So we will just
+            # return the base formula without adjusting for the square
+            # standard
+            return .25 * perimeter_ser / np.sqrt(area_ser)
 
     # properties
 
@@ -987,9 +993,15 @@ class Landscape:
                     np.pad(self.landscape_arr, pad_width=1, mode='constant',
                            constant_values=self.nodata))
             else:
-                # total_edge = self.compute_arr_edge(
-                #     self.landscape_arr != self.nodata)
-                if self.cell_width != self.cell_height:
+                if np.isclose(self.cell_width, self.cell_height,
+                              rtol=CELLLENGTH_RTOL):
+                    adjacency_arr = np.triu(
+                        self._adjacency_df.groupby(
+                            level=1, sort=False).sum().drop(self.nodata).drop(
+                                self.nodata, axis=1))
+                    np.fill_diagonal(adjacency_arr, 0)
+                    total_edge = np.sum(adjacency_arr) * self.cell_width
+                else:
                     total_edge = 0
                     for direction, length in [('horizontal', self.cell_width),
                                               ('vertical', self.cell_height)]:
@@ -1001,13 +1013,6 @@ class Landscape:
                         # inadvently modfying `self._adjacency_df`
                         np.fill_diagonal(adjacency_arr, 0)
                         total_edge += np.sum(adjacency_arr) * length
-                else:
-                    adjacency_arr = np.triu(
-                        self._adjacency_df.groupby(
-                            level=1, sort=False).sum().drop(self.nodata).drop(
-                                self.nodata, axis=1))
-                    np.fill_diagonal(adjacency_arr, 0)
-                    total_edge = np.sum(adjacency_arr) * self.cell_width
         else:
             if count_boundary:
                 # then the total edge is just the sum of the perimeters of all
@@ -1015,21 +1020,20 @@ class Landscape:
                 perimeter_ser = self._get_patch_perimeter_ser(class_val)
                 total_edge = np.sum(perimeter_ser)
             else:
-                # total_edge = self.compute_arr_edge(
-                #     self.landscape_arr == class_val)
-                if self.cell_width != self.cell_height:
+                if np.isclose(self.cell_width, self.cell_height,
+                              rtol=CELLLENGTH_RTOL):
+                    total_edge = np.sum(
+                        self._adjacency_df.groupby(
+                            level=1, sort=False).sum().drop([
+                                class_val, self.nodata
+                            ])[class_val]) * self.cell_width
+                else:
                     total_edge = 0
                     for direction, length in [('horizontal', self.cell_width),
                                               ('vertical', self.cell_height)]:
                         total_edge += np.sum(
                             self._adjacency_df.loc[direction].drop(
                                 [class_val, self.nodata])[class_val]) * length
-                else:
-                    total_edge = np.sum(
-                        self._adjacency_df.groupby(
-                            level=1, sort=False).sum().drop([
-                                class_val, self.nodata
-                            ])[class_val]) * self.cell_width
 
         return total_edge
 
