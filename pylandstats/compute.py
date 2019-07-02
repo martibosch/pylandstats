@@ -1,6 +1,7 @@
 import numpy as np
 
 
+# pythran export compute_adjacency_arr(uint32[:,:], int)
 def compute_adjacency_arr(padded_arr, num_classes):
     # flat-array approach to pixel adjacency from link below:
     # https://ilovesymposia.com/2016/12/20/numba-in-the-real-world/
