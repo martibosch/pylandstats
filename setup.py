@@ -57,7 +57,7 @@ setup(
     extras_require={'geo': geo},
     dependency_links=dependency_links,
     ext_modules=[
-        PythranExtension('pylandstats_compute',
+        PythranExtension('pylandstats.compute',
                          sources=['pylandstats/compute.py'])
     ],
 )

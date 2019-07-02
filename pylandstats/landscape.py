@@ -9,7 +9,7 @@ import pandas as pd
 import rasterio
 from scipy import ndimage, spatial, stats
 
-import pylandstats_compute as pls_compute
+from . import compute
 
 __all__ = ['Landscape']
 
@@ -390,7 +390,7 @@ class Landscape:
                                 constant_values=num_classes).astype(np.uint32)
 
             # compute the adjacency array
-            adjacency_arr = pls_compute.compute_adjacency_arr(
+            adjacency_arr = compute.compute_adjacency_arr(
                 padded_arr, num_classes)  # .sum(axis=0)
 
             # put the adjacency array in the form of a pandas DataFrame
