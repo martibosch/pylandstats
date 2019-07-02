@@ -1,5 +1,10 @@
 # Change log
 
+## 0.6.1 (02/07/2019)
+
+* cell width and length comparisons with `numpy.isclose` to deal with imprecisions that come from float pixel resolutions (e.g., in GeoTIFF files)
+* critical fix: moved pythran signatures from `compute.pythran` to `compute.py` so that the build is properly done when pip-installing
+
 ## 0.6.0 (01/07/2019)
 
 * flat array approach to the computation of the adjacency matrix with pythran to improve performance (plus fixes a bug on the computation of `total_edge`)
