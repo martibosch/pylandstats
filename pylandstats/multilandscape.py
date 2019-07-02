@@ -14,8 +14,8 @@ from .landscape import Landscape
 @six.add_metaclass(abc.ABCMeta)
 class MultiLandscape:
     @abc.abstractmethod
-    def __init__(self, landscapes, feature_name, feature_values, metrics=None,
-                 classes=None, metrics_kws={}):
+    def __init__(self, landscapes, attribute_name, attribute_values,
+                 metrics=None, classes=None, metrics_kws={}):
         """
         Parameters
         ----------
@@ -23,10 +23,10 @@ class MultiLandscape:
             A list-like of `Landscape` objects or of strings/file objects/
             pathlib.Path objects so that each is passed as the `landscape`
             argument of `Landscape.__init__`
-        feature_name : str
-            Name of the feature that will distinguish each landscape
-        feature_values : list-like
-            Values of the feature that correspond to each of the landscapes
+        attribute_name : str
+            Name of the attribute that will distinguish each landscape
+        attribute_values : list-like
+            Values of the attribute that are characteristic to each landscape
         metrics : list-like, optional
             A list-like of strings with the names of the metrics that should
             be computed in the context of this analysis case
@@ -46,21 +46,21 @@ class MultiLandscape:
         else:
             self.landscapes = list(map(Landscape, landscapes))
 
-        if len(self.landscapes) != len(feature_values):
+        if len(self.landscapes) != len(attribute_values):
             raise ValueError(
                 "The lengths of `landscapes` and `{}` must coincide".format(
-                    feature_name))
+                    attribute_name))
 
-        # set a `feature_name` attribute with the value `feature_values`, so
-        # children classes can access it (e.g., for `SpatioTemporalAnalysis`,
-        # `feature_name` will be 'dates' and `feature_values` will be a list
-        # of dates that will therefore be accessible as an attribute as in
-        # `instance.dates`
-        setattr(self, feature_name, feature_values)
-        # also set a `feature_name` attribute so that the methods of this
+        # set a `attribute_name` attribute with the value `attribute_values`,
+        # so that children classes can access it (e.g., for
+        # `SpatioTemporalAnalysis`, `attribute_name` will be 'dates' and
+        # `attribute_values` will be a list of dates that will therefore be
+        # accessible as an attribute as in `instance.dates`
+        setattr(self, attribute_name, attribute_values)
+        # also set a `attribute_name` attribute so that the methods of this
         # class know how to access such attribute, i.e., as in
-        # `getattr(self, self.feature_name)`
-        setattr(self, 'feature_name', feature_name)
+        # `getattr(self, self.attribute_name)`
+        setattr(self, 'attribute_name', attribute_name)
 
         if metrics is None:
             self.class_metrics = Landscape.CLASS_METRICS
@@ -106,28 +106,28 @@ class MultiLandscape:
         try:
             return self._class_metrics_df
         except AttributeError:
-            feature_values = getattr(self, self.feature_name)
+            attribute_values = getattr(self, self.attribute_name)
             # TODO: one-level index if only one class?
             class_metrics_df = pd.DataFrame(
                 index=pd.MultiIndex.from_product(
-                    [self.classes, feature_values]),
+                    [self.classes, attribute_values]),
                 columns=self.class_metrics)
-            class_metrics_df.index.names = 'class_val', self.feature_name
+            class_metrics_df.index.names = 'class_val', self.attribute_name
             class_metrics_df.columns.name = 'metric'
 
-            for feature_value, landscape in zip(feature_values,
-                                                self.landscapes):
+            for attribute_value, landscape in zip(attribute_values,
+                                                  self.landscapes):
                 # get the class metrics DataFrame for the landscape that
-                # corresponds to this feature value
+                # corresponds to this attribute value
                 df = landscape.compute_class_metrics_df(
                     metrics=self.class_metrics, metrics_kws=self.metrics_kws)
                 # filter so we only check the classes considered in this
                 # instance
                 df = df.loc[df.index.intersection(self.classes)]
                 # put every row of the filtered DataFrame of this particular
-                # feature value
+                # attribute value
                 for class_val, row in df.iterrows():
-                    class_metrics_df.loc[class_val, feature_value] = row
+                    class_metrics_df.loc[class_val, attribute_value] = row
 
             self._class_metrics_df = class_metrics_df
 
@@ -138,16 +138,16 @@ class MultiLandscape:
         try:
             return self._landscape_metrics_df
         except AttributeError:
-            feature_values = getattr(self, self.feature_name)
-            landscape_metrics_df = pd.DataFrame(index=feature_values,
+            attribute_values = getattr(self, self.attribute_name)
+            landscape_metrics_df = pd.DataFrame(index=attribute_values,
                                                 columns=self.landscape_metrics)
-            landscape_metrics_df.index.name = self.feature_name
+            landscape_metrics_df.index.name = self.attribute_name
             landscape_metrics_df.columns.name = 'metric'
 
-            for feature_value, landscape in zip(feature_values,
-                                                self.landscapes):
+            for attribute_value, landscape in zip(attribute_values,
+                                                  self.landscapes):
                 landscape_metrics_df.loc[
-                    feature_value] = landscape.compute_landscape_metrics_df(
+                    attribute_value] = landscape.compute_landscape_metrics_df(
                         self.landscape_metrics,
                         metrics_kws=self.metrics_kws).iloc[0]
 
@@ -221,11 +221,11 @@ class MultiLandscape:
         if ax is None:
             fig, ax = plt.subplots(**subplots_kws)
 
-        # for `SpatioTemporalAnalysis`, `feature_values` will be `dates`;
-        # for `BufferAnalysis`, `feature_values` will be `buffer_dists`
-        feature_values = getattr(self, self.feature_name)
+        # for `SpatioTemporalAnalysis`, `attribute_values` will be `dates`;
+        # for `BufferAnalysis`, `attribute_values` will be `buffer_dists`
+        attribute_values = getattr(self, self.attribute_name)
 
-        ax.plot(feature_values, metric_values, fmt, **plot_kws)
+        ax.plot(attribute_values, metric_values, fmt, **plot_kws)
 
         if metric_legend:
             if metric_label is None:
@@ -355,16 +355,16 @@ class MultiLandscape:
             The figure with its corresponding plots drawn into its axes
         """
 
-        feature_values = getattr(self, self.feature_name)
+        attribute_values = getattr(self, self.attribute_name)
         figwidth, figheight = plt.rcParams['figure.figsize']
         fig, axes = plt.subplots(
-            1, len(feature_values),
-            figsize=(figwidth * len(feature_values), figheight))
+            1, len(attribute_values),
+            figsize=(figwidth * len(attribute_values), figheight))
 
-        for feature_value, landscape, ax in zip(feature_values,
-                                                self.landscapes, axes):
+        for attribute_value, landscape, ax in zip(attribute_values,
+                                                  self.landscapes, axes):
             ax.imshow(landscape.landscape_arr, cmap=cmap, **imshow_kws)
-            ax.set_title(feature_value)
+            ax.set_title(attribute_value)
 
         # adjust spacing between axes
         if subplots_adjust_kws:

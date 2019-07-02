@@ -17,8 +17,8 @@ __all__ = ['GradientAnalysis', 'BufferAnalysis']
 
 
 class GradientAnalysis(MultiLandscape):
-    def __init__(self, landscape, masks_arr, feature_name=None,
-                 feature_values=None, **kwargs):
+    def __init__(self, landscape, masks_arr, attribute_name=None,
+                 attribute_values=None, **kwargs):
         """
         Parameters
         ----------
@@ -32,10 +32,10 @@ class GradientAnalysis(MultiLandscape):
             mask the base landscape and define a region of study for which the
             metrics will be computed separately. The same information can also
             be provided as a single array of shape (num_masks, width, height).
-        feature_name : str, optional
-            Name of the feature that will distinguish each landscape
-        feature_values : str, optional
-            Values of the feature that correspond to each of the landscapes
+        attribute_name : str, optional
+            Name of the attribute that will distinguish each landscape
+        attribute_values : str, optional
+            Values of the attribute that correspond to each of the landscapes
         """
 
         if not isinstance(landscape, Landscape):
@@ -51,20 +51,20 @@ class GradientAnalysis(MultiLandscape):
         # TODO: is it useful to store `masks_arr` as instance attribute?
         self.masks_arr = masks_arr
 
-        # The feature name will be `buffer_dists` for `BufferAnalysis` or
+        # The attribute name will be `buffer_dists` for `BufferAnalysis` or
         # `transect_dist` for `TransectAnalysis`, but for any other custom use
         # of `GradientAnalysis`, the user might provide (or not) a custom name
-        if feature_name is None:
-            feature_name = 'feature_values'
+        if attribute_name is None:
+            attribute_name = 'attribute_values'
 
-        # If the values for the distinguishing feature are not provided, a
+        # If the values for the distinguishing attribute are not provided, a
         # basic enumeration will be automatically generated
-        if feature_values is None:
-            feature_values = [i for i in range(len(masks_arr))]
+        if attribute_values is None:
+            attribute_values = [i for i in range(len(masks_arr))]
 
         # now call the parent's init
-        super(GradientAnalysis, self).__init__(landscapes, feature_name,
-                                               feature_values, **kwargs)
+        super(GradientAnalysis, self).__init__(landscapes, attribute_name,
+                                               attribute_values, **kwargs)
 
 
 class BufferAnalysis(GradientAnalysis):

@@ -270,8 +270,8 @@ class TestMultiLandscape(unittest.TestCase):
         self.landscape_fps = [
             'tests/input_data/ls100_06.tif', 'tests/input_data/ls250_06.tif'
         ]
-        self.feature_name = 'resolution'
-        self.feature_values = [100, 250]
+        self.attribute_name = 'resolution'
+        self.attribute_values = [100, 250]
         self.inexistent_class_val = 999
 
         # use this class just for testing purposes
@@ -291,8 +291,8 @@ class TestMultiLandscape(unittest.TestCase):
         # test that if we init a MultiLandscape from filepaths, Landscape
         # instances are automaticaly built
         ml = self.InstantiableMultiLandscape(self.landscape_fps,
-                                             self.feature_name,
-                                             self.feature_values)
+                                             self.attribute_name,
+                                             self.attribute_values)
         for landscape in ml.landscapes:
             self.assertIsInstance(landscape, pls.Landscape)
 
@@ -301,62 +301,62 @@ class TestMultiLandscape(unittest.TestCase):
         # test that constructing a MultiLandscape with inexistent metrics and
         # inexistent classes raises a ValueError
         self.assertRaises(ValueError, self.InstantiableMultiLandscape,
-                          self.landscape_fps, self.feature_name,
-                          self.feature_values, metrics=['foo'])
+                          self.landscape_fps, self.attribute_name,
+                          self.attribute_values, metrics=['foo'])
         self.assertRaises(ValueError, self.InstantiableMultiLandscape,
-                          self.landscape_fps, self.feature_name,
-                          self.feature_values,
+                          self.landscape_fps, self.attribute_name,
+                          self.attribute_values,
                           classes=[self.inexistent_class_val])
 
         # test that constructing a MultiLandscape where the list of values of
-        # the identifying features `feature_values` (in this example, the list
-        # of resolutions `[100, 250]`) mismatches the length of the list of
-        # landscapes raises a ValueError
+        # the identifying attributes `attribute_values` (in this example, the
+        # list of resolutions `[100, 250]`) mismatches the length of the list
+        # of landscapes raises a ValueError
         self.assertRaises(ValueError, self.InstantiableMultiLandscape,
-                          self.landscape_fps, self.feature_name, [250])
+                          self.landscape_fps, self.attribute_name, [250])
 
     def test_multilandscape_dataframes(self):
         ml = self.InstantiableMultiLandscape(self.landscape_fps,
-                                             self.feature_name,
-                                             self.feature_values)
+                                             self.attribute_name,
+                                             self.attribute_values)
         # test that `class_metrics_df` and `landscape_metrics_df` are well
         # constructed
         class_metrics_df = ml.class_metrics_df
-        feature_values = getattr(ml, ml.feature_name)
+        attribute_values = getattr(ml, ml.attribute_name)
         self.assertTrue(
             np.all(class_metrics_df.columns == pls.Landscape.CLASS_METRICS))
         self.assertTrue(
             np.all(class_metrics_df.index == pd.MultiIndex.from_product(
-                [ml.classes, feature_values])))
+                [ml.classes, attribute_values])))
         landscape_metrics_df = ml.landscape_metrics_df
         self.assertTrue(
             np.all(landscape_metrics_df.columns ==
                    pls.Landscape.LANDSCAPE_METRICS))
-        self.assertTrue(np.all(landscape_metrics_df.index == feature_values))
+        self.assertTrue(np.all(landscape_metrics_df.index == attribute_values))
 
         # now test the same but with an analysis that only considers a subset
         # of metrics and a subset of classes
         ml_metrics = ['total_area', 'edge_density', 'proportion_of_landscape']
         ml_classes = self.landscapes[0].classes[:2]
         ml = self.InstantiableMultiLandscape(self.landscapes,
-                                             self.feature_name,
-                                             self.feature_values,
+                                             self.attribute_name,
+                                             self.attribute_values,
                                              metrics=ml_metrics,
                                              classes=ml_classes)
 
         class_metrics_df = ml.class_metrics_df
-        feature_values = getattr(ml, ml.feature_name)
+        attribute_values = getattr(ml, ml.attribute_name)
         self.assertTrue(
             np.all(class_metrics_df.columns == np.intersect1d(
                 ml_metrics, pls.Landscape.CLASS_METRICS)))
         self.assertTrue(
             np.all(class_metrics_df.index == pd.MultiIndex.from_product(
-                [ml_classes, feature_values])))
+                [ml_classes, attribute_values])))
         landscape_metrics_df = ml.landscape_metrics_df
         self.assertTrue(
             np.all(landscape_metrics_df.columns == np.intersect1d(
                 ml_metrics, pls.Landscape.LANDSCAPE_METRICS)))
-        self.assertTrue(np.all(landscape_metrics_df.index == feature_values))
+        self.assertTrue(np.all(landscape_metrics_df.index == attribute_values))
 
     def test_multilandscape_metric_kws(self):
         # Instantiate two multilandscape analyses, one with FRAGSTATS'
@@ -364,10 +364,10 @@ class TestMultiLandscape(unittest.TestCase):
         # area in meters and including the boundary in the computation of the
         # total edge.
         ml = self.InstantiableMultiLandscape(self.landscape_fps,
-                                             self.feature_name,
-                                             self.feature_values)
+                                             self.attribute_name,
+                                             self.attribute_values)
         ml_kws = self.InstantiableMultiLandscape(
-            self.landscape_fps, self.feature_name, self.feature_values,
+            self.landscape_fps, self.attribute_name, self.attribute_values,
             metrics_kws={
                 'total_area': {
                     'hectares': False
@@ -377,13 +377,13 @@ class TestMultiLandscape(unittest.TestCase):
                 }
             })
 
-        # For all feature values and all classes, metric values in hectares
+        # For all attribute values and all classes, metric values in hectares
         # should be less than in meters, and excluding boundaries should be
         # less or equal than including them
-        for feature_value in getattr(ml, ml.feature_name):
-            landscape_metrics = ml.landscape_metrics_df.loc[feature_value]
+        for attribute_value in getattr(ml, ml.attribute_name):
+            landscape_metrics = ml.landscape_metrics_df.loc[attribute_value]
             landscape_metrics_kws = ml_kws.landscape_metrics_df.loc[
-                feature_value]
+                attribute_value]
             self.assertLess(landscape_metrics['total_area'],
                             landscape_metrics_kws['total_area'])
             self.assertLessEqual(landscape_metrics['total_edge'],
@@ -391,11 +391,11 @@ class TestMultiLandscape(unittest.TestCase):
 
             for class_val in ml.classes:
                 class_metrics = ml.class_metrics_df.loc[class_val,
-                                                        feature_value]
-                class_metrics_kws = ml_kws.class_metrics_df.loc[class_val,
-                                                                feature_value]
+                                                        attribute_value]
+                class_metrics_kws = ml_kws.class_metrics_df.loc[
+                    class_val, attribute_value]
 
-                # It could be that for some feature values, some classes are
+                # It could be that for some attribute values, some classes are
                 # not present within the respective Landscape. If so, all of
                 # the metrics will be `nan`, both for the analysis with and
                 # without keyword arguments. Otherwise, we just perform the
@@ -414,8 +414,8 @@ class TestMultiLandscape(unittest.TestCase):
 
     def test_multilandscape_plot_metrics(self):
         ml = self.InstantiableMultiLandscape(self.landscape_fps,
-                                             self.feature_name,
-                                             self.feature_values)
+                                             self.attribute_name,
+                                             self.attribute_values)
 
         existent_class_val = ml.classes[0]
 
@@ -447,10 +447,10 @@ class TestMultiLandscape(unittest.TestCase):
         ax = ml.plot_metric('patch_density', class_val=existent_class_val,
                             ax=ax)
         self.assertEqual(len(ax.lines), 2)
-        # test that the x data of any line corresponds to the feature values
+        # test that the x data of any line corresponds to the attribute values
         for line in ax.lines:
             self.assertTrue(
-                np.all(line.get_xdata() == getattr(ml, ml.feature_name)))
+                np.all(line.get_xdata() == getattr(ml, ml.attribute_name)))
 
         # test that there are two axes if we plot two metrics
         fig = ml.plot_metrics(class_val=existent_class_val,
@@ -487,8 +487,8 @@ class TestMultiLandscape(unittest.TestCase):
 
     def test_plot_landscapes(self):
         ml = self.InstantiableMultiLandscape(self.landscape_fps,
-                                             self.feature_name,
-                                             self.feature_values)
+                                             self.attribute_name,
+                                             self.attribute_values)
 
         fig = ml.plot_landscapes()
 
@@ -512,12 +512,12 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
         self.inexistent_class_val = 999
 
     def test_spatiotemporalanalysis_init(self):
-        # test that the `feature_name` is dates, and that if the `dates`
+        # test that the `attribute_name` is dates, and that if the `dates`
         # argument is not provided when instantiating a
         # `SpatioTemporalAnalysis`, the dates attribute is properly and
         # automatically generated
         sta = pls.SpatioTemporalAnalysis(self.landscape_fps)
-        self.assertEqual(sta.feature_name, 'dates')
+        self.assertEqual(sta.attribute_name, 'dates')
         self.assertEqual(len(sta), len(sta.dates))
 
     def test_spatiotemporalanalysis_dataframes(self):
@@ -577,22 +577,22 @@ class TestGradientAnalysis(unittest.TestCase):
         self.buffer_dists = [10000, 15000, 20000]
 
     def test_gradient_init(self):
-        # test that the feature names and values are consistent with the
+        # test that the attribute names and values are consistent with the
         # provided `masks_arr`
         ga = pls.GradientAnalysis(self.landscape, self.masks_arr)
-        self.assertEqual(ga.feature_name, 'feature_values')
+        self.assertEqual(ga.attribute_name, 'attribute_values')
         self.assertEqual(len(ga), len(self.masks_arr))
-        self.assertEqual(len(ga), len(ga.feature_values))
+        self.assertEqual(len(ga), len(ga.attribute_values))
 
         # test that if we init a GradientAnalysis from filepaths, Landscape
-        # instances are automaticaly built, and the feature names and values
+        # instances are automaticaly built, and the attribute names and values
         # are also consistent with the provided `masks_arr`
         ga = pls.GradientAnalysis(self.landscape_fp, self.masks_arr)
         for landscape in ga.landscapes:
             self.assertIsInstance(landscape, pls.Landscape)
-        self.assertEqual(ga.feature_name, 'feature_values')
+        self.assertEqual(ga.attribute_name, 'attribute_values')
         self.assertEqual(len(ga), len(self.masks_arr))
-        self.assertEqual(len(ga), len(ga.feature_values))
+        self.assertEqual(len(ga), len(ga.attribute_values))
 
         # from this point on, always instantiate from filepaths
 
@@ -645,7 +645,7 @@ class TestGradientAnalysis(unittest.TestCase):
                     base_mask_crs=geom_crs, landscape_crs=landscape_crs,
                     landscape_transform=self.landscape_transform)
         ]:
-            self.assertEqual(ba.feature_name, 'buffer_dists')
+            self.assertEqual(ba.attribute_name, 'buffer_dists')
             self.assertEqual(len(ba), len(ba.masks_arr))
             self.assertEqual(len(ba), len(ba.buffer_dists))
 
