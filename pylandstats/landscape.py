@@ -1207,43 +1207,6 @@ class Landscape:
 
         return self._metric_cv(class_val, self.area, percent=percent)
 
-    def landscape_shape_index(self, class_val=None):
-        """
-        Measure of class aggregation or clumpiness
-
-        Parameters
-        ----------
-        class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level
-
-        Returns
-        -------
-        lsi : float
-            lsi >=1 ; lsi equals 1 when the entire landscape consists of a
-            single patch of the corresponding class, and increases without
-            limit as the patches of such class become more disaggregated.
-        """
-
-        # compute the total area
-        if class_val is None:
-            area = self.landscape_area
-        else:
-            area = np.sum(self._get_patch_area_ser(class_val))
-
-        # TODO: we make an exception here of the "not reusing other metric's
-        # methods within metric's methods" policy, since `total_edge` is a bit
-        # puzzling to compute
-        perimeter = self.total_edge(class_val, count_boundary=True)
-
-        # `compute shape index` works on vectors, so we need to pass arrays as
-        # arguments and then extract its first (and only element) in order to
-        # return a scalar
-        # TODO: use np.vectorize
-        return self.compute_shape_index(np.array([area]),
-                                        np.array([perimeter]))[0]
-
     # shape
 
     def perimeter_area_ratio_mn(self, class_val=None, hectares=True):
@@ -1960,6 +1923,45 @@ class Landscape:
         return self._metric_cv(class_val, self.euclidean_nearest_neighbor,
                                percent=percent)
 
+    # aggregation
+
+    def landscape_shape_index(self, class_val=None):
+        """
+        Measure of class aggregation or clumpiness
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        lsi : float
+            lsi >=1 ; lsi equals 1 when the entire landscape consists of a
+            single patch of the corresponding class, and increases without
+            limit as the patches of such class become more disaggregated.
+        """
+
+        # compute the total area
+        if class_val is None:
+            area = self.landscape_area
+        else:
+            area = np.sum(self._get_patch_area_ser(class_val))
+
+        # TODO: we make an exception here of the "not reusing other metric's
+        # methods within metric's methods" policy, since `total_edge` is a bit
+        # puzzling to compute
+        perimeter = self.total_edge(class_val, count_boundary=True)
+
+        # `compute shape index` works on vectors, so we need to pass arrays as
+        # arguments and then extract its first (and only element) in order to
+        # return a scalar
+        # TODO: use np.vectorize
+        return self.compute_shape_index(np.array([area]),
+                                        np.array([perimeter]))[0]
+
     # contagion, interspersion
 
     def interspersion_juxtaposition_index(self, class_val=None, percent=True):
@@ -2072,6 +2074,9 @@ class Landscape:
             shdi += p_class * np.log(p_class)
 
         return -shdi
+
+    ###########################################################################
+    # compute metrics data frames
 
     def compute_patch_metrics_df(self, metrics=None, metrics_kws={}):
         """

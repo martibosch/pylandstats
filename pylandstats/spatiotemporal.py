@@ -55,9 +55,38 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
                  base_mask_crs=None, landscape_crs=None,
                  landscape_transform=None, metrics=None, classes=None,
                  dates=None, metrics_kws={}):
-        super(SpatioTemporalBufferAnalysis, self).__init__(
-            landscapes, metrics=metrics, classes=classes, dates=dates,
-            metrics_kws=metrics_kws)
+        """
+        Parameters
+        ----------
+        landscapes : list-like
+            A list-like of `Landscape` objects or of strings/file objects/
+            pathlib.Path objects so that each is passed as the `landscape`
+            argument of `Landscape.__init__`
+        base_mask : 
+        buffer_rings : 
+        base_mask_crs : 
+        landscape_crs : 
+        landscape_transform :
+        metrics : list-like, optional
+            A list-like of strings with the names of the metrics that should
+            be computed in the context of this analysis case
+        classes : list-like, optional
+            A list-like of ints or strings with the class values that should
+            be considered in the context of this analysis case
+        dates : list-like, optional
+            A list-like of ints or strings that label the date of each
+            snapshot of `landscapes` (for DataFrame indices and plot labels)
+        metrics_kws : dict, optional
+            Dictionary mapping the keyword arguments (values) that should be
+            passed to each metric method (key), e.g., to exclude the boundary
+            from the computation of `total_edge`, metric_kws should map the
+            string 'total_edge' (method name) to {'count_boundary': False}.
+            The default empty dictionary will compute each metric according to
+            FRAGSTATS defaults.
+        """
+        super(SpatioTemporalBufferAnalysis,
+              self).__init__(landscapes, metrics=metrics, classes=classes,
+                             dates=dates, metrics_kws=metrics_kws)
         ba = BufferAnalysis(
             landscapes[0], base_mask=base_mask, buffer_dists=buffer_dists,
             buffer_rings=buffer_rings, base_mask_crs=base_mask_crs,
@@ -78,8 +107,8 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
                     Landscape(
                         np.where(mask_arr, landscape.landscape_arr,
                                  landscape.nodata),
-                        res=(landscape.cell_width,
-                             landscape.cell_height), nodata=landscape.nodata)
+                        res=(landscape.cell_width, landscape.cell_height),
+                        nodata=landscape.nodata)
                     for landscape in self.landscapes
                 ], metrics=metrics, classes=classes, dates=dates,
                                        metrics_kws=metrics_kws))

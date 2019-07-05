@@ -4,5 +4,6 @@ coveralls
 isort
 flake8
 pytest
+sphinx
 tox-travis
 yapf

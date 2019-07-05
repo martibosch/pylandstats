@@ -1,19 +1,15 @@
 [![PyPI version fury.io](https://badge.fury.io/py/pylandstats.svg)](https://pypi.python.org/pypi/pylandstats/)
+[![Documentation Status](https://readthedocs.org/projects/pylandstats/badge/?version=latest)](https://pylandstats.readthedocs.io/en/latest/?badge=latest)
 [![Build Status](https://travis-ci.org/martibosch/pylandstats.svg?branch=master)](https://travis-ci.org/martibosch/pylandstats)
 [![Coverage Status](https://coveralls.io/repos/github/martibosch/pylandstats/badge.svg?branch=master)](https://coveralls.io/github/martibosch/pylandstats?branch=master)
 [![GitHub license](https://img.shields.io/github/license/martibosch/pylandstats.svg)](https://github.com/martibosch/pylandstats/blob/master/LICENSE)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/martibosch/pylandstats-notebooks/master?filepath=overview.ipynb)
 
-PyLandStats
-===============================
-
-Overview
---------
+# PyLandStats
 
 Open-source Pythonic library to compute landscape metrics within the PyData stack (NumPy, pandas, matplotlib...)
 
-Features
---------
+## Features
 
 Read GeoTiff files of land use/cover
 
@@ -80,20 +76,26 @@ fig.suptitle('Class-level metrics (urban)')
 
 ![spatiotemporal-analysis](figures/spatiotemporal.png)
 
-See the [pylandstats-notebooks](https://github.com/martibosch/pylandstats-notebooks) repository for a more complete overview
+See the [documentation](https://pylandstats.readthedocs.io/en/latest/?badge=latest) and the [pylandstats-notebooks](https://github.com/martibosch/pylandstats-notebooks) repository for a more complete overview.
 
-Installation
-------------
+## Installation
 
 To install use pip:
 
     $ pip install pylandstats
 
 
-If you want to use the `BufferAnalysis`, you will need [geopandas](https://github.com/geopandas/geopandas). The easiest to install it is via [conda-forge](https://conda-forge.org/) as in:
+If you want to use the `BufferAnalysis` class, you will need [geopandas](https://github.com/geopandas/geopandas). The easiest way to install it is via [conda-forge](https://conda-forge.org/) as in:
 
     $ conda install -c conda-forge geopandas
     
 and then install PyLandStats with the `geo` extras as in:
 
     $ pip install pylandstats[geo]
+    
+
+
+## Acknowledgments
+
+* With the support of the École Polytechnique Fédérale de Lausanne (EPFL)
+* The Corine Land Cover datasets used for the test datasets were produced with funding by the European Union
