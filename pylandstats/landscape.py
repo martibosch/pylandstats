@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import rasterio
+from rasterio import plot
 from scipy import ndimage, spatial, stats
 
 from . import compute
@@ -25,7 +26,8 @@ class Landscape:
     will be computed
     """
 
-    def __init__(self, landscape, res=None, nodata=None, **kwargs):
+    def __init__(self, landscape, res=None, nodata=None, transform=None,
+                 **kwargs):
         """
         Parameters
         ----------
@@ -40,6 +42,10 @@ class Landscape:
         nodata : int, optional
             Value to be assigned to pixels with no data. It will be set to 0
             if `landscape` is a `np.ndarray`
+        transform : affine.Affine, optional
+            Transformation from pixel coordinates to coordinate reference
+            system. If `landscape` is a path to a GeoTiff, this argument will
+            be ignored and extracted from the raster's metadata instead
         **kwargs : optional
             Keyword arguments to be passed to `rasterio.open`. Ignored if
             `landscape` is an `np.ndarray`
@@ -58,11 +64,13 @@ class Landscape:
                     res = src.res
                 if nodata is None:
                     nodata = src.nodata
+                transform = src.transform
 
         self.landscape_arr = landscape_arr
         self.cell_width, self.cell_height = res
         self.cell_area = res[0] * res[1]
         self.nodata = nodata
+        self.transform = transform
         # by default, numpy creates arrays of floats. Instead, land use/land
         # cover rasters are often of integer dtypes. Therefore, we will
         # explicitly set the dtype of the landscape classes to ensure
@@ -2230,9 +2238,10 @@ class Landscape:
         return pd.DataFrame(metrics_dict, index=[0])
 
     def plot_landscape(self, cmap=None, ax=None, legend=False, figsize=None,
-                       imshow_kws={}):
+                       **show_kws):
         """
-        Plots the landscape
+        Plots the landscape with a categorical legend by means of
+        `rasterio.plot.show`
 
         Parameters
         -------
@@ -2242,10 +2251,10 @@ class Landscape:
             Plot in given axis; if None creates a new figure
         legend : bool, optional
             If ``True``, display the legend
-        figsize: tuple of two ints, optional
-            Size of the figure to create.
-        imshow_kws : dict, optional
-            Keyword arguments to be passed to `plt.imshow`
+        figsize: tuple of two numeric types, optional
+            Size of the figure to create. Ignored if axis `ax` is provided
+        **show_kws : optional
+            Keyword arguments to be passed to `rasterio.plot.show`
 
         Returns
         -------
@@ -2258,13 +2267,17 @@ class Landscape:
 
         if ax is None:
             fig, ax = plt.subplots(figsize=figsize)
-        ax.set_aspect('equal')
+            ax.set_aspect('equal')
 
-        im = ax.imshow(self.landscape_arr, cmap=cmap, **imshow_kws)
+        ax = plot.show(self.landscape_arr, ax=ax, transform=self.transform,
+                       cmap=cmap, **show_kws)
 
         if legend:
+            im = ax.get_images()[0]
             for class_val in self.classes:
-                ax.plot(0, 0, 'o', c=cmap(im.norm(class_val)), label=class_val)
+                ax.plot(ax.get_xlim()[0],
+                        ax.get_ylim()[0], 'o', c=cmap(im.norm(class_val)),
+                        label=class_val)
 
             ax.legend()
 

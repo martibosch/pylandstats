@@ -50,6 +50,12 @@ class TestLandscape(unittest.TestCase):
         self.assertAlmostEqual(ls.cell_height, 250, delta=1)
         self.assertAlmostEqual(ls.cell_area, 250 * 250, delta=250)
 
+        # test that the transform is None if we instantiate a landscape from
+        # an ndarray (without providing the `transform` argument, but that it
+        # is not none we get the landscape transform from a raster path
+        self.assertIsNone(self.ls.transform)
+        self.assertIsNotNone(ls.transform)
+
     def test_metrics_parameters(self):
         ls = self.ls
 
@@ -251,8 +257,22 @@ class TestLandscape(unittest.TestCase):
         self.assertGreaterEqual(ls.shannon_diversity_index(), 0)
 
     def test_plot_landscape(self):
+        # first test for a landscape without affine transform (instantiated
+        # from an ndarray and without providing a non-None `transform`
+        # argument)
+        ax = self.ls.plot_landscape()
         # returned axis must be instances of matplotlib axes
-        self.assertIsInstance(self.ls.plot_landscape(), plt.Axes)
+        self.assertIsInstance(ax, plt.Axes)
+
+        # now do the same test for a landscape with affine transform (e.g.,
+        # instantiated from a raster file)
+        ls = pls.Landscape('tests/input_data/ls250_06.tif')
+        ax = ls.plot_landscape()
+        self.assertIsInstance(ax, plt.Axes)
+        # and further test that the plot bounds correspond to the transform's
+        # offsets
+        self.assertAlmostEqual(ax.get_xlim()[0], ls.transform.xoff)
+        self.assertAlmostEqual(ax.get_ylim()[1], ls.transform.yoff)
 
 
 class TestMultiLandscape(unittest.TestCase):
@@ -482,6 +502,22 @@ class TestMultiLandscape(unittest.TestCase):
         # returned axes must be instances of matplotlib axes
         for ax in fig.axes:
             self.assertIsInstance(ax, plt.Axes)
+
+        # test that by default, the dimensions of the resulting will come from
+        # matplotlib's settings
+        rc_figwidth, rc_figheight = plt.rcParams['figure.figsize']
+        figwidth, figheight = fig.get_size_inches()
+        # we have `len(ml)` axis, therefore the actual `figwidth` must be
+        # `len(ml) * rc_figwidth`
+        self.assertAlmostEqual(figwidth, len(ml) * rc_figwidth)
+        self.assertAlmostEqual(figheight, rc_figheight)
+        # if instead, we customize the figure size, the dimensions of the
+        # resulting figure must be the customized ones
+        custom_figsize = (10, 10)
+        fig = ml.plot_landscapes(subplots_kws={'figsize': custom_figsize})
+        figwidth, figheight = fig.get_size_inches()
+        self.assertAlmostEqual(custom_figsize[0], figwidth)
+        self.assertAlmostEqual(custom_figsize[1], figheight)
 
 
 class TestSpatioTemporalAnalysis(unittest.TestCase):

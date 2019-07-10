@@ -236,10 +236,11 @@ class MultiLandscape:
 
         return ax
 
-    def plot_landscapes(self, cmap=None, legend=True, imshow_kws={},
-                        subplots_adjust_kws={}):
+    def plot_landscapes(self, cmap=None, legend=True, subplots_kws={},
+                        show_kws={}, subplots_adjust_kws={}):
         """
-        Plots each landscape snapshot in a dedicated matplotlib axis
+        Plots each landscape snapshot in a dedicated matplotlib axis by means
+        of the `Landscape.plot_landscape` method of each instance
 
         Parameters
         -------
@@ -247,8 +248,10 @@ class MultiLandscape:
             A Colormap instance
         legend : bool, optional
             If ``True``, display the legend of the land use/cover color codes
-        imshow_kws : dict, optional
-            Keyword arguments to be passed to `plt.imshow`
+        subplots_kws: dict, optional
+            Keyword arguments to be passed to `plt.subplots`
+        show_kws : dict, optional
+            Keyword arguments to be passed to `rasterio.plot.show`
         subplots_adjust_kws: dict, optional
             Keyword arguments to be passed to `plt.subplots_adjust`
 
@@ -259,14 +262,21 @@ class MultiLandscape:
         """
 
         attribute_values = getattr(self, self.attribute_name)
-        figwidth, figheight = plt.rcParams['figure.figsize']
-        fig, axes = plt.subplots(
-            1, len(attribute_values),
-            figsize=(figwidth * len(attribute_values), figheight))
+
+        # avoid alias/refrence issues
+        _subplots_kws = subplots_kws.copy()
+        figsize = _subplots_kws.pop('figsize', None)
+        if figsize is None:
+            figwidth, figheight = plt.rcParams['figure.figsize']
+            figsize = (figwidth * len(attribute_values), figheight)
+
+        fig, axes = plt.subplots(1, len(attribute_values), figsize=figsize,
+                                 **_subplots_kws)
 
         for attribute_value, landscape, ax in zip(attribute_values,
                                                   self.landscapes, axes):
-            ax.imshow(landscape.landscape_arr, cmap=cmap, **imshow_kws)
+            ax = landscape.plot_landscape(cmap=cmap, ax=ax, legend=legend,
+                                          **show_kws)
             ax.set_title(attribute_value)
 
         # adjust spacing between axes
