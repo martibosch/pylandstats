@@ -740,6 +740,42 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
         for sta in stba.stas:
             self.assertEqual(sta.dates, self.dates)
 
+    def test_spatiotemporalbufferanalysis_dataframes(self):
+        stba = pls.SpatioTemporalBufferAnalysis(self.landscape_fps,
+                                                self.base_mask,
+                                                self.buffer_dists,
+                                                dates=self.dates)
+
+        # test that `class_metrics_df` and `landscape_metrics_df` are well
+        # constructed
+        class_metrics_df = stba.class_metrics_df
+        self.assertTrue(
+            np.all(class_metrics_df.index == pd.MultiIndex.from_product(
+                [stba.buffer_dists, stba.classes, stba.dates])))
+        landscape_metrics_df = stba.landscape_metrics_df
+        self.assertTrue(
+            np.all(landscape_metrics_df.index == pd.MultiIndex.from_product(
+                [stba.buffer_dists, stba.dates])))
+
+        # now test the same but with an analysis that only considers a
+        # subset of metrics and a subset of classes
+        stba_metrics = [
+            'total_area', 'edge_density', 'proportion_of_landscape'
+        ]
+        stba_classes = stba.classes[:2]
+        stba = pls.SpatioTemporalBufferAnalysis(
+            self.landscape_fps, self.base_mask, self.buffer_dists,
+            metrics=stba_metrics, classes=stba_classes, dates=self.dates)
+
+        class_metrics_df = stba.class_metrics_df
+        self.assertTrue(
+            np.all(class_metrics_df.index == pd.MultiIndex.from_product(
+                [stba.buffer_dists, stba.classes, stba.dates])))
+        landscape_metrics_df = stba.landscape_metrics_df
+        self.assertTrue(
+            np.all(landscape_metrics_df.index == pd.MultiIndex.from_product(
+                [stba.buffer_dists, stba.dates])))
+
     def test_spatiotemporalbufferanalysis_plot_metric(self):
         stba = pls.SpatioTemporalBufferAnalysis(self.landscape_fps,
                                                 self.base_mask,

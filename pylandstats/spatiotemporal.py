@@ -1,5 +1,8 @@
+from functools import reduce
+
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from .gradient import BufferAnalysis
 from .landscape import Landscape
@@ -113,10 +116,140 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
                 ], metrics=metrics, classes=classes, dates=dates,
                                        metrics_kws=metrics_kws))
 
+        # the `self.classes` attribute will have been set by this instance
+        # father's init (namely the `super` in the first line of this method),
+        # however some of the classes may not actually be found in any of
+        # buffer zones. We therefore need to get the union of the classes
+        # found at the spatio-temporal analysis instance of each `buffer_dist`
+        self.classes = reduce(np.union1d,
+                              tuple(sta.classes for sta in self.stas))
+
+        # the dates will be the same for all the `SpatioTemporalAnalysis`
+        # instances stored in `self.stas`. We will just take them from the
+        # first instance and store them as attribute of this
+        # `SpatioTemporalBufferAnalysis` so that it can be used more
+        # conveniently below.
+        # ACHTUNG: we do it AFTER instantiating the `SpatioTemporalAnalysis`
+        # objects of `self.stats` so that we let the `__init__` method of
+        # `SpatioTemporalAnalysis.__init__` deal with the logic of what to do
+        # with the `dates` argument
+        self.dates = self.stas[0].dates
+
+    @property
+    def class_metrics_df(self):
+        try:
+            return self._class_metrics_df
+        except AttributeError:
+            # IMPORTANT: since some classes might not be present for each date
+            # and/or buffer distance, we will init the MultiIndex manually to
+            # ensure that every class is present in the resulting data frame.
+            # If some class does not appear for some some date/buffer distance,
+            # the corresponding row will be nan. This probably preferable than
+            # having a MultiIndex that can have different levels (i.e., the
+            # second level `class_val`) for each buffer distance.
+            # Note that this approach is likely slower since for each of
+            # the `buffer_dists`, we have to iterate as in (see below):
+            # `for class_val, date inclass_metrics_df.loc[buffer_dist].index`
+            class_metrics_df = pd.DataFrame(
+                index=pd.MultiIndex.from_product(
+                    [self.buffer_dists, self.classes, self.dates]),
+                columns=self.class_metrics)
+            class_metrics_df.index.names = 'buffer_dist', 'class_val', 'dates'
+            class_metrics_df.columns.name = 'metric'
+
+            for buffer_dist, sta in zip(self.buffer_dists, self.stas):
+                # get the class metrics data frame for the
+                # `SpatioTemporalAnalysis` instance that corresponds to this
+                # `buffer_dist`
+                df = sta.class_metrics_df
+                # put the metrics data frame of the `SpatioTemporalAnalysis`
+                # of this `buffer_dist` into the global metrics data frame of
+                # the `SpatioTemporalBufferAnalysis`
+                for class_val, date in class_metrics_df.loc[buffer_dist].index:
+                    # use `class_metrics_df.loc` for the first level (i.e.,
+                    # `buffer_dist`) again (we have already used it in the
+                    # iterator above) to avoid `SettingWithCopyWarning`
+                    try:
+                        class_metrics_df.loc[buffer_dist, class_val,
+                                             date] = df.loc[class_val, date]
+                    except KeyError:
+                        # this means that `class_val` is not in `df`,
+                        # therefore we do nothing and the corresponding row of
+                        # `class_metrics_df` will stay as nan
+                        pass
+
+            # # ALTERNATIVE (POTENTIALLY FASTER) APPROACH
+            # # we will create a dict where each key is a `buffer_dist`, and
+            # # its value is the corresponding metrics data frame of the
+            # # `SpatioTemporalAnalysis` instance
+            # df_dict = {
+            #     buffer_dist: sta.class_metrics_df
+            #     for buffer_dist, sta in zip(self.buffer_dists, self.stas)
+            # }
+
+            # # we concatenate each value of the dict dataframe using its
+            # # respective `buffer_dist` key to create an extra index level
+            # # (i.e., using the `keys` argument of `pd.concat`)
+            # class_metrics_df = pd.concat(
+            #     df_dict.values(), keys=df_dict.keys())
+            # # now we set the name of each index and column level
+            # class_metrics_df.index.names = \
+            #     'buffer_dist', 'class_val', 'dates'
+            # class_metrics_df.columns.name = 'metric'
+
+            self._class_metrics_df = class_metrics_df
+
+            return self._class_metrics_df
+
+    @property
+    def landscape_metrics_df(self):
+        try:
+            return self._landscape_metrics_df
+        except AttributeError:
+            # PREVIOUS APPROACH
+            # landscape_metrics_df = pd.DataFrame(
+            #     index=pd.MultiIndex.from_product(
+            #         [self.buffer_dists, self.dates]),
+            #     columns=self.landscape_metrics)
+            # landscape_metrics_df.index.name = 'buffer_dist', 'dates'
+            # landscape_metrics_df.columns.name = 'metric'
+
+            # for buffer_dist, sta in zip(self.buffer_dists, self.stas):
+            #     # TODO: find out why the `.loc` below does not allocate the
+            #     # values correctly when we remove the `.values` suffix of the
+            #     # right-hand side (although the resulting dataframes on both
+            #     # sides are perfectly aligned)
+            #     landscape_metrics_df.loc[
+            #         buffer_dist] = sta.landscape_metrics_df.values
+
+            # NEW APPROACH
+            # we will create a dict where each key is a `buffer_dist`, and its
+            # value is the corresponding metrics data frame of the
+            # `SpatioTemporalAnalysis` instance
+            df_dict = {
+                buffer_dist: sta.landscape_metrics_df
+                for buffer_dist, sta in zip(self.buffer_dists, self.stas)
+            }
+
+            # we concatenate each value of the dict dataframe using its
+            # respective `buffer_dist` key to create an extra index level
+            # (i.e., using the `keys` argument of `pd.concat`)
+            landscape_metrics_df = pd.concat(df_dict.values(),
+                                             keys=df_dict.keys())
+            # now we set the name of each index and column level
+            landscape_metrics_df.index.names = 'buffer_dist', 'dates'
+            landscape_metrics_df.columns.name = 'metric'
+
+            self._landscape_metrics_df = landscape_metrics_df
+
+            return self._landscape_metrics_df
+
     def plot_metric(self, metric, class_val=None, ax=None, metric_legend=True,
                     metric_label=None, fmt='--o', plot_kws={},
                     subplots_kws={}):
-        # for buffer_analysis in self.buffer_analyses
+        # TODO: refactor this method so that it uses `class_metrics_df` and
+        # `landscape_metrics_df` properties?
+
         if ax is None:
             fig, ax = plt.subplots(**subplots_kws)
 

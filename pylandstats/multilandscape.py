@@ -106,6 +106,15 @@ class MultiLandscape:
             return self._class_metrics_df
         except AttributeError:
             attribute_values = getattr(self, self.attribute_name)
+            # IMPORTANT: here we need this approach (uglier when compared to
+            # the `landscape_metrics_df` property below) because we need to
+            # filter each class metrics data frame so that we only include the
+            # classes considered in this `MultiLandscape` instance. We need to
+            # do it like this because the `Landcape.compute_class_metrics_df`
+            # does not have a `classes` argument that allows computing the
+            # data frame only for a custom set of classes. Should such
+            # `classes` argument be added at some point, we could use the
+            # approach of the `landscape_metrics_df` property below.
             # TODO: one-level index if only one class?
             class_metrics_df = pd.DataFrame(
                 index=pd.MultiIndex.from_product(
@@ -121,7 +130,7 @@ class MultiLandscape:
                 df = landscape.compute_class_metrics_df(
                     metrics=self.class_metrics, metrics_kws=self.metrics_kws)
                 # filter so we only check the classes considered in this
-                # instance
+                # `MultiLandscape` instance
                 df = df.loc[df.index.intersection(self.classes)]
                 # put every row of the filtered DataFrame of this particular
                 # attribute value
@@ -138,6 +147,7 @@ class MultiLandscape:
             return self._landscape_metrics_df
         except AttributeError:
             attribute_values = getattr(self, self.attribute_name)
+            # PREVIOUS APPROACH
             landscape_metrics_df = pd.DataFrame(index=attribute_values,
                                                 columns=self.landscape_metrics)
             landscape_metrics_df.index.name = self.attribute_name
@@ -145,10 +155,31 @@ class MultiLandscape:
 
             for attribute_value, landscape in zip(attribute_values,
                                                   self.landscapes):
-                landscape_metrics_df.loc[
-                    attribute_value] = landscape.compute_landscape_metrics_df(
+                landscape_metrics_df.loc[attribute_value] = \
+                    landscape.compute_landscape_metrics_df(
                         self.landscape_metrics,
                         metrics_kws=self.metrics_kws).iloc[0]
+
+            # # NEW APPROACH
+            # # we will create a dict where each key is an `attribute_value`,
+            # # and its value is the series of landscape-level `metrics of the
+            # # corresponding `Landscape` instance
+            # ser_dict = {
+            #     attribute_value: landscape.compute_landscape_metrics_df(
+            #         self.landscape_metrics,
+            #         metrics_kws=self.metrics_kws).iloc[0]
+            #     for attribute_value, landscape in zip(attribute_values,
+            #                                           self.landscapes)
+            # }
+
+            # # we concatenate each value of the dict dataframe using its
+            # # respective `buffer_dist` key to create an extra index level
+            # # (i.e., using the `keys` argument of `pd.concat`)
+            # landscape_metrics_df = pd.concat(ser_dict.values(),
+            #                                  keys=ser_dict.keys())
+            # # now we set the name of each index and column level
+            # landscape_metrics_df.index.name = self.attribute_name
+            # landscape_metrics_df.columns.name = 'metric'
 
             self._landscape_metrics_df = landscape_metrics_df
 
