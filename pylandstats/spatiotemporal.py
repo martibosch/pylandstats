@@ -108,7 +108,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
                         np.where(mask_arr, landscape.landscape_arr,
                                  landscape.nodata),
                         res=(landscape.cell_width, landscape.cell_height),
-                        nodata=landscape.nodata)
+                        nodata=landscape.nodata, transform=landscape.transform)
                     for landscape in self.landscapes
                 ], metrics=metrics, classes=classes, dates=dates,
                                        metrics_kws=metrics_kws))

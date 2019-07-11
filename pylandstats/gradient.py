@@ -45,7 +45,8 @@ class GradientAnalysis(MultiLandscape):
             Landscape(
                 np.where(mask_arr, landscape.landscape_arr, landscape.nodata),
                 res=(landscape.cell_width, landscape.cell_height),
-                nodata=landscape.nodata) for mask_arr in masks_arr
+                nodata=landscape.nodata, transform=landscape.transform)
+            for mask_arr in masks_arr
         ]
 
         # TODO: is it useful to store `masks_arr` as instance attribute?
