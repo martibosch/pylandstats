@@ -245,8 +245,42 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             return self._landscape_metrics_df
 
     def plot_metric(self, metric, class_val=None, ax=None, metric_legend=True,
-                    metric_label=None, fmt='--o', plot_kws={},
-                    subplots_kws={}):
+                    metric_label=None, buffer_dist_legend=True, fmt='--o',
+                    plot_kws={}, subplots_kws={}):
+        """
+        Parameters
+        ----------
+        metric : str
+            A string indicating the name of the metric to plot
+        class_val : int, optional
+            If provided, the metric will be plotted at the level of the
+            corresponding class, otherwise it will be plotted at the landscape
+            level
+        ax : axis object, optional
+            Plot in given axis; if None creates a new figure
+        metric_legend : bool, default True
+            Whether the metric label should be displayed within the plot (as
+            label of the y-axis)
+        metric_label : str, optional
+            Label of the y-axis to be displayed if `metric_legend` is `True`.
+            If the provided value is `None`, the label will be taken from the
+            `settings` module
+        buffer_dist_legend : bool, default True
+            Whether a legend linking each plotted line to a buffer distance
+            should be displayed within the plot
+        fmt : str, default '--o'
+            A format string for `plt.plot`
+        plot_kws : dict
+            Keyword arguments to be passed to `plt.plot`
+        subplots_kws : dict
+            Keyword arguments to be passed to `plt.subplots`, only if no axis
+            is given (through the `ax` argument)
+
+        Returns
+        -------
+        ax : axis object
+            Returns the Axes object with the plot drawn onto it
+        """
         # TODO: refactor this method so that it uses `class_metrics_df` and
         # `landscape_metrics_df` properties?
 
@@ -268,5 +302,8 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
                                      metric_legend=metric_legend,
                                      metric_label=metric_label, fmt=fmt,
                                      plot_kws=plot_kws)
+
+        if buffer_dist_legend:
+            ax.legend()
 
         return ax
