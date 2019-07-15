@@ -307,3 +307,62 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             ax.legend()
 
         return ax
+
+    def plot_landscapes(self, cmap=None, legend=True, subplots_kws={},
+                        show_kws={}, subplots_adjust_kws={}):
+        """
+        Plots each landscape snapshot in a dedicated matplotlib axis by means
+        of the `Landscape.plot_landscape` method of each instance
+
+        Parameters
+        -------
+        cmap : str or `~matplotlib.colors.Colormap`, optional
+            A Colormap instance
+        legend : bool, optional
+            If ``True``, display the legend of the land use/cover color codes
+        subplots_kws: dict, optional
+            Keyword arguments to be passed to `plt.subplots`
+        show_kws : dict, optional
+            Keyword arguments to be passed to `rasterio.plot.show`
+        subplots_adjust_kws: dict, optional
+            Keyword arguments to be passed to `plt.subplots_adjust`
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            The figure with its corresponding plots drawn into its axes
+        """
+
+        # the number of rows is the number of dates, which will be the same
+        # for all the `SpatioTemporalAnalysis` instances of `self.stas`
+        dates = self.stas[0].dates
+
+        # avoid alias/refrence issues
+        _subplots_kws = subplots_kws.copy()
+        figsize = _subplots_kws.pop('figsize', None)
+        if figsize is None:
+            figwidth, figheight = plt.rcParams['figure.figsize']
+            figsize = (figwidth * len(self.buffer_dists),
+                       figheight * len(dates))
+
+        fig, axes = plt.subplots(len(self.buffer_dists), len(dates),
+                                 figsize=figsize, **_subplots_kws)
+
+        flat_axes = axes.flat
+        for buffer_dist, sta in zip(self.buffer_dists, self.stas):
+            for date, landscape in zip(sta.dates, sta.landscapes):
+                ax = landscape.plot_landscape(cmap=cmap, ax=next(flat_axes),
+                                              legend=legend, **show_kws)
+
+        # labels in first row and column only
+        for date, ax in zip(dates, axes[0]):
+            ax.set_title(date)
+
+        for buffer_dist, ax in zip(self.buffer_dists, axes[:, 0]):
+            ax.set_ylabel(buffer_dist)
+
+        # adjust spacing between axes
+        if subplots_adjust_kws:
+            fig.subplots_adjust(**subplots_adjust_kws)
+
+        return fig

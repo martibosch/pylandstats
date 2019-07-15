@@ -789,3 +789,43 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
             # test that there is a legend label for each buffer distance
             handles, labels = ax.get_legend_handles_labels()
             self.assertEqual(len(labels), len(self.buffer_dists))
+
+    def test_plot_landscapes(self):
+        stba = pls.SpatioTemporalBufferAnalysis(self.landscape_fps,
+                                                self.base_mask,
+                                                self.buffer_dists)
+
+        fig = stba.plot_landscapes()
+
+        # there must be one column for each buffer distance and one row for
+        # each date
+        self.assertEqual(len(fig.axes),
+                         len(stba.buffer_dists) * len(stba.dates))
+
+        # returned axes must be instances of matplotlib axes
+        for ax in fig.axes:
+            self.assertIsInstance(ax, plt.Axes)
+
+        # test that by default, the dimensions of the resulting will come from
+        # matplotlib's settings
+        rc_figwidth, rc_figheight = plt.rcParams['figure.figsize']
+        figwidth, figheight = fig.get_size_inches()
+        # the actual `figwidth` must be `len(stba.buffer_dists) * rc_figwidth`
+        # and `figheight` must be `len(stba.dates) * rc_figheight`
+        self.assertAlmostEqual(figwidth, len(stba.buffer_dists) * rc_figwidth)
+        self.assertAlmostEqual(figheight, len(stba.dates) * rc_figheight)
+        # if instead, we customize the figure size, the dimensions of the
+        # resulting figure must be the customized ones
+        custom_figsize = (10, 10)
+        fig = stba.plot_landscapes(subplots_kws={'figsize': custom_figsize})
+        figwidth, figheight = fig.get_size_inches()
+        self.assertAlmostEqual(custom_figsize[0], figwidth)
+        self.assertAlmostEqual(custom_figsize[1], figheight)
+
+        # first row has the date as title
+        for date, ax in zip(stba.dates, fig.axes):
+            self.assertEqual(str(date), ax.get_title())
+        # first column has the buffer distance as `ylabel`
+        for buffer_dist, i in zip(stba.buffer_dists,
+                                  range(0, len(fig.axes), len(stba.dates))):
+            self.assertEqual(str(buffer_dist), fig.axes[i].get_ylabel())
