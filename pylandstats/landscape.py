@@ -528,6 +528,9 @@ class Landscape:
         """
         The area of each patch of the landscape
 
+        .. math::
+           AREA = a_{i,j} \\quad [hec] \; or \; [m]
+
         Parameters
         ----------
         class_val : int, optional
@@ -540,8 +543,8 @@ class Landscape:
 
         Returns
         -------
-        area : pd.Series if `class_val` is provided, pd.DataFrame otherwise
-            area > 0, without limit
+        AREA : pd.Series if `class_val` is provided, pd.DataFrame otherwise
+            AREA > 0, without limit
         """
 
         # class_ser = self._patch_class_ser
@@ -568,6 +571,9 @@ class Landscape:
         """
         The perimeter of each patch of the landscape
 
+        .. math::
+           PERIM = p_{i,j} \\quad [m]
+
         Parameters
         ----------
         class_val : int, optional
@@ -577,8 +583,8 @@ class Landscape:
 
         Returns
         -------
-        perim : pd.Series if `class_val` is provided, pd.DataFrame otherwise
-            perim > 0, without limit
+        PERIM : pd.Series if `class_val` is provided, pd.DataFrame otherwise
+            PERIM > 0, without limit
         """
 
         # class_ser = self._patch_class_ser
@@ -602,6 +608,9 @@ class Landscape:
         of the patch, e.g, for the same shape, larger patches will have a
         smaller perimeter-area ratio.
 
+        .. math::
+           PARA = \\frac{p_{i,j}}{a_{i,j}} \\quad [m/hec] \; or \; [m/m^2]
+
         Parameters
         ----------
         class_val : int, optional
@@ -614,8 +623,8 @@ class Landscape:
 
         Returns
         -------
-        para : pd.Series if `class_val` is provided, pd.DataFrame otherwise
-            para > 0, without limit
+        PARA : pd.Series if `class_val` is provided, pd.DataFrame otherwise
+            PARA > 0, without limit
         """
 
         # class_ser = self._patch_class_ser
@@ -650,7 +659,10 @@ class Landscape:
         """
         A measure of shape complexity, similar to the perimeter-area ratio,
         but correcting for its size problem by adjusting for a standard square
-        shape. See also the documentation of `perimeter_area_ratio`.
+        shape.
+
+        .. math::
+           SHAPE = \\frac{.25 \; p_{i,j}}{\\sqrt{a_{i,j}}}
 
         Parameters
         ----------
@@ -661,8 +673,8 @@ class Landscape:
 
         Returns
         -------
-        shape : pd.Series if `class_val` is provided, pd.DataFrame otherwise
-            shape >= 1, without limit ; shape equals 1 when the patch
+        SHAPE : pd.Series if `class_val` is provided, pd.DataFrame otherwise
+            SHAPE >= 1, without limit ; SHAPE equals 1 when the patch
             is maximally compact, and increases without limit as patch shape
             becomes more regular
         """
@@ -688,6 +700,9 @@ class Landscape:
         A measure of shape complexity appropriate across a wide range of patch
         sizes
 
+        .. math::
+           FRAC = \\frac{2 \; ln (.25 \; p_{i,j})}{ln (a_{i,j})}
+
         Parameters
         ----------
         class_val : int, optional
@@ -697,8 +712,8 @@ class Landscape:
 
         Returns
         -------
-        frac : pd.Series if `class_val` is provided, pd.DataFrame otherwise
-            1 <= frac <=2 ; for a two-dimensional patch, frac approaches 1 for
+        FRAC : pd.Series if `class_val` is provided, pd.DataFrame otherwise
+            1 <= FRAC <=2 ; for a two-dimensional patch, FRAC approaches 1 for
             very simple shapes such as squares, and approaches 2 for complex
             plane-filling shapes
         """
@@ -744,6 +759,12 @@ class Landscape:
 
     def euclidean_nearest_neighbor(self, class_val=None):
         """
+        Distance to the nearest neighboring patch of the same class based on
+        the shortest edge-to-edge distance
+
+        .. math::
+           ENN = h_{i,j} \\quad [m]
+
         Parameters
         ----------
         class_val : int, optional
@@ -753,8 +774,8 @@ class Landscape:
 
         Returns
         -------
-        enn : float
-            enn > 0, without limit ; enn approaches 0 as the distance to the
+        ENN : numeric
+            ENN > 0, without limit ; ENN approaches 0 as the distance to the
             nearest neighbors decreases
         """
 
@@ -817,9 +838,17 @@ class Landscape:
 
     def total_area(self, class_val=None, hectares=True):
         """
-        At the class level, measure of the extent of landscape occupied by a
-        specific class. At the landscape level, measure of the extent of the
-        landscape. See also the documentation of `area`.
+        Total area. If `class_val` is provided, the metric is computed at the
+        class level as in:
+
+        .. math::
+           TA_i = \\sum_{j=1}^{n_i} a_{i,j} \\quad [hec] \; or \; [m] \\quad
+           (class \; i)
+
+        otherwise, the metric is computed at the landscape level as in:
+
+        ..math::
+           TA = A \\quad [hec] \; or \; [m] \\quad (landscape)
 
         Parameters
         ----------
@@ -833,7 +862,7 @@ class Landscape:
 
         Returns
         -------
-        ta : float
+        TA : numeric
         """
 
         if class_val is None:
@@ -850,7 +879,10 @@ class Landscape:
     def proportion_of_landscape(self, class_val, percent=True):
         """
         Measures the proportional abundance of a particular class within the
-        landscape
+        landscape. It is computed at the class level as in:
+
+        .. math::
+           PLAND = \\frac{1}{A} \\sum_j^{n_i} a_{i,j}
 
         Parameters
         ----------
@@ -863,8 +895,8 @@ class Landscape:
 
         Returns
         -------
-        pland : float
-            0 < pland <= 100 ; pland approaches 0 when the occurrence of the
+        PLAND : numeric
+            0 < PLAND <= 100 ; PLAND approaches 0 when the occurrence of the
             corresponding class becomes increasingly rare, and approaches 100
             when the entire landscape consists of a single patch of such class.
         """
@@ -878,7 +910,16 @@ class Landscape:
 
     def number_of_patches(self, class_val=None):
         """
-        Number of class patches within the landscape
+        Number of patches. If `class_val` is provided, the metric is computed
+        at the class level as in:
+
+        .. math::
+           NP_i = n_i \\quad (class \; i)
+
+        otherwise, the metric is computed at the landscape level as in:
+
+        .. math::
+           NP = N \\quad (landscape)
 
         Parameters
         ----------
@@ -889,8 +930,8 @@ class Landscape:
 
         Returns
         -------
-        np : int
-            np >= 1
+        NP : int
+            NP >= 1, without limit
         """
         if class_val is None:
             num_patches = np.sum(list(self._num_patches_dict.values()))
@@ -901,9 +942,19 @@ class Landscape:
 
     def patch_density(self, class_val=None, percent=True, hectares=True):
         """
-        Density of class patches within the landscape, arguably more useful
-        than the number of patches since it facilitates comparison among
-        landscapes of different sizes
+        Density of class patches, which is arguably more useful than the
+        number of patches since it facilitates comparison among landscapes of
+        different sizes. If `class_val` is provided, the metric is computed at
+        the class level as in:
+
+        .. math::
+           PD_i = \\frac{n_i}{A} \\quad [1/hec] \; or \; [1/m^2] \\quad (class
+           \; i)
+
+        otherwise, the metric is computed at the landscape level as in:
+
+        .. math::
+           PD = \\frac{N}{A} \\quad [1/hec] \; or \; [1/m^2] \\quad (landscape)
 
         Parameters
         ----------
@@ -920,8 +971,8 @@ class Landscape:
 
         Returns
         -------
-        pd : float
-            pd > 0, constrained by cell size ; maximum pd is attained when
+        PD : numeric
+            PD > 0, constrained by cell size ; maximum PD is attained when
             every cell is a separate patch
         """
 
@@ -942,8 +993,17 @@ class Landscape:
 
     def largest_patch_index(self, class_val=None, percent=True):
         """
-        The proportion of total landscape comprised by the largest patch (of a
-        particular class if provided, otherwise for the whole landscape)
+        The proportion of total landscape comprised by the largest patch. If
+        `class_val` is provided, the metric is computed at the class level as
+        in:
+
+        .. math:: 
+           LPI_i = \\frac{1}{A} \\max_{j=1}^{n_i} a_{i,j} \\quad (class \; i)
+
+        otherwise, the metric is computed at the landscape level as in:
+
+        .. math::
+           LPI = \\frac{1}{A} \\max a_{i,j} \\quad (landscape)
 
         Parameters
         ----------
@@ -957,9 +1017,9 @@ class Landscape:
 
         Returns
         -------
-        lpi : float
-            0 < lpi <= 100 (or 0 < lpi <= 1 if percent argument is False) ;
-            lpi approaches 0 when the largest patch of the corresponding class
+        LPI : numeric
+            0 < LPI <= 100 (or 0 < LPI <= 1 if percent argument is False) ;
+            LPI approaches 0 when the largest patch of the corresponding class
             is increasingly small, and approaches its maximum value when such
             largest patch comprises the totality of the landscape
         """
@@ -975,8 +1035,16 @@ class Landscape:
 
     def total_edge(self, class_val=None, count_boundary=False):
         """
-        Measure of the total edge length of a particular (of a particular
-        class if provided, otherwise for the whole landscape)
+        Measure of the total edge length. If `class_val` is provided, the
+        metric is computed at the class level as in:
+
+        .. math::
+           TE_i = \\sum_{k=1}^{m} e_{i,k} \\quad [m] \\quad (class \; i)
+
+        otherwise, the metric is computed at the landscape level as in:
+
+        .. math::
+           TE = E \\quad [m] \\quad (landscape)
 
         Parameters
         ----------
@@ -990,8 +1058,8 @@ class Landscape:
 
         Returns
         -------
-        te : float
-            te >= 0 ; te equals 0 when the entire landscape and its border
+        TE : numeric
+            TE >= 0 ; TE equals 0 when the entire landscape and its border
             consist of the corresponding class
         """
 
@@ -1049,8 +1117,17 @@ class Landscape:
                      hectares=True):
         """
         Measure of edge length per area unit, which facilitates comparison
-        among landscapes of different sizes (of a particular class if provided,
-        otherwise for the whole landscape)
+        among landscapes of different sizes. If `class_val` is provided, the
+        metric is computed at the class level as in:
+
+        .. math::
+           ED_i = \\frac{1}{A} \\sum_{k=1}^{m} e_{i,k} \\quad [m/hec] \; or
+           \; [m/m^2] \\quad (class \; i)
+
+        otherwise, the metric is computed at the landscape level as in:
+
+        .. math::
+           ED = \\frac{E}{A} \\quad [m/hec] \; or \; [m/m^2] \\quad (landscape)
 
         Parameters
         ----------
@@ -1066,10 +1143,9 @@ class Landscape:
 
         Returns
         -------
-        ed : float
-            ed >= 0, without limit ; ed equals 0 when the entire landscape and
+        ED : numeric
+            ED >= 0, without limit ; ED equals 0 when the entire landscape and
             its border consist of the corresponding patch class.
-            Units: meters of edge per hectare/square meter.
         """
 
         # TODO: we make an exception here of the "not reusing other metric's
@@ -1935,7 +2011,19 @@ class Landscape:
 
     def landscape_shape_index(self, class_val=None):
         """
-        Measure of class aggregation or clumpiness
+        Measure of class aggregation that provides a standardized measure of
+        edginess that adjusts for the size of the landscape. If `class_val` is
+        provided, the metric is computed at the class level as in:
+
+        .. math::
+           LSI_i = \\frac{.25 \\sum \\limits_{k=1}^{m} e_{i,k}}{\\sqrt{A}}
+           \\quad (class \; i)
+
+        otherwise, the metric is computed at the landscape level as in:
+
+        .. math::
+
+           LSI = \\frac{.25 E}{\\sqrt{A}} \\quad (landscape)
 
         Parameters
         ----------
@@ -1946,8 +2034,8 @@ class Landscape:
 
         Returns
         -------
-        lsi : float
-            lsi >=1 ; lsi equals 1 when the entire landscape consists of a
+        LSI : float
+            LSI >=1 ; LSI equals 1 when the entire landscape consists of a
             single patch of the corresponding class, and increases without
             limit as the patches of such class become more disaggregated.
         """
@@ -2008,6 +2096,18 @@ class Landscape:
 
     def contagion(self, percent=True):
         """
+        Measure of aggregation that measures the probability that two random
+        adjacent cells belong to the same class. It is computed at the
+        landscape level as in:
+
+        .. math::
+           CONTAG = 1 + \\frac{
+             \\sum \\limits_{i=1}^{m} \\sum \\limits_{k=1}^{m} \\Bigg[
+               P_i \\frac{g_{i,k}}{\\sum \\limits_{k=1}^{m} g_{i,k}}
+             \\Bigg] \\Bigg[ ln \\Bigg(
+               P_i \\frac{g_{i,k}}{\\sum \\limits_{k=1}^{m} g_{i,k}}
+             \\Bigg) \\Bigg]}{2 ln(m)}
+
         Parameters
         ----------
         percent : bool, default True
@@ -2016,8 +2116,8 @@ class Landscape:
 
         Returns
         -------
-        cont : float
-            0 < contag <= 100 ; contag approaches 0 when the classes are
+        CONTAG : float
+            0 < CONTAG <= 100 ; CONTAG approaches 0 when the classes are
             maximally disaggregated (i.e., every cell is a patch of a
             different class) and interspersed (i.e., equal proportions of all
             pairwise adjacencies), and approaches its maximum when the
@@ -2058,11 +2158,17 @@ class Landscape:
 
     def shannon_diversity_index(self):
         """
+        Measure of diversity that reflects the number of classes present in
+        the landscape as well as the relative abundance of each class. It is
+        computed at the landscape level as in:
+
+        .. math::
+           SHDI = - \\sum \\limits_{i=1}^{m} \\Big( P_i \; ln P_i \\Big)
 
         Returns
         -------
-        shdi : float
-            shdi >= 0 ; shdi approaches 0 when the entire landscape consists
+        SHDI : float
+            SHDI >= 0 ; SHDI approaches 0 when the entire landscape consists
             of a single patch, and increases as the number of classes
             increases and/or the proportional distribution of area among
             classes becomes more equitable.

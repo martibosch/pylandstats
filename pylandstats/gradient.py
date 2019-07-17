@@ -218,3 +218,25 @@ class BufferAnalysis(GradientAnalysis):
               self).__init__(landscape, buffer_masks_arr, 'buffer_dists',
                              buffer_dists, metrics=metrics, classes=classes,
                              metrics_kws=metrics_kws)
+
+    @property
+    def class_metrics_df(self):
+        """
+        Property that computes the data frame of class-level metrics, which
+        is multi-indexed by the class and buffer distance. Once computed, the
+        data frame is cached so further calls to the property just access an
+        attribute and therefore run in constant time.
+        """
+        # override so that we can add an explicit docstring
+        return super(BufferAnalysis, self).class_metrics_df
+
+    @property
+    def landscape_metrics_df(self):
+        """
+        Property that computes the data frame of landcape-level metrics, which
+        is indexed by the buffer distance. Once computed, the data frame is
+        cached so further calls to the property just access an attribute and
+        therefore run in constant time.
+        """
+        # override so that we can add an explicit docstring
+        return super(BufferAnalysis, self).landscape_metrics_df

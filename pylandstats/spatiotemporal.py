@@ -47,6 +47,28 @@ class SpatioTemporalAnalysis(MultiLandscape):
               self).__init__(landscapes, 'dates', dates, metrics=metrics,
                              classes=classes, metrics_kws=metrics_kws)
 
+    @property
+    def class_metrics_df(self):
+        """
+        Property that computes the data frame of class-level metrics, which
+        is multi-indexed by the class and date. Once computed, the data frame
+        is cached so further calls to the property just access an attribute
+        and therefore run in constant time.
+        """
+        # override so that we can add an explicit docstring
+        return super(SpatioTemporalAnalysis, self).class_metrics_df
+
+    @property
+    def landscape_metrics_df(self):
+        """
+        Property that computes the data frame of landcape-level metrics, which
+        is indexed by the date. Once computed, the data frame is cached so
+        further calls to the property just access an attribute and therefore
+        run in constant time.
+        """
+        # override so that we can add an explicit docstring
+        return super(SpatioTemporalAnalysis, self).landscape_metrics_df
+
     # def plot_patch_metric(metric):
     #     # TODO: sns distplot?
     #     fig, ax = plt.subplots()
@@ -65,11 +87,26 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             A list-like of `Landscape` objects or of strings/file objects/
             pathlib.Path objects so that each is passed as the `landscape`
             argument of `Landscape.__init__`
-        base_mask : 
-        buffer_rings : 
-        base_mask_crs : 
-        landscape_crs : 
-        landscape_transform :
+        base_mask : shapely geometry or geopandas GeoSeries
+            Geometry that will serve as a base mask to buffer around
+        buffer_rings : bool, default False
+            If `False`, each buffer zone will consist of the whole region that
+            lies within the respective buffer distance around the base mask.
+            If `True`, buffer zones will take the form of rings around the
+            base mask.
+        base_mask_crs : dict, optional
+            The coordinate reference system of the base mask. Required if the
+            base mask is a shapely geometry or a geopandas GeoSeries without
+            the `crs` attribute set
+        landscape_crs : dict, optional
+            The coordinate reference system of the landscapes. Required if the
+            passed-in landscapes are `Landscape` objects, ignored if they are
+            paths to GeoTiff rasters that already contain such information.
+        landscape_transform : affine.Affine
+            Transformation from pixel coordinates to coordinate reference
+            system. Required if the passed-in landscapes are `Landscape`
+            objects, ignored if they are paths to GeoTiff rasters that already
+            contain such information.
         metrics : list-like, optional
             A list-like of strings with the names of the metrics that should
             be computed in the context of this analysis case
@@ -137,6 +174,12 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
 
     @property
     def class_metrics_df(self):
+        """
+        Property that computes the data frame of class-level metrics, which
+        is multi-indexed by the buffer distance, class and date. Once computed,
+        the data frame is cached so further calls to the property just access
+        an attribute and therefore run in constant time.
+        """
         try:
             return self._class_metrics_df
         except AttributeError:
@@ -203,6 +246,12 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
 
     @property
     def landscape_metrics_df(self):
+        """
+        Property that computes the data frame of landcape-level metrics, which
+        is multi-indexed by the buffer distance and date. Once computed, the
+        data frame is cached so further calls to the property just access an
+        attribute and therefore run in constant time.
+        """
         try:
             return self._landscape_metrics_df
         except AttributeError:

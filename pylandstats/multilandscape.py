@@ -102,6 +102,12 @@ class MultiLandscape:
 
     @property
     def class_metrics_df(self):
+        """
+        Property that computes the data frame of class-level metrics, which
+        is multi-indexed by the class and attribute value. Once computed, the
+        data frame is cached so further calls to the property just access an
+        attribute and therefore run in constant time.
+        """
         try:
             return self._class_metrics_df
         except AttributeError:
@@ -143,6 +149,12 @@ class MultiLandscape:
 
     @property
     def landscape_metrics_df(self):
+        """
+        Property that computes the data frame of landscape-level metrics, which
+        is indexed by the attribute value. Once computed, the data frame is
+        cached so further calls to the property just access an attribute and
+        therefore run in constant time.
+        """
         try:
             return self._landscape_metrics_df
         except AttributeError:
