@@ -1,5 +1,16 @@
 # Change log
 
+## 1.0.0 (18/07/2019)
+
+* dropped Python 2 support
+* added `SpatioTemporalBufferAnalysis.plot_landscapes` method
+* added `buffer_dist_legend` argument and docs in `SpatioTemporalBufferAnalysis. plot_metric`
+* fix proper metric data frame properties in `SpatioTemporalBufferAnalysis`
+* pass `transform` argument when initializating `MultiLandscape` instances (i.e., `SpatioTemporalAnalysis`, `BufferAnalysis`, `GradientAnalysis` and `SpatioTemporalBufferAnalysis`)
+* `plot_landscape` and `plot_landscapes` with rasterio.plot.show
+* changed `feature_{name,values}` for `attribute_{name,values}` in `MultiLandscape` (abstract) class
+* dropped `plot_metrics` method
+
 ## 0.6.1 (02/07/2019)
 
 * cell width and length comparisons with `numpy.isclose` to deal with imprecisions that come from float pixel resolutions (e.g., in GeoTIFF files)
