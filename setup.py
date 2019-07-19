@@ -11,6 +11,7 @@ from setuptools import find_packages, setup
 if sys.version_info[:2] < (3, 6):
     raise RuntimeError("Python version >= 3.6 required.")
 
+import numpy as np
 from transonic.dist import make_backend_files, init_pythran_extensions
 
 __version__ = "1.0.0"
@@ -46,7 +47,9 @@ install_requires.append("transonic")
 paths = ["pylandstats/landscape.py"]
 make_backend_files([here / path for path in paths])
 extensions = init_pythran_extensions(
-    "pylandstats", compile_args=("-O3", "-DUSE_XSIMD")
+    "pylandstats",
+    include_dirs=np.get_include(),
+    compile_args=("-O3", "-DUSE_XSIMD"),
 )
 
 setup(
