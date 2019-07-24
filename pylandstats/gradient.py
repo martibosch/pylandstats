@@ -43,7 +43,9 @@ class GradientAnalysis(MultiLandscape):
 
         landscapes = [
             Landscape(
-                np.where(mask_arr, landscape.landscape_arr, landscape.nodata),
+                np.where(mask_arr, landscape.landscape_arr,
+                         landscape.nodata).astype(
+                             landscape.landscape_arr.dtype),
                 res=(landscape.cell_width, landscape.cell_height),
                 nodata=landscape.nodata, transform=landscape.transform)
             for mask_arr in masks_arr
