@@ -4,7 +4,6 @@
 [![Build Status](https://travis-ci.org/martibosch/pylandstats.svg?branch=master)](https://travis-ci.org/martibosch/pylandstats)
 [![Coverage Status](https://coveralls.io/repos/github/martibosch/pylandstats/badge.svg?branch=master)](https://coveralls.io/github/martibosch/pylandstats?branch=master)
 [![GitHub license](https://img.shields.io/github/license/martibosch/pylandstats.svg)](https://github.com/martibosch/pylandstats/blob/master/LICENSE)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/martibosch/pylandstats-notebooks/master?filepath=overview.ipynb)
 
 # PyLandStats
 
@@ -81,20 +80,20 @@ See the [documentation](https://pylandstats.readthedocs.io/en/latest/?badge=late
 
 ## Installation
 
-To install use pip:
+The easiest way to install PyLandStats is with conda:
+
+    $ conda install -c conda-forge pylandstats
+
+which will install PyLandStats and all of its dependencies. Alternatively, you can install PyLandStats using pip:
 
     $ pip install pylandstats
 
 
-If you want to use the `BufferAnalysis` class, you will need [geopandas](https://github.com/geopandas/geopandas). The easiest way to install it is via [conda-forge](https://conda-forge.org/) as in:
-
-    $ conda install -c conda-forge geopandas
-    
-and then install PyLandStats with the `geo` extras as in:
+Nevertheless, note that the `BufferAnalysis` and `SpatioTemporalBufferAnalysis` classes make use of [geopandas](https://github.com/geopandas/geopandas), which cannot be installed with pip. If you already have [the dependencies for geopandas](https://geopandas.readthedocs.io/en/latest/install.html#dependencies) installed in your system, you might then install PyLandStats with the `geo` extras as in:
 
     $ pip install pylandstats[geo]
     
-
+and you will be able to use the `BufferAnalysis` and `SpatioTemporalBufferAnalysis` classes (without having to use conda).
 
 ## Acknowledgments
 
