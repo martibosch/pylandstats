@@ -14,8 +14,6 @@ __version__ = '1.0.0'
 classifiers = [
     'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
     'Programming Language :: Python',
-    'Programming Language :: Python :: 2',
-    'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3.6',
 ]
