@@ -84,3 +84,9 @@ Computing metrics data frames
 .. automethod:: pylandstats.Landscape.compute_patch_metrics_df
 .. automethod:: pylandstats.Landscape.compute_class_metrics_df
 .. automethod:: pylandstats.Landscape.compute_landscape_metrics_df
+
+-------------------------
+Plotting landscape raster
+-------------------------
+
+.. automethod:: pylandstats.Landscape.plot_landscape
