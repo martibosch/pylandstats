@@ -1,5 +1,11 @@
 # Change log
 
+## 1.0.1 (24/07/2019)
+
+* deleted Python 2 classifiers in `setup.py`
+* fix ValueError message for `landscape_crs` and `landscape_transform` in `BufferAnalysis`
+* fix landscape array dtype in `GradientAnalysis` and `BufferAnalysis`
+
 ## 1.0.0 (18/07/2019)
 
 * dropped Python 2 support
