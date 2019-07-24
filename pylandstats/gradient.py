@@ -157,11 +157,11 @@ class BufferAnalysis(GradientAnalysis):
             if landscape_crs is None:
                 raise ValueError(
                     "If passing `Landscape` objects (instead of geotiff "
-                    "filepaths), `landscapes_crs` must be provided")
+                    "filepaths), `landscape_crs` must be provided")
             if landscape_transform is None:
                 raise ValueError(
                     "If passing `Landscape` objects (instead of geotiff "
-                    "filepaths), `landscapes_transform` must be provided")
+                    "filepaths), `landscape_transform` must be provided")
             landscape_shape = landscape.landscape_arr.shape
         else:
             with rasterio.open(landscape) as src:
