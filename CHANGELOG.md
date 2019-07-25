@@ -1,5 +1,10 @@
 # Change log
 
+## 1.0.2 (25/07/2019)
+
+* fix landscape array dtype in `SpatioTemporalBufferAnalysis`
+* included `LICENSE` in `MANIFEST.in`
+
 ## 1.0.1 (24/07/2019)
 
 * deleted Python 2 classifiers in `setup.py`
