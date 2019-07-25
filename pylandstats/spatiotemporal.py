@@ -146,7 +146,8 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
                 SpatioTemporalAnalysis([
                     Landscape(
                         np.where(mask_arr, landscape.landscape_arr,
-                                 landscape.nodata),
+                                 landscape.nodata).astype(
+                                     landscape.landscape_arr.dtype),
                         res=(landscape.cell_width, landscape.cell_height),
                         nodata=landscape.nodata, transform=landscape.transform)
                     for landscape in self.landscapes
