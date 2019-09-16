@@ -180,11 +180,18 @@ class Landscape:
         if np.max(label_arr) < 2:  # num_patches < 2
             return np.array([np.nan])
         else:
+            # we will first get only the edges of the patches, since the
+            # shortest edge-to-edge distance between patches is certainly
+            # going to be between pixels at their corresponding patch edge
+            edges_mask = (label_arr != 0) ^ ndimage.binary_erosion(
+                label_arr, KERNEL_MOORE)
+            edges_arr = label_arr * edges_mask
+
             # get coordinates with non-zero values
             # Note that `label_arr` will use zero values to indicate nodata
             # (even if our landscape raster uses a different nodata value,
             # i.e., `self.nodata`)
-            I, J = np.nonzero(label_arr)
+            I, J = np.nonzero(edges_arr)
             labels = label_arr[I, J]  # this gives all the non-zero labels
             coords = np.column_stack((I, J))
 
