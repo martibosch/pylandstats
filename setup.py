@@ -9,7 +9,7 @@ from setuptools import find_packages, setup
 # See: https://github.com/pypa/setuptools/issues/309 and https://bit.ly/300HKtK
 from pythran.dist import PythranExtension
 
-__version__ = '1.0.2'
+__version__ = '1.1.0'
 
 classifiers = [
     'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
@@ -31,7 +31,7 @@ with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
 # Extra dependencies for geometric operations
 # we deliberately do not set any lower nor upper bounds on `geopandas`
 # dependency so that people might install its cythonized version
-geo = ["geopandas", "shapely >= 1.0.2"]
+geo = ["geopandas", "shapely >= 1.1.0"]
 
 install_requires = [x.strip() for x in all_reqs if 'git+' not in x]
 dependency_links = [
