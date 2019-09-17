@@ -1,5 +1,9 @@
 # Change log
 
+## 1.1.0 (17/09/2019)
+
+* Speed-up (~x2) in `Landscape.compute_patch_euclidean_nearest_neighbor`: compute pixel-to-pixel distances for patch edges only
+
 ## 1.0.2 (25/07/2019)
 
 * fix landscape array dtype in `SpatioTemporalBufferAnalysis`
