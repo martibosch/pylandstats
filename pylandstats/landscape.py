@@ -843,7 +843,7 @@ class Landscape:
 
         otherwise, the metric is computed at the landscape level as in:
 
-        ..math::
+        .. math::
            TA = A \\quad [hec] \; or \; [m] \\quad (landscape)
 
         Parameters
