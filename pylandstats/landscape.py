@@ -25,7 +25,6 @@ class Landscape:
     """Class representing a raster landscape upon which the landscape metrics
     will be computed
     """
-
     def __init__(self, landscape, res=None, nodata=None, transform=None,
                  **kwargs):
         """
@@ -183,8 +182,9 @@ class Landscape:
             # we will first get only the edges of the patches, since the
             # shortest edge-to-edge distance between patches is certainly
             # going to be between pixels at their corresponding patch edge
-            edges_mask = (label_arr != 0) ^ ndimage.binary_erosion(
-                label_arr, KERNEL_MOORE)
+            label_mask = label_arr != 0
+            edges_mask = label_mask & ~ndimage.binary_erosion(
+                label_mask, KERNEL_MOORE)
             edges_arr = label_arr * edges_mask
 
             # get coordinates with non-zero values
@@ -507,9 +507,9 @@ class Landscape:
 
     def _metric_ra(self, class_val, patch_metric_method,
                    patch_metric_method_kwargs={}):
-        return self._metric_reduce(
-            class_val, patch_metric_method,
-            patch_metric_method_kwargs, lambda ser: ser.max() - ser.min())
+        return self._metric_reduce(class_val, patch_metric_method,
+                                   patch_metric_method_kwargs,
+                                   lambda ser: ser.max() - ser.min())
 
     def _metric_sd(self, class_val, patch_metric_method,
                    patch_metric_method_kwargs={}):
