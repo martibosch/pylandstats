@@ -90,7 +90,10 @@ class Landscape:
         'fractal_dimension', 'euclidean_nearest_neighbor'
     ]  # 'contiguity_index', 'proximity'
 
-    _suffixes = ['mn', 'am', 'md', 'ra', 'sd', 'cv']
+    DISTR_METRICS = [
+        patch_metric + '_' + suffix for patch_metric in PATCH_METRICS
+        for suffix in ['mn', 'am', 'md', 'ra', 'sd', 'cv']
+    ]
 
     CLASS_METRICS = [
         'total_area',
@@ -101,14 +104,7 @@ class Landscape:
         'total_edge',
         'edge_density',
         'landscape_shape_index',
-    ] + ['area_{}'.format(suffix) for suffix in _suffixes] + [
-        'perimeter_area_ratio_{}'.format(suffix) for suffix in _suffixes
-    ] + ['shape_index_{}'.format(suffix) for suffix in _suffixes
-         ] + ['fractal_dimension_{}'.format(suffix)
-              for suffix in _suffixes] + [
-                  'euclidean_nearest_neighbor_{}'.format(suffix)
-                  for suffix in _suffixes
-              ]
+    ] + DISTR_METRICS
 
     LANDSCAPE_METRICS = [
         'total_area',
@@ -118,14 +114,7 @@ class Landscape:
         'total_edge',
         'edge_density',
         'landscape_shape_index',
-    ] + ['area_{}'.format(suffix) for suffix in _suffixes] + [
-        'perimeter_area_ratio_{}'.format(suffix) for suffix in _suffixes
-    ] + ['shape_index_{}'.format(suffix) for suffix in _suffixes
-         ] + ['fractal_dimension_{}'.format(suffix)
-              for suffix in _suffixes] + [
-                  'euclidean_nearest_neighbor_{}'.format(suffix)
-                  for suffix in _suffixes
-              ] + ['contagion', 'shannon_diversity_index']
+    ] + DISTR_METRICS + ['contagion', 'shannon_diversity_index']
 
     # compute methods
 
@@ -1297,6 +1286,123 @@ class Landscape:
         """
 
         return self._metric_cv(class_val, self.area, percent=percent)
+
+    def perimeter_mn(self, class_val=None):
+        """
+        Mean of the patch perimeter distribution. See also the documentation of
+        `perimeter`
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        perimeter_mn : float
+        """
+
+        return self._metric_mn(class_val, self.perimeter)
+
+    def perimeter_am(self, class_val=None):
+        """
+        Area-weighted mean of the patch perimeter distribution. See also the
+        documentation of `perimeter`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        perimeter_am : float
+        """
+
+        return self._metric_am(class_val, self.perimeter)
+
+    def perimeter_md(self, class_val=None):
+        """
+        Median of the patch perimeter distribution. See also the documentation
+        of `perimeter`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        perimeter_md : float
+        """
+
+        return self._metric_md(class_val, self.perimeter)
+
+    def perimeter_ra(self, class_val=None):
+        """
+        Range of the patch perimeter distribution. See also the documentation
+        of `perimeter`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        perimeter_ra : float
+        """
+
+        return self._metric_ra(class_val, self.perimeter)
+
+    def perimeter_sd(self, class_val=None):
+        """
+        Standard deviation of the patch perimeter distribution. See also the
+        documentation of `perimeter`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+
+        Returns
+        -------
+        perimeter_sd : float
+        """
+
+        return self._metric_sd(class_val, self.perimeter)
+
+    def perimeter_cv(self, class_val=None, percent=True):
+        """
+        Coefficient of variation of the patch perimeter distribution. See also
+        the documentation of `perimeter`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+        percent : bool, default True
+            whether the index should be expressed as proportion or converted
+            to percentage
+
+        Returns
+        -------
+        perimeter_cv : float
+        """
+
+        return self._metric_cv(class_val, self.perimeter, percent=percent)
 
     # shape
 

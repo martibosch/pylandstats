@@ -1,5 +1,7 @@
 import os
 
+from . import landscape
+
 try:
     from dotenv import find_dotenv, load_dotenv
     dotenv = True
@@ -40,10 +42,7 @@ fragstats_abbrev_dict = {
 }
 # add the class/landscape distribution statistics metrics to the fragstats
 # abbreviation dictionary
-for metric in [
-        'area', 'perimeter_area_ratio', 'shape_index', 'fractal_dimension',
-        'euclidean_nearest_neighbor'
-]:
+for metric in landscape.Landscape.PATCH_METRICS:
     for suffix in ['mn', 'am', 'md', 'ra', 'sd', 'cv']:
         fragstats_abbrev_dict['{}_{}'.format(metric, suffix)] = '{}_{}'.format(
             fragstats_abbrev_dict[metric], suffix.upper())
