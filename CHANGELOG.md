@@ -1,8 +1,14 @@
 # Change log
 
+## 1.1.1 (18/09/2019)
+
+* corrected rst typo in `total_area` docs
+* fixed missing perimeter distribution statistic metric and dried class constants definitions
+* fixed patch edge array computation when computing ENN (otherwise the speed-up of 1.1.0 is not effective)
+
 ## 1.1.0 (17/09/2019)
 
-* Speed-up (~x2) in `Landscape.compute_patch_euclidean_nearest_neighbor`: compute pixel-to-pixel distances for patch edges only
+* speed-up (~x2) in `Landscape.compute_patch_euclidean_nearest_neighbor`: compute pixel-to-pixel distances for patch edges only
 
 ## 1.0.2 (25/07/2019)
 
