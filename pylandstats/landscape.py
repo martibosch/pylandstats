@@ -2353,6 +2353,10 @@ class Landscape:
 
         except AttributeError:
             raise ValueError("{metric} is not among {Landscape.PATCH_METRICS}")
+        except TypeError:
+            raise ValueError(
+                "{metric} cannot be computed at the patch level".format(
+                    metric=metric))
 
         df = pd.concat(metrics_dfs, axis=1)  # [['class_val'] + patch_metrics]
         df.index.name = 'patch_id'
@@ -2390,6 +2394,19 @@ class Landscape:
 
         if metrics is None:
             metrics = Landscape.CLASS_METRICS
+        else:
+            # here and only here we need to check manually that none of the
+            # provided metrics is a patch-level metric. Why? because the
+            # methods to compute patch-level metrics and class-level metrics
+            # have the same signature, so calling them would not raise any
+            # `TypeError` - instead, since the methods to compute patch-level
+            # metrics return series/data frames instead of scalar values, we
+            # would obtain a malformed dataframe.
+            for metric in metrics:
+                if metric in Landscape.PATCH_METRICS:
+                    raise ValueError(
+                        "{metric} cannot be computed at the class level".
+                        format(metric=metric))
 
         if classes is None:
             classes = self.classes
@@ -2405,14 +2422,18 @@ class Landscape:
                 metrics_sers.append(
                     pd.Series(
                         {
-                            class_val: getattr(self, metric)(class_val, **
-                                                             metric_kws)
+                            class_val: getattr(self, metric)(
+                                class_val=class_val, **metric_kws)
                             for class_val in classes
                         }, name=metric))
 
         except AttributeError:
             raise ValueError("{metric} is not among {metrics}".format(
                 metric=metric, metrics=Landscape.CLASS_METRICS))
+        except TypeError:
+            raise ValueError(
+                "{metric} cannot be computed at the class level".format(
+                    metric=metric))
 
         df = pd.concat(metrics_sers, axis=1)
         df.index.name = 'class_val'
@@ -2460,6 +2481,10 @@ class Landscape:
         except AttributeError:
             raise ValueError("{metric} is not among {metrics}".format(
                 metric=metric, metrics=Landscape.LANDSCAPE_METRICS))
+        except TypeError:
+            raise ValueError(
+                "{metric} cannot be computed at the landscape level".format(
+                    metric=metric))
 
         return pd.DataFrame(metrics_dict, index=[0])
 

@@ -234,6 +234,11 @@ class MultiLandscape:
                 raise ValueError("{metric} is not among {metrics}".format(
                     metric=metric,
                     metrics=pls_landscape.Landscape.CLASS_METRICS))
+            except TypeError:
+                raise ValueError(
+                    "{metric} cannot be computed at the landscape level".
+                    format(metric=metric))
+
         else:
             try:
                 metric_values = [
@@ -245,6 +250,10 @@ class MultiLandscape:
                 raise ValueError("{metric} is not among {metrics}".format(
                     metric=metric,
                     metrics=pls_landscape.Landscape.LANDSCAPE_METRICS))
+            except TypeError:
+                raise ValueError(
+                    "{metric} cannot be computed at the class level".format(
+                        metric=metric))
 
         if ax is None:
             fig, ax = plt.subplots(**subplots_kws)

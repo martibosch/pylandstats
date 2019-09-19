@@ -108,13 +108,30 @@ class TestLandscape(unittest.TestCase):
                 patch_df.columns.drop('class_val') ==
                 pls.Landscape.PATCH_METRICS))
         self.assertEqual(patch_df.index.name, 'patch_id')
-        self.assertRaises(ValueError, ls.compute_patch_metrics_df, ['foo'])
+        # try that raised ValueErrors have different error messages depending
+        # on the context
+        with self.assertRaises(ValueError) as cm:
+            ls.compute_patch_metrics_df(metrics=['foo'])
+            self.assertIn('is not among', str(cm.exception))
+        with self.assertRaises(ValueError) as cm:
+            ls.compute_patch_metrics_df(metrics=['proportion_of_landscape'])
+            self.assertIn('cannot be computed', str(cm.exception))
 
         class_df = ls.compute_class_metrics_df()
         self.assertEqual(
             len(class_df.columns.difference(pls.Landscape.CLASS_METRICS)), 0)
         self.assertEqual(class_df.index.name, 'class_val')
-        self.assertRaises(ValueError, ls.compute_class_metrics_df, ['foo'])
+        # try that raised ValueErrors have different error messages depending
+        # on the context
+        with self.assertRaises(ValueError) as cm:
+            ls.compute_class_metrics_df(metrics=['foo'])
+            self.assertIn('is not among', str(cm.exception))
+        with self.assertRaises(ValueError) as cm:
+            ls.compute_class_metrics_df(metrics=['area'])
+            self.assertIn('cannot be computed', str(cm.exception))
+        with self.assertRaises(ValueError) as cm:
+            ls.compute_class_metrics_df(metrics=['contagion'])
+            self.assertIn('cannot be computed', str(cm.exception))
 
         landscape_df = ls.compute_landscape_metrics_df()
         self.assertEqual(
@@ -122,7 +139,18 @@ class TestLandscape(unittest.TestCase):
                 landscape_df.columns.difference(
                     pls.Landscape.LANDSCAPE_METRICS)), 0)
         self.assertEqual(len(landscape_df.index), 1)
-        self.assertRaises(ValueError, ls.compute_landscape_metrics_df, ['foo'])
+        # try that raised ValueErrors have different error messages depending
+        # on the context
+        with self.assertRaises(ValueError) as cm:
+            ls.compute_landscape_metrics_df(metrics=['foo'])
+            self.assertIn('is not among', str(cm.exception))
+        with self.assertRaises(ValueError) as cm:
+            ls.compute_landscape_metrics_df(metrics=['area'])
+            self.assertIn('cannot be computed', str(cm.exception))
+        with self.assertRaises(ValueError) as cm:
+            ls.compute_landscape_metrics_df(
+                metrics=['proportion_of_landscape'])
+            self.assertIn('cannot be computed', str(cm.exception))
 
     def test_landscape_metrics_value_ranges(self):
         ls = self.ls
@@ -463,7 +491,17 @@ class TestMultiLandscape(unittest.TestCase):
             'foo')
 
         # test that asking to plot an inexistent metric raises a `ValueError`
-        self.assertRaises(ValueError, ml.plot_metric, 'foo')
+        # try that raised ValueErrors have different error messages depending
+        # on the context
+        with self.assertRaises(ValueError) as cm:
+            ml.plot_metric('foo')
+            self.assertIn('is not among', str(cm.exception))
+        with self.assertRaises(ValueError) as cm:
+            ml.plot_metric('proportion_of_landscape')
+            self.assertIn('cannot be computed', str(cm.exception))
+        with self.assertRaises(ValueError) as cm:
+            ml.plot_metric('contagion', class_val=1)
+            self.assertIn('cannot be computed', str(cm.exception))
 
     def test_plot_landscapes(self):
         ml = self.InstantiableMultiLandscape(self.landscape_fps,
