@@ -2,9 +2,8 @@ import numpy as np
 import rasterio
 from rasterio import features
 
-from .landscape import Landscape
-from .multilandscape import (MultiLandscape, _compute_class_metrics_df_doc,
-                             _compute_landscape_metrics_df_doc)
+from . import landscape as pls_landscape
+from . import multilandscape
 
 try:
     import geopandas as gpd
@@ -17,7 +16,7 @@ except ImportError:
 __all__ = ['GradientAnalysis', 'BufferAnalysis']
 
 
-class GradientAnalysis(MultiLandscape):
+class GradientAnalysis(multilandscape.MultiLandscape):
     def __init__(self, landscape, masks_arr, attribute_name=None,
                  attribute_values=None, **kwargs):
         """
@@ -39,11 +38,11 @@ class GradientAnalysis(MultiLandscape):
             Values of the attribute that correspond to each of the landscapes
         """
 
-        if not isinstance(landscape, Landscape):
-            landscape = Landscape(landscape)
+        if not isinstance(landscape, pls_landscape.Landscape):
+            landscape = pls_landscape.Landscape(landscape)
 
         landscapes = [
-            Landscape(
+            pls_landscape.Landscape(
                 np.where(mask_arr, landscape.landscape_arr,
                          landscape.nodata).astype(
                              landscape.landscape_arr.dtype),
@@ -140,7 +139,7 @@ class BufferAnalysis(GradientAnalysis):
                 base_mask_gser = base_mask
 
         # 2. get the crs, transform and shape of the landscapes
-        if isinstance(landscape, Landscape):
+        if isinstance(landscape, pls_landscape.Landscape):
             if landscape_crs is None:
                 raise ValueError(
                     "If passing `Landscape` objects (instead of geotiff "
@@ -215,7 +214,7 @@ class BufferAnalysis(GradientAnalysis):
                                                     metrics_kws=metrics_kws)
 
     compute_class_metrics_df.__doc__ = \
-        _compute_class_metrics_df_doc.format(
+        multilandscape._compute_class_metrics_df_doc.format(
             index_descr='multi-indexed by the class and buffer distance',
             index_return='class, buffer distance (multi-index)')
 
@@ -224,6 +223,6 @@ class BufferAnalysis(GradientAnalysis):
             metrics=metrics, metrics_kws=metrics_kws)
 
     compute_landscape_metrics_df.__doc__ = \
-        _compute_landscape_metrics_df_doc.format(
+        multilandscape._compute_landscape_metrics_df_doc.format(
             index_descr='indexed by the buffer distance',
             index_return='buffer distance (index)')

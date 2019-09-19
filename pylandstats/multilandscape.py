@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import six
 
+from . import landscape as pls_landscape
 from . import settings
-from .landscape import Landscape
 
 _compute_class_metrics_df_doc = """
 Computes the data frame of class-level metrics, which is {index_descr}.
@@ -74,10 +74,10 @@ class MultiLandscape:
         attribute_values : list-like
             Values of the attribute that are characteristic to each landscape
         """
-        if isinstance(landscapes[0], Landscape):
+        if isinstance(landscapes[0], pls_landscape.Landscape):
             self.landscapes = landscapes
         else:
-            self.landscapes = list(map(Landscape, landscapes))
+            self.landscapes = list(map(pls_landscape.Landscape, landscapes))
 
         if len(self.landscapes) != len(attribute_values):
             raise ValueError(
@@ -109,7 +109,7 @@ class MultiLandscape:
 
         # get the columns to init the data frame
         if metrics is None:
-            columns = Landscape.CLASS_METRICS
+            columns = pls_landscape.Landscape.CLASS_METRICS
         else:
             columns = metrics
         # if the classes kwarg is not provided, get the classes present in the
@@ -158,7 +158,7 @@ class MultiLandscape:
 
         # get the columns to init the data frame
         if metrics is None:
-            columns = Landscape.LANDSCAPE_METRICS
+            columns = pls_landscape.Landscape.LANDSCAPE_METRICS
         else:
             columns = metrics
         landscape_metrics_df = pd.DataFrame(index=attribute_values,
@@ -232,7 +232,8 @@ class MultiLandscape:
                 ]
             except AttributeError:
                 raise ValueError("{metric} is not among {metrics}".format(
-                    metric=metric, metrics=Landscape.CLASS_METRICS))
+                    metric=metric,
+                    metrics=pls_landscape.Landscape.CLASS_METRICS))
         else:
             try:
                 metric_values = [
@@ -242,7 +243,8 @@ class MultiLandscape:
                 ]
             except AttributeError:
                 raise ValueError("{metric} is not among {metrics}".format(
-                    metric=metric, metrics=Landscape.LANDSCAPE_METRICS))
+                    metric=metric,
+                    metrics=pls_landscape.Landscape.LANDSCAPE_METRICS))
 
         if ax is None:
             fig, ax = plt.subplots(**subplots_kws)

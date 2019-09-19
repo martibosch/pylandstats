@@ -4,15 +4,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from .gradient import BufferAnalysis
-from .landscape import Landscape
-from .multilandscape import (MultiLandscape, _compute_class_metrics_df_doc,
-                             _compute_landscape_metrics_df_doc)
+from . import gradient
+from . import landscape as pls_landscape
+from . import multilandscape
 
 __all__ = ['SpatioTemporalAnalysis', 'SpatioTemporalBufferAnalysis']
 
 
-class SpatioTemporalAnalysis(MultiLandscape):
+class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
     def __init__(self, landscapes, dates=None):
         """
         Parameters
@@ -42,7 +41,7 @@ class SpatioTemporalAnalysis(MultiLandscape):
                                                     metrics_kws=metrics_kws)
 
     compute_class_metrics_df.__doc__ = \
-        _compute_class_metrics_df_doc.format(
+        multilandscape._compute_class_metrics_df_doc.format(
             index_descr='multi-indexed by the class and date',
             index_return='class, date (multi-index)')
 
@@ -52,7 +51,7 @@ class SpatioTemporalAnalysis(MultiLandscape):
                          metrics=metrics, metrics_kws=metrics_kws)
 
     compute_landscape_metrics_df.__doc__ = \
-        _compute_landscape_metrics_df_doc.format(
+        multilandscape._compute_landscape_metrics_df_doc.format(
             index_descr='indexed by the date', index_return='date (index)')
 
     # def plot_patch_metric(metric):
@@ -98,12 +97,12 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         """
         super(SpatioTemporalBufferAnalysis,
               self).__init__(landscapes, dates=dates)
-        ba = BufferAnalysis(landscapes[0], base_mask=base_mask,
-                            buffer_dists=buffer_dists,
-                            buffer_rings=buffer_rings,
-                            base_mask_crs=base_mask_crs,
-                            landscape_crs=landscape_crs,
-                            landscape_transform=landscape_transform)
+        ba = gradient.BufferAnalysis(landscapes[0], base_mask=base_mask,
+                                     buffer_dists=buffer_dists,
+                                     buffer_rings=buffer_rings,
+                                     base_mask_crs=base_mask_crs,
+                                     landscape_crs=landscape_crs,
+                                     landscape_transform=landscape_transform)
         # while `BufferAnalysis.__init__` will set the `buffer_dists`
         # attribute to the instantiated object (stored in the variable `ba`),
         # it will not set it to the current `SpatioTemporalBufferAnalysis`,
@@ -115,7 +114,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         for buffer_dist, mask_arr in zip(ba.buffer_dists, ba.masks_arr):
             self.stas.append(
                 SpatioTemporalAnalysis([
-                    Landscape(
+                    pls_landscape.Landscape(
                         np.where(mask_arr, landscape.landscape_arr,
                                  landscape.nodata).astype(
                                      landscape.landscape_arr.dtype),
@@ -151,7 +150,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
 
         # get the columns to init the data frame
         if metrics is None:
-            columns = Landscape.CLASS_METRICS
+            columns = pls_landscape.Landscape.CLASS_METRICS
         else:
             columns = metrics
 
@@ -196,7 +195,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         return class_metrics_df
 
     compute_class_metrics_df.__doc__ = \
-        _compute_class_metrics_df_doc.format(
+        multilandscape._compute_class_metrics_df_doc.format(
             index_descr='multi-indexed by the buffer distance, class and date',
             index_return='buffer distance, class, distance (multi-index)')
 
@@ -224,7 +223,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         return self._landscape_metrics_df
 
     compute_landscape_metrics_df.__doc__ = \
-        _compute_landscape_metrics_df_doc.format(
+        multilandscape._compute_landscape_metrics_df_doc.format(
             index_descr='multi-indexed by the buffer distance and date',
             index_return='buffer distance, date (multi-index)')
 
