@@ -3,7 +3,8 @@ import rasterio
 from rasterio import features
 
 from .landscape import Landscape
-from .multilandscape import MultiLandscape
+from .multilandscape import (MultiLandscape, _compute_class_metrics_df_doc,
+                             _compute_landscape_metrics_df_doc)
 
 try:
     import geopandas as gpd
@@ -73,8 +74,7 @@ class GradientAnalysis(MultiLandscape):
 class BufferAnalysis(GradientAnalysis):
     def __init__(self, landscape, base_mask, buffer_dists, buffer_rings=False,
                  base_mask_crs=None, landscape_crs=None,
-                 landscape_transform=None, metrics=None, classes=None,
-                 metrics_kws={}):
+                 landscape_transform=None):
         """
         Parameters
         ----------
@@ -104,19 +104,6 @@ class BufferAnalysis(GradientAnalysis):
             system. Required if the passed-in landscapes are `Landscape`
             objects, ignored if they are paths to GeoTiff rasters that already
             contain such information.
-        metrics : list-like, optional
-            A list-like of strings with the names of the metrics that should
-            be computed in the context of this analysis case
-        classes : list-like, optional
-            A list-like of ints or strings with the class values that should
-            be considered in the context of this analysis case
-        metrics_kws : dict, optional
-            Dictionary mapping the keyword arguments (values) that should be
-            passed to each metric method (key), e.g., to exclude the boundary
-            from the computation of `total_edge`, metric_kws should map the
-            string 'total_edge' (method name) to {'count_boundary': False}.
-            The default empty dictionary will compute each metric according to
-            FRAGSTATS defaults.
         """
 
         # first check that we meet the package dependencies
@@ -216,29 +203,27 @@ class BufferAnalysis(GradientAnalysis):
 
         # now we can call the parent's init with the landscape and the
         # constructed buffer_masks_arr
-        super(BufferAnalysis,
-              self).__init__(landscape, buffer_masks_arr, 'buffer_dists',
-                             buffer_dists, metrics=metrics, classes=classes,
-                             metrics_kws=metrics_kws)
+        super(BufferAnalysis, self).__init__(landscape, buffer_masks_arr,
+                                             'buffer_dists', buffer_dists)
 
-    @property
-    def class_metrics_df(self):
-        """
-        Property that computes the data frame of class-level metrics, which
-        is multi-indexed by the class and buffer distance. Once computed, the
-        data frame is cached so further calls to the property just access an
-        attribute and therefore run in constant time.
-        """
-        # override so that we can add an explicit docstring
-        return super(BufferAnalysis, self).class_metrics_df
+    # override docs
+    def compute_class_metrics_df(self, metrics=None, classes=None,
+                                 metrics_kws={}):
+        return super(BufferAnalysis,
+                     self).compute_class_metrics_df(metrics=metrics,
+                                                    classes=classes,
+                                                    metrics_kws=metrics_kws)
 
-    @property
-    def landscape_metrics_df(self):
-        """
-        Property that computes the data frame of landcape-level metrics, which
-        is indexed by the buffer distance. Once computed, the data frame is
-        cached so further calls to the property just access an attribute and
-        therefore run in constant time.
-        """
-        # override so that we can add an explicit docstring
-        return super(BufferAnalysis, self).landscape_metrics_df
+    compute_class_metrics_df.__doc__ = \
+        _compute_class_metrics_df_doc.format(
+            index_descr='multi-indexed by the class and buffer distance',
+            index_return='class, buffer distance (multi-index)')
+
+    def compute_landscape_metrics_df(self, metrics=None, metrics_kws={}):
+        return super(BufferAnalysis, self).compute_landscape_metrics_df(
+            metrics=metrics, metrics_kws=metrics_kws)
+
+    compute_landscape_metrics_df.__doc__ = \
+        _compute_landscape_metrics_df_doc.format(
+            index_descr='indexed by the buffer distance',
+            index_return='buffer distance (index)')

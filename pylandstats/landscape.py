@@ -2359,7 +2359,8 @@ class Landscape:
 
         return df
 
-    def compute_class_metrics_df(self, metrics=None, metrics_kws={}):
+    def compute_class_metrics_df(self, metrics=None, classes=None,
+                                 metrics_kws={}):
         """
         Computes the class-level metrics
 
@@ -2369,6 +2370,9 @@ class Landscape:
             A list-like of strings with the names of the metrics that should
             be computed. If None, all the implemented class-level metrics will
             be computed.
+        classes : list-like, optional
+            A list-like of ints or strings with the class values that should be
+            considered in the context of this analysis case
         metrics_kws : dict, optional
             Dictionary mapping the keyword arguments (values) that should be
             passed to each metric method (key), e.g., to exclude the boundary
@@ -2387,6 +2391,9 @@ class Landscape:
         if metrics is None:
             metrics = Landscape.CLASS_METRICS
 
+        if classes is None:
+            classes = self.classes
+
         try:
             metrics_sers = []
             for metric in metrics:
@@ -2400,7 +2407,7 @@ class Landscape:
                         {
                             class_val: getattr(self, metric)(class_val, **
                                                              metric_kws)
-                            for class_val in self.classes
+                            for class_val in classes
                         }, name=metric))
 
         except AttributeError:

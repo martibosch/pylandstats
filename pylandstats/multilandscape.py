@@ -9,12 +9,59 @@ import six
 from . import settings
 from .landscape import Landscape
 
+_compute_class_metrics_df_doc = """
+Computes the data frame of class-level metrics, which is {index_descr}.
+
+Parameters
+----------
+metrics : list-like, optional
+    A list-like of strings with the names of the metrics that should be
+    computed in the context of this analysis case
+classes : list-like, optional
+    A list-like of ints or strings with the class values that should be
+    considered in the context of this analysis case
+metrics_kws : dict, optional
+    Dictionary mapping the keyword arguments (values) that should be passed to
+    each metric method (key), e.g., to exclude the boundary from the
+    computation of `total_edge`, metric_kws should map the string 'total_edge'
+    (method name) to {{'count_boundary': False}}. The default empty dictionary
+    will compute each metric according to FRAGSTATS defaults.
+
+Returns
+-------
+df : pd.DataFrame
+    Dataframe with the values computed for each {index_return} and metric
+    (columns)
+"""
+
+_compute_landscape_metrics_df_doc = """
+Computes the data frame of landscape-level metrics, which is {index_descr}.
+
+Parameters
+----------
+metrics : list-like, optional
+    A list-like of strings with the names of the metrics that should be
+    computed. If None, all the implemented landscape-level metrics will be
+    computed.
+metrics_kws : dict, optional
+    Dictionary mapping the keyword arguments (values) that should be passed to
+    each metric method (key), e.g., to exclude the boundary from the
+    computation of `total_edge`, metric_kws should map the string 'total_edge'
+    (method name) to {{'count_boundary': False}}. The default empty dictionary
+    will compute each metric according to FRAGSTATS defaults.
+
+Returns
+-------
+df : pd.DataFrame
+    Dataframe with the values computed at the landscape level for each
+    {index_return} and metric (columns)
+"""
+
 
 @six.add_metaclass(abc.ABCMeta)
 class MultiLandscape:
     @abc.abstractmethod
-    def __init__(self, landscapes, attribute_name, attribute_values,
-                 metrics=None, classes=None, metrics_kws={}):
+    def __init__(self, landscapes, attribute_name, attribute_values):
         """
         Parameters
         ----------
@@ -26,19 +73,6 @@ class MultiLandscape:
             Name of the attribute that will distinguish each landscape
         attribute_values : list-like
             Values of the attribute that are characteristic to each landscape
-        metrics : list-like, optional
-            A list-like of strings with the names of the metrics that should
-            be computed in the context of this analysis case
-        classes : list-like, optional
-            A list-like of ints or strings with the class values that should
-            be considered in the context of this analysis case
-        metrics_kws : dict, optional
-            Dictionary mapping the keyword arguments (values) that should be
-            passed to each metric method (key), e.g., to exclude the boundary
-            from the computation of `total_edge`, metric_kws should map the
-            string 'total_edge' (method name) to {'count_boundary': False}.
-            The default empty dictionary will compute each metric according to
-            FRAGSTATS defaults.
         """
         if isinstance(landscapes[0], Landscape):
             self.landscapes = landscapes
@@ -61,145 +95,94 @@ class MultiLandscape:
         # `getattr(self, self.attribute_name)`
         setattr(self, 'attribute_name', attribute_name)
 
-        if metrics is None:
-            self.class_metrics = Landscape.CLASS_METRICS
-            self.landscape_metrics = Landscape.LANDSCAPE_METRICS
-        else:
-            # TODO: how to handle `Landscape.PATCH_METRICS`
-            implemented_metrics = np.union1d(Landscape.CLASS_METRICS,
-                                             Landscape.LANDSCAPE_METRICS)
-            inexistent_metrics = np.setdiff1d(metrics, implemented_metrics)
-            if inexistent_metrics.size > 0:
-                raise ValueError(
-                    "The metrics {} are not among the implemented metrics ".
-                    format(inexistent_metrics) +
-                    "(that is {})".format(implemented_metrics))
-
-            self.class_metrics = np.intersect1d(metrics,
-                                                Landscape.CLASS_METRICS)
-            self.landscape_metrics = np.intersect1d(
-                metrics, Landscape.LANDSCAPE_METRICS)
-
-        present_classes = reduce(
+        # get the all classes present in the provided landscapes
+        self.present_classes = reduce(
             np.union1d,
             tuple(landscape.classes for landscape in self.landscapes))
-        if classes is None:
-            self.classes = present_classes
-        else:
-            inexistent_classes = np.setdiff1d(classes, present_classes)
-            if inexistent_classes.size > 0:
-                raise ValueError(
-                    "The classes {} are not among the classes present on the ".
-                    format(inexistent_classes) +
-                    "landscapes (that is {})".format(present_classes))
-
-            self.classes = classes
-
-        self.metrics_kws = metrics_kws
 
     def __len__(self):
         return len(self.landscapes)
 
-    @property
-    def class_metrics_df(self):
-        """
-        Property that computes the data frame of class-level metrics, which
-        is multi-indexed by the class and attribute value. Once computed, the
-        data frame is cached so further calls to the property just access an
-        attribute and therefore run in constant time.
-        """
-        try:
-            return self._class_metrics_df
-        except AttributeError:
-            attribute_values = getattr(self, self.attribute_name)
-            # IMPORTANT: here we need this approach (uglier when compared to
-            # the `landscape_metrics_df` property below) because we need to
-            # filter each class metrics data frame so that we only include the
-            # classes considered in this `MultiLandscape` instance. We need to
-            # do it like this because the `Landcape.compute_class_metrics_df`
-            # does not have a `classes` argument that allows computing the
-            # data frame only for a custom set of classes. Should such
-            # `classes` argument be added at some point, we could use the
-            # approach of the `landscape_metrics_df` property below.
-            # TODO: one-level index if only one class?
-            class_metrics_df = pd.DataFrame(
-                index=pd.MultiIndex.from_product(
-                    [self.classes, attribute_values]),
-                columns=self.class_metrics)
-            class_metrics_df.index.names = 'class_val', self.attribute_name
-            class_metrics_df.columns.name = 'metric'
+    def compute_class_metrics_df(self, metrics=None, classes=None,
+                                 metrics_kws={}):
+        attribute_values = getattr(self, self.attribute_name)
 
-            for attribute_value, landscape in zip(attribute_values,
-                                                  self.landscapes):
-                # get the class metrics DataFrame for the landscape that
-                # corresponds to this attribute value
-                df = landscape.compute_class_metrics_df(
-                    metrics=self.class_metrics, metrics_kws=self.metrics_kws)
-                # filter so we only check the classes considered in this
-                # `MultiLandscape` instance
-                df = df.loc[df.index.intersection(self.classes)]
-                # put every row of the filtered DataFrame of this particular
-                # attribute value
-                for class_val, row in df.iterrows():
-                    class_metrics_df.loc[class_val, attribute_value] = row
+        # get the columns to init the data frame
+        if metrics is None:
+            columns = Landscape.CLASS_METRICS
+        else:
+            columns = metrics
+        # if the classes kwarg is not provided, get the classes present in the
+        # landscapes
+        if classes is None:
+            classes = self.present_classes
+        # IMPORTANT: here we need this approach (uglier when compared to the
+        # `compute_landscape_metrics_df` method below) because we need to
+        # filter each class metrics data frame so that we only include the
+        # classes considered in this `MultiLandscape` instance. We need to do
+        # it like this because the `Landcape.compute_class_metrics_df` does
+        # not have a `classes` argument that allows computing the data frame
+        # only for a custom set of classes. Should such `classes` argument be
+        # added at some point, we could use the approach of the
+        # `compute_landscape_metrics_df` method below.
+        # TODO: one-level index if only one class?
+        class_metrics_df = pd.DataFrame(
+            index=pd.MultiIndex.from_product([classes, attribute_values]),
+            columns=columns)
 
-            self._class_metrics_df = class_metrics_df
+        class_metrics_df.index.names = 'class_val', self.attribute_name
+        class_metrics_df.columns.name = 'metric'
 
-            return self._class_metrics_df
+        for attribute_value, landscape in zip(attribute_values,
+                                              self.landscapes):
+            # get the class metrics DataFrame for the landscape that
+            # corresponds to this attribute value
+            df = landscape.compute_class_metrics_df(metrics=metrics,
+                                                    metrics_kws=metrics_kws)
+            # filter so we only check the classes considered in this
+            # `MultiLandscape` instance
+            df = df.loc[df.index.intersection(classes)]
+            # put every row of the filtered DataFrame of this particular
+            # attribute value
+            for class_val, row in df.iterrows():
+                class_metrics_df.loc[class_val, attribute_value] = row
 
-    @property
-    def landscape_metrics_df(self):
-        """
-        Property that computes the data frame of landscape-level metrics, which
-        is indexed by the attribute value. Once computed, the data frame is
-        cached so further calls to the property just access an attribute and
-        therefore run in constant time.
-        """
-        try:
-            return self._landscape_metrics_df
-        except AttributeError:
-            attribute_values = getattr(self, self.attribute_name)
-            # PREVIOUS APPROACH
-            landscape_metrics_df = pd.DataFrame(index=attribute_values,
-                                                columns=self.landscape_metrics)
-            landscape_metrics_df.index.name = self.attribute_name
-            landscape_metrics_df.columns.name = 'metric'
+        return class_metrics_df
 
-            for attribute_value, landscape in zip(attribute_values,
-                                                  self.landscapes):
-                landscape_metrics_df.loc[attribute_value] = \
-                    landscape.compute_landscape_metrics_df(
-                        self.landscape_metrics,
-                        metrics_kws=self.metrics_kws).iloc[0]
+    compute_class_metrics_df.__doc__ = _compute_class_metrics_df_doc.format(
+        index_descr='multi-indexed by the class and attribute value',
+        index_return='class, attribute value (multi-index)')
 
-            # # NEW APPROACH
-            # # we will create a dict where each key is an `attribute_value`,
-            # # and its value is the series of landscape-level `metrics of the
-            # # corresponding `Landscape` instance
-            # ser_dict = {
-            #     attribute_value: landscape.compute_landscape_metrics_df(
-            #         self.landscape_metrics,
-            #         metrics_kws=self.metrics_kws).iloc[0]
-            #     for attribute_value, landscape in zip(attribute_values,
-            #                                           self.landscapes)
-            # }
+    def compute_landscape_metrics_df(self, metrics=None, metrics_kws={}):
+        attribute_values = getattr(self, self.attribute_name)
 
-            # # we concatenate each value of the dict dataframe using its
-            # # respective `buffer_dist` key to create an extra index level
-            # # (i.e., using the `keys` argument of `pd.concat`)
-            # landscape_metrics_df = pd.concat(ser_dict.values(),
-            #                                  keys=ser_dict.keys())
-            # # now we set the name of each index and column level
-            # landscape_metrics_df.index.name = self.attribute_name
-            # landscape_metrics_df.columns.name = 'metric'
+        # get the columns to init the data frame
+        if metrics is None:
+            columns = Landscape.LANDSCAPE_METRICS
+        else:
+            columns = metrics
+        landscape_metrics_df = pd.DataFrame(index=attribute_values,
+                                            columns=columns)
+        landscape_metrics_df.index.name = self.attribute_name
+        landscape_metrics_df.columns.name = 'metric'
 
-            self._landscape_metrics_df = landscape_metrics_df
+        for attribute_value, landscape in zip(attribute_values,
+                                              self.landscapes):
+            landscape_metrics_df.loc[attribute_value] = \
+                landscape.compute_landscape_metrics_df(
+                    metrics,
+                    metrics_kws=metrics_kws).iloc[0]
 
-            return self._landscape_metrics_df
+        return landscape_metrics_df
+
+    compute_landscape_metrics_df.__doc__ = \
+        _compute_landscape_metrics_df_doc.format(
+            index_descr='indexed by the attribute value',
+            index_return='attribute value (index)')
 
     def plot_metric(self, metric, class_val=None, ax=None, metric_legend=True,
-                    metric_label=None, fmt='--o', plot_kws={},
-                    subplots_kws={}):
+                    metric_label=None, fmt='--o', plot_kws={}, subplots_kws={},
+                    metric_kws={}):
         """
         Parameters
         ----------
@@ -225,6 +208,9 @@ class MultiLandscape:
         subplots_kws : dict
             Keyword arguments to be passed to `plt.subplots`, only if no axis
             is given (through the `ax` argument)
+        metric_kws : dict
+            Keyword arguments to be passed to the method that computes the
+            metric (specified in the `metric` argument) for each landscape
 
         Returns
         -------
@@ -238,27 +224,25 @@ class MultiLandscape:
         # TODO: if we use seaborn in the future, we can use the pd.Series
         # directly, since its index corresponds to this SpatioTemporalAnalysis
         # dates
-        try:
-            if class_val is None:
-                metric_values = self.landscape_metrics_df[metric].values
-            else:
-                metric_values = self.class_metrics_df.loc[class_val,
-                                                          metric].values
-        except KeyError:
-            if class_val is None:
-                raise ValueError(
-                    "Metric '{metric}' is not among {metrics}".format(
-                        metric=metric, metrics=self.landscape_metrics))
-
-            if class_val not in self.classes:
-                raise ValueError(
-                    "Class '{class_val}' is not among {classes}".format(
-                        class_val=class_val, classes=self.classes))
-
-            # if `class_val` is provided and is in `self.classes`, the
-            # captured `KeyError` comes from an inexistent `metric` column
-            raise ValueError("Metric '{metric}' is not among {metrics}".format(
-                metric=metric, metrics=self.class_metrics))
+        if class_val is None:
+            try:
+                metric_values = [
+                    getattr(landscape, metric)(**metric_kws)
+                    for landscape in self.landscapes
+                ]
+            except AttributeError:
+                raise ValueError("{metric} is not among {metrics}".format(
+                    metric=metric, metrics=Landscape.CLASS_METRICS))
+        else:
+            try:
+                metric_values = [
+                    getattr(landscape, metric)(class_val=class_val,
+                                               **metric_kws)
+                    for landscape in self.landscapes
+                ]
+            except AttributeError:
+                raise ValueError("{metric} is not among {metrics}".format(
+                    metric=metric, metrics=Landscape.LANDSCAPE_METRICS))
 
         if ax is None:
             fig, ax = plt.subplots(**subplots_kws)
