@@ -9,7 +9,7 @@ from setuptools import find_packages, setup
 # See: https://github.com/pypa/setuptools/issues/309 and https://bit.ly/300HKtK
 from pythran.dist import PythranExtension
 
-__version__ = '1.1.1'
+__version__ = '2.0.0a0'
 
 classifiers = [
     'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
