@@ -31,7 +31,7 @@ with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
 # Extra dependencies for geometric operations
 # we deliberately do not set any lower nor upper bounds on `geopandas`
 # dependency so that people might install its cythonized version
-geo = ["geopandas", "shapely >= 1.1.1"]
+geo = ["geopandas", "shapely >= 1.0.0"]
 
 install_requires = [x.strip() for x in all_reqs if 'git+' not in x]
 dependency_links = [
