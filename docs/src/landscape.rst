@@ -6,7 +6,7 @@ Landscape analysis
 List of implemented metrics
 ---------------------------
 
-The metrics of PyLandStats `are computed according to its definitions in FRAGSTATS <https://github.com/martibosch/pylandstats-notebooks/blob/master/notebooks/A01-fragstats-comparison.ipynb>`_. 
+The metrics of PyLandStats `are computed according to its definitions in FRAGSTATS <https://github.com/martibosch/pylandstats-notebooks/blob/master/notebooks/A01-fragstats-metrics-comparison.ipynb>`_. 
 
 The notation for the metrics below is as follows:
 
