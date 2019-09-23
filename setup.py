@@ -1,13 +1,18 @@
 # coding=utf-8
 
-from io import open  # compatible enconding parameter
-from os import path
+from io import open  # compatible encoding parameter
+import sys
+from pathlib import Path
+import platform
 
 from setuptools import find_packages, setup
 
 # pythran imports must go AFTER setuptools imports
 # See: https://github.com/pypa/setuptools/issues/309 and https://bit.ly/300HKtK
-from pythran.dist import PythranExtension
+from transonic.dist import make_backend_files, init_transonic_extensions
+
+if sys.version_info[:2] < (3, 6):
+    raise RuntimeError("Python version >= 3.6 required.")
 
 __version__ = "2.0.0a0"
 
@@ -18,14 +23,14 @@ classifiers = [
     "Programming Language :: Python :: 3.6",
 ]
 
-here = path.abspath(path.dirname(__file__))
+here = Path(__file__).parent.absolute()
 
 # Get the long description from the README file
-with open(path.join(here, "README.md"), encoding="utf-8") as f:
+with open(here / "README.md", encoding="utf-8") as f:
     long_description = f.read()
 
 # get the dependencies and installs
-with open(path.join(here, "requirements.txt"), encoding="utf-8") as f:
+with open(here / "requirements.txt", encoding="utf-8") as f:
     all_reqs = f.read().split("\n")
 
 # Extra dependencies for geometric operations
@@ -37,6 +42,25 @@ install_requires = [x.strip() for x in all_reqs if "git+" not in x]
 dependency_links = [
     x.strip().replace("git+", "") for x in all_reqs if x.startswith("git+")
 ]
+
+if platform.system() == "Windows":
+    backend = "numba"  # or "cython"
+else:
+    backend = "pythran"
+
+
+paths = ["pylandstats/landscape.py"]
+make_backend_files([here / path for path in paths], backend=backend)
+
+if platform.system() == "Linux":
+    compile_args = ("-O3", "-DUSE_XSIMD")
+else:
+    compile_args = ("-O3",)
+
+
+extensions = init_transonic_extensions(
+    "pylandstats", compile_args=compile_args, backend=backend
+)
 
 setup(
     name="pylandstats",
@@ -54,9 +78,5 @@ setup(
     install_requires=install_requires,
     extras_require={"geo": geo},
     dependency_links=dependency_links,
-    ext_modules=[
-        PythranExtension(
-            "pylandstats.compute", sources=["pylandstats/compute.py"]
-        )
-    ],
+    ext_modules=extensions,
 )

@@ -1,2 +1,2 @@
 [build-system]
-requires = ['setuptools>=40.8.0', 'wheel', 'pythran', 'numpy']
+requires = ['setuptools>=40.8.0', 'wheel', 'transonic>=0.4.0', 'pythran', 'numpy']
