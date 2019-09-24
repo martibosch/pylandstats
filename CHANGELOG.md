@@ -1,5 +1,19 @@
 # Change log
 
+## 2.0.0a1 (24/09/2019)
+
+* gradient -> zonal
+* corrected cmap arg: default from rcParams, accept str
+* updates in the docs (changed link to notebook + cleaned Makefile)
+
+## 2.0.0a0 (20/09/2019)
+
+* corrected shapely version in setup.py (bumpversion messed it)
+* updated bumpversion for release candidates
+* catch TypeError for existing metrics but at the wrong level
+* always import modules, not methods/classes
+* consistent API: all data frames obtained with `compute` methods
+
 ## 1.1.1 (18/09/2019)
 
 * corrected rst typo in `total_area` docs
