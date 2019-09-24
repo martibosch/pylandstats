@@ -9,7 +9,7 @@ Open-source Pythonic library to compute landscape metrics within the PyData stac
              
    landscape
    spatiotemporal
-   gradient
+   zonal
    spatiotemporal-buffer
 
 .. toctree::
@@ -29,7 +29,7 @@ Features
 
 * Compute pandas DataFrames of landscape metrics at the patch, class and landscape level
 * Analyze the spatiotemporal evolution of landscapes
-* Analyze landscape changes accross environmental gradients
+* Analyze landscape changes accross environmental gradients (zonal analysis)
 
 Using PyLandStats
 -----------------

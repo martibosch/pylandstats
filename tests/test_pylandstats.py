@@ -596,7 +596,7 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
                     lines[0].get_xdata() == self.dates))
 
 
-class TestGradientAnalysis(unittest.TestCase):
+class TestZonalAnalysis(unittest.TestCase):
     def setUp(self):
         self.masks_arr = np.load('tests/input_data/masks_arr.npy',
                                  allow_pickle=True)
@@ -612,23 +612,23 @@ class TestGradientAnalysis(unittest.TestCase):
         self.geom = geometry.Point(6.6327025, 46.5218269)
         self.buffer_dists = [10000, 15000, 20000]
 
-    def test_gradient_init(self):
+    def test_zonal_init(self):
         # test that the attribute names and values are consistent with the
         # provided `masks_arr`
-        ga = pls.GradientAnalysis(self.landscape, self.masks_arr)
-        self.assertEqual(ga.attribute_name, 'attribute_values')
-        self.assertEqual(len(ga), len(self.masks_arr))
-        self.assertEqual(len(ga), len(ga.attribute_values))
+        za = pls.ZonalAnalysis(self.landscape, self.masks_arr)
+        self.assertEqual(za.attribute_name, 'attribute_values')
+        self.assertEqual(len(za), len(self.masks_arr))
+        self.assertEqual(len(za), len(za.attribute_values))
 
-        # test that if we init a GradientAnalysis from filepaths, Landscape
+        # test that if we init a `ZonalAnalysis` from filepaths, Landscape
         # instances are automaticaly built, and the attribute names and values
         # are also consistent with the provided `masks_arr`
-        ga = pls.GradientAnalysis(self.landscape_fp, self.masks_arr)
-        for landscape in ga.landscapes:
+        za = pls.ZonalAnalysis(self.landscape_fp, self.masks_arr)
+        for landscape in za.landscapes:
             self.assertIsInstance(landscape, pls.Landscape)
-        self.assertEqual(ga.attribute_name, 'attribute_values')
-        self.assertEqual(len(ga), len(self.masks_arr))
-        self.assertEqual(len(ga), len(ga.attribute_values))
+        self.assertEqual(za.attribute_name, 'attribute_values')
+        self.assertEqual(len(za), len(self.masks_arr))
+        self.assertEqual(len(za), len(za.attribute_values))
 
         # from this point on, always instantiate from filepaths
 
@@ -747,7 +747,7 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
     def test_spatiotemporalbufferanalysis_init(self):
         # we will just test the base init, the rest of functionalities have
         # already been tested above (in `TestSpatioTemporalAnalysis` and
-        # `TestGradientAnalysis`)
+        # `TestZonalAnalysis`)
         stba = pls.SpatioTemporalBufferAnalysis(self.landscape_fps,
                                                 self.base_mask,
                                                 self.buffer_dists,

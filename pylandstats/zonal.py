@@ -13,10 +13,10 @@ try:
 except ImportError:
     geo_imports = False
 
-__all__ = ['GradientAnalysis', 'BufferAnalysis']
+__all__ = ['ZonalAnalysis', 'BufferAnalysis']
 
 
-class GradientAnalysis(multilandscape.MultiLandscape):
+class ZonalAnalysis(multilandscape.MultiLandscape):
     def __init__(self, landscape, masks_arr, attribute_name=None,
                  attribute_values=None, **kwargs):
         """
@@ -56,7 +56,7 @@ class GradientAnalysis(multilandscape.MultiLandscape):
 
         # The attribute name will be `buffer_dists` for `BufferAnalysis` or
         # `transect_dist` for `TransectAnalysis`, but for any other custom use
-        # of `GradientAnalysis`, the user might provide (or not) a custom name
+        # of `ZonalAnalysis`, the user might provide (or not) a custom name
         if attribute_name is None:
             attribute_name = 'attribute_values'
 
@@ -66,11 +66,11 @@ class GradientAnalysis(multilandscape.MultiLandscape):
             attribute_values = [i for i in range(len(masks_arr))]
 
         # now call the parent's init
-        super(GradientAnalysis, self).__init__(landscapes, attribute_name,
-                                               attribute_values, **kwargs)
+        super(ZonalAnalysis, self).__init__(landscapes, attribute_name,
+                                            attribute_values, **kwargs)
 
 
-class BufferAnalysis(GradientAnalysis):
+class BufferAnalysis(ZonalAnalysis):
     def __init__(self, landscape, base_mask, buffer_dists, buffer_rings=False,
                  base_mask_crs=None, landscape_crs=None,
                  landscape_transform=None):

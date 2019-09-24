@@ -4,9 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from . import gradient
 from . import landscape as pls_landscape
-from . import multilandscape
+from . import multilandscape, zonal
 
 __all__ = ['SpatioTemporalAnalysis', 'SpatioTemporalBufferAnalysis']
 
@@ -97,12 +96,12 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         """
         super(SpatioTemporalBufferAnalysis,
               self).__init__(landscapes, dates=dates)
-        ba = gradient.BufferAnalysis(landscapes[0], base_mask=base_mask,
-                                     buffer_dists=buffer_dists,
-                                     buffer_rings=buffer_rings,
-                                     base_mask_crs=base_mask_crs,
-                                     landscape_crs=landscape_crs,
-                                     landscape_transform=landscape_transform)
+        ba = zonal.BufferAnalysis(landscapes[0], base_mask=base_mask,
+                                  buffer_dists=buffer_dists,
+                                  buffer_rings=buffer_rings,
+                                  base_mask_crs=base_mask_crs,
+                                  landscape_crs=landscape_crs,
+                                  landscape_transform=landscape_transform)
         # while `BufferAnalysis.__init__` will set the `buffer_dists`
         # attribute to the instantiated object (stored in the variable `ba`),
         # it will not set it to the current `SpatioTemporalBufferAnalysis`,
