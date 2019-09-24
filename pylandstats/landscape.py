@@ -2514,7 +2514,10 @@ class Landscape:
         """
 
         if cmap is None:
-            cmap = plt.get_cmap('jet')
+            cmap = plt.rcParams['image.cmap']
+
+        if isinstance(cmap, str):
+            cmap = plt.get_cmap(cmap)
 
         if ax is None:
             fig, ax = plt.subplots(figsize=figsize)
