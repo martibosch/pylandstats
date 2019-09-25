@@ -34,6 +34,7 @@ MANIFEST
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
+pip-wheel-metadata
 
 # Unit test / coverage reports
 htmlcov/
@@ -94,6 +95,9 @@ venv.bak/
 .spyderproject
 .spyproject
 
+# VSCode
+.vscode
+
 # Rope project settings
 .ropeproject
 
@@ -105,3 +109,7 @@ venv.bak/
 
 # Cookiecutter
 output/
+
+# Transonic
+__pythran__
+__numba__
