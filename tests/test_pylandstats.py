@@ -1,5 +1,6 @@
 import unittest
 import warnings
+from test import support
 
 import affine
 import geopandas as gpd
@@ -283,6 +284,15 @@ class TestLandscape(unittest.TestCase):
         self.assertTrue(0 < ls.contagion() <= 100)
         # TODO: assert 0 < ls.interspersion_juxtaposition_index() <= 100
         self.assertGreaterEqual(ls.shannon_diversity_index(), 0)
+
+    def test_transonic(self):
+        env = support.EnvironmentVarGuard()
+        env.set('TRANSONIC_NO_REPLACE', '1')
+        ls_arr = np.load('tests/input_data/ls250_06.npy', allow_pickle=True)
+        with env:
+            ls = pls.Landscape(ls_arr, res=(250, 250))
+            adjacency_df = ls._adjacency_df
+            self.assertIsInstance(adjacency_df, pd.DataFrame)
 
     def test_plot_landscape(self):
         # first test for a landscape without affine transform (instantiated
