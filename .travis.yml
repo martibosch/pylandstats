@@ -28,9 +28,11 @@ install:
 
 # command to run tests, e.g. python setup.py test
 script:
-  - coverage run --source pylandstats -m py.test
+  - coverage run -p --source pylandstats -m pytest
+  - TRANSONIC_NO_REPLACE=1 coverage run -p --source pylandstats -m pytest tests/test_pylandstats.py::TestLandscape::test_transonic
 
 after_success:
+  - coverage combine
   - coverage report -m
   - coveralls
 

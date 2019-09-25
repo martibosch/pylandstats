@@ -43,7 +43,8 @@ dependency_links = [
 ]
 
 if platform.system() == "Windows":
-    backend = "numba"  # or "cython"
+    backend = "numba"
+    install_requires.append("numba")
 else:
     backend = "pythran"
 
