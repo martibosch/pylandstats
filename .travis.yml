@@ -16,7 +16,7 @@ before_install:
   - conda config --add channels conda-forge --force
   - conda create --quiet --name TESTENV python=$TRAVIS_PYTHON_VERSION
   - source activate TESTENV
-  - conda install -c conda-forge geopandas
+  - conda install -c conda-forge geopandas fiona=1.8.6
   - conda info --all
   - conda list
 
