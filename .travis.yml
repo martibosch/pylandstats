@@ -43,7 +43,7 @@ after_success:
 
 # deploy new versions to PyPI
 before_deploy:
-  - pip install pythran transonic>=0.4.0
+  - pip install pythran "transonic>=0.4.0"
 deploy:
   provider: pypi
   on:
