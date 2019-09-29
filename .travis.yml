@@ -14,11 +14,12 @@ before_install:
   - conda config --set always_yes yes --set show_channel_urls true
   - conda update conda
   - conda config --add channels conda-forge --force
-  - conda create --quiet --name TESTENV python=$TRAVIS_PYTHON_VERSION
-  - source activate TESTENV
-  - conda install -c conda-forge geopandas fiona=1.8.6
+  - conda create --quiet --name pylandstats python=$TRAVIS_PYTHON_VERSION
+  - source activate pylandstats
+  - conda install -c conda-forge geopandas descartes fiona=1.8.6 ipykernel nbconvert
   - conda info --all
   - conda list
+  - python -m ipykernel install --user --name pylandstats --display-name "Python (pylandstats)"  
 
 # command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install:
@@ -30,6 +31,10 @@ install:
 script:
   - coverage run -p --source pylandstats -m pytest
   - TRANSONIC_NO_REPLACE=1 coverage run -p --source pylandstats -m pytest tests/test_pylandstats.py::TestLandscape::test_transonic
+  - git clone https://github.com/martibosch/pylandstats-notebooks
+  - cd pylandstats-notebooks
+  - make execute_notebooks
+  - cd ..  
 
 after_success:
   - coverage combine
