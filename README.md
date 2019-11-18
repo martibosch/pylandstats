@@ -69,10 +69,10 @@ sta = pls.SpatioTemporalAnalysis(
     ], classes=[1], dates=[2000, 2006, 2012], 
 )
 
-fig, axes = sta.plot_metrics(
-    class_val=1,
-    metrics=['proportion_of_landscape', 'edge_density', 'fractal_dimension_am'],
-    num_cols=3)
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+for metric, ax in zip(
+    ['proportion_of_landscape', 'edge_density', 'fractal_dimension_am'], axes):
+    sta.plot_metric(metric, class_val=1, ax=ax)
 fig.suptitle('Class-level metrics (urban)')
 ```
 
@@ -99,5 +99,6 @@ and you will be able to use the `BufferAnalysis` and `SpatioTemporalBufferAnalys
 
 ## Acknowledgments
 
+* The computation of the adjacency matrix in [transonic](https://github.com/fluiddyn/transonic) has been implemented by Pierre Augier ([paugier](https://github.com/paugier)).
 * With the support of the École Polytechnique Fédérale de Lausanne (EPFL)
 * The Corine Land Cover datasets used for the test datasets were produced with funding by the European Union
