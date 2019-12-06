@@ -34,24 +34,21 @@ Features
 Using PyLandStats
 -----------------
 
-To install use pip:
+The easiest way to install PyLandStats is with conda:
 
-.. code-block:: bash
+    $ conda install -c conda-forge pylandstats
+
+which will install PyLandStats and all of its dependencies. Alternatively, you can install PyLandStats using pip:
 
     $ pip install pylandstats
 
 
-If you want to use the ``BufferAnalysis`` class, you will need `geopandas <https://github.com/geopandas/geopandas>`_. The easiest way to install it is via `conda-forge <https://conda-forge.org/>`_ as in:
+Nevertheless, note that the `BufferAnalysis` and `SpatioTemporalBufferAnalysis` classes make use of [geopandas](https://github.com/geopandas/geopandas), which cannot be installed with pip. If you already have [the dependencies for geopandas](https://geopandas.readthedocs.io/en/latest/install.html#dependencies) installed in your system, you might then install PyLandStats with the `geo` extras as in:
 
-.. code-block:: bash
-                
-    $ conda install -c conda-forge geopandas
-    
-and then install PyLandStats with the ``geo`` extras as in:
-
-.. code-block:: bash
-                
     $ pip install pylandstats[geo]
+    
+and you will be able to use the `BufferAnalysis` and `SpatioTemporalBufferAnalysis` classes (without having to use conda).
+
    
 Indices and tables
 ==================
