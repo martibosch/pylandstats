@@ -3,6 +3,8 @@ PyLandStats documentation!
 
 Open-source Pythonic library to compute landscape metrics within the PyData stack (NumPy, pandas, matplotlib...)
 
+**Citation**: Bosch M. 2019. "PyLandStats: An open-source Pythonic library to compute landscape metrics". *PLOS ONE, 14(12), 1-19*. `doi.org/10.1371/journal.pone.0225734 <https://doi.org/10.1371/journal.pone.0225734>`_
+
 .. toctree::
    :maxdepth: 1
    :caption: Reference Guide:
