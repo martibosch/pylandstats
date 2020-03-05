@@ -104,7 +104,7 @@ class MultiLandscape:
         return len(self.landscapes)
 
     def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws={}):
+                                 metrics_kws=None):
         attribute_values = getattr(self, self.attribute_name)
 
         # get the columns to init the data frame
@@ -116,6 +116,10 @@ class MultiLandscape:
         # landscapes
         if classes is None:
             classes = self.present_classes
+        # to avoid issues with mutable defaults
+        if metrics_kws is None:
+            metrics_kws = {}
+
         # IMPORTANT: here we need this approach (uglier when compared to the
         # `compute_landscape_metrics_df` method below) because we need to
         # filter each class metrics data frame so that we only include the
@@ -153,7 +157,7 @@ class MultiLandscape:
         index_descr='multi-indexed by the class and attribute value',
         index_return='class, attribute value (multi-index)')
 
-    def compute_landscape_metrics_df(self, metrics=None, metrics_kws={}):
+    def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
         attribute_values = getattr(self, self.attribute_name)
 
         # get the columns to init the data frame
@@ -161,6 +165,10 @@ class MultiLandscape:
             columns = pls_landscape.Landscape.LANDSCAPE_METRICS
         else:
             columns = metrics
+        # to avoid issues with mutable defaults
+        if metrics_kws is None:
+            metrics_kws = {}
+
         landscape_metrics_df = pd.DataFrame(index=attribute_values,
                                             columns=columns)
         landscape_metrics_df.index.name = self.attribute_name
@@ -181,8 +189,8 @@ class MultiLandscape:
             index_return='attribute value (index)')
 
     def plot_metric(self, metric, class_val=None, ax=None, metric_legend=True,
-                    metric_label=None, fmt='--o', plot_kws={}, subplots_kws={},
-                    metric_kws={}):
+                    metric_label=None, fmt='--o', plot_kws=None,
+                    subplots_kws=None, metric_kws=None):
         """
         Parameters
         ----------
@@ -203,12 +211,12 @@ class MultiLandscape:
             `settings` module
         fmt : str, default '--o'
             A format string for `plt.plot`
-        plot_kws : dict
+        plot_kws : dict, default None
             Keyword arguments to be passed to `plt.plot`
-        subplots_kws : dict
+        subplots_kws : dict, default None
             Keyword arguments to be passed to `plt.subplots`, only if no axis
             is given (through the `ax` argument)
-        metric_kws : dict
+        metric_kws : dict, default None
             Keyword arguments to be passed to the method that computes the
             metric (specified in the `metric` argument) for each landscape
 
@@ -224,6 +232,8 @@ class MultiLandscape:
         # TODO: if we use seaborn in the future, we can use the pd.Series
         # directly, since its index corresponds to this SpatioTemporalAnalysis
         # dates
+        if metric_kws is None:
+            metric_kws = {}
         if class_val is None:
             try:
                 metric_values = [
@@ -238,7 +248,6 @@ class MultiLandscape:
                 raise ValueError(
                     "{metric} cannot be computed at the landscape level".
                     format(metric=metric))
-
         else:
             try:
                 metric_values = [
@@ -256,11 +265,16 @@ class MultiLandscape:
                         metric=metric))
 
         if ax is None:
+            if subplots_kws is None:
+                subplots_kws = {}
             fig, ax = plt.subplots(**subplots_kws)
 
         # for `SpatioTemporalAnalysis`, `attribute_values` will be `dates`;
         # for `BufferAnalysis`, `attribute_values` will be `buffer_dists`
         attribute_values = getattr(self, self.attribute_name)
+
+        if plot_kws is None:
+            plot_kws = {}
 
         ax.plot(attribute_values, metric_values, fmt, **plot_kws)
 
@@ -274,8 +288,8 @@ class MultiLandscape:
 
         return ax
 
-    def plot_landscapes(self, cmap=None, legend=True, subplots_kws={},
-                        show_kws={}, subplots_adjust_kws={}):
+    def plot_landscapes(self, cmap=None, legend=True, subplots_kws=None,
+                        show_kws=None, subplots_adjust_kws=None):
         """
         Plots each landscape snapshot in a dedicated matplotlib axis by means
         of the `Landscape.plot_landscape` method of each instance
@@ -286,11 +300,11 @@ class MultiLandscape:
             A Colormap instance
         legend : bool, optional
             If ``True``, display the legend of the land use/cover color codes
-        subplots_kws: dict, optional
+        subplots_kws: dict, default None
             Keyword arguments to be passed to `plt.subplots`
-        show_kws : dict, optional
+        show_kws : dict, default Nonte
             Keyword arguments to be passed to `rasterio.plot.show`
-        subplots_adjust_kws: dict, optional
+        subplots_adjust_kws: dict, default None
             Keyword arguments to be passed to `plt.subplots_adjust`
 
         Returns
@@ -302,7 +316,10 @@ class MultiLandscape:
         attribute_values = getattr(self, self.attribute_name)
 
         # avoid alias/refrence issues
-        _subplots_kws = subplots_kws.copy()
+        if subplots_kws is None:
+            _subplots_kws = {}
+        else:
+            _subplots_kws = subplots_kws.copy()
         figsize = _subplots_kws.pop('figsize', None)
         if figsize is None:
             figwidth, figheight = plt.rcParams['figure.figsize']
@@ -311,6 +328,8 @@ class MultiLandscape:
         fig, axes = plt.subplots(1, len(attribute_values), figsize=figsize,
                                  **_subplots_kws)
 
+        if show_kws is None:
+            show_kws = {}
         for attribute_value, landscape, ax in zip(attribute_values,
                                                   self.landscapes, axes):
             ax = landscape.plot_landscape(cmap=cmap, ax=ax, legend=legend,
@@ -318,7 +337,7 @@ class MultiLandscape:
             ax.set_title(attribute_value)
 
         # adjust spacing between axes
-        if subplots_adjust_kws:
+        if subplots_adjust_kws is not None:
             fig.subplots_adjust(**subplots_adjust_kws)
 
         return fig

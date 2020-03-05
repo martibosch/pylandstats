@@ -33,7 +33,7 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
 
     # override docs
     def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws={}):
+                                 metrics_kws=None):
         return super(SpatioTemporalAnalysis,
                      self).compute_class_metrics_df(metrics=metrics,
                                                     classes=classes,
@@ -44,7 +44,7 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
             index_descr='multi-indexed by the class and date',
             index_return='class, date (multi-index)')
 
-    def compute_landscape_metrics_df(self, metrics=None, metrics_kws={}):
+    def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
         return super(SpatioTemporalAnalysis,
                      self).compute_landscape_metrics_df(
                          metrics=metrics, metrics_kws=metrics_kws)
@@ -143,7 +143,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         self.dates = self.stas[0].dates
 
     def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws={}):
+                                 metrics_kws=None):
         if classes is None:
             classes = self.present_classes
 
@@ -198,7 +198,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             index_descr='multi-indexed by the buffer distance, class and date',
             index_return='buffer distance, class, distance (multi-index)')
 
-    def compute_landscape_metrics_df(self, metrics=None, metrics_kws={}):
+    def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
         # we will create a dict where each key is a `buffer_dist`, and its
         # value is the corresponding metrics data frame of the
         # `SpatioTemporalAnalysis` instance
@@ -228,7 +228,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
 
     def plot_metric(self, metric, class_val=None, ax=None, metric_legend=True,
                     metric_label=None, buffer_dist_legend=True, fmt='--o',
-                    plot_kws={}, subplots_kws={}):
+                    plot_kws=None, subplots_kws=None):
         """
         Parameters
         ----------
@@ -252,9 +252,9 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             should be displayed within the plot
         fmt : str, default '--o'
             A format string for `plt.plot`
-        plot_kws : dict
+        plot_kws : dict, default None
             Keyword arguments to be passed to `plt.plot`
-        subplots_kws : dict
+        subplots_kws : dict, default None
             Keyword arguments to be passed to `plt.subplots`, only if no axis
             is given (through the `ax` argument)
 
@@ -267,7 +267,12 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         # `landscape_metrics_df` properties?
 
         if ax is None:
+            if subplots_kws is None:
+                subplots_kws = {}
             fig, ax = plt.subplots(**subplots_kws)
+
+        if plot_kws is None:
+            plot_kws = {}
 
         if 'label' not in plot_kws:
             # avoid alias/refrence issues
@@ -290,8 +295,8 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
 
         return ax
 
-    def plot_landscapes(self, cmap=None, legend=True, subplots_kws={},
-                        show_kws={}, subplots_adjust_kws={}):
+    def plot_landscapes(self, cmap=None, legend=True, subplots_kws=None,
+                        show_kws=None, subplots_adjust_kws=None):
         """
         Plots each landscape snapshot in a dedicated matplotlib axis by means
         of the `Landscape.plot_landscape` method of each instance
@@ -302,11 +307,11 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             A Colormap instance
         legend : bool, optional
             If ``True``, display the legend of the land use/cover color codes
-        subplots_kws: dict, optional
+        subplots_kws: dict, default None
             Keyword arguments to be passed to `plt.subplots`
-        show_kws : dict, optional
+        show_kws : dict, default None
             Keyword arguments to be passed to `rasterio.plot.show`
-        subplots_adjust_kws: dict, optional
+        subplots_adjust_kws: dict, default None
             Keyword arguments to be passed to `plt.subplots_adjust`
 
         Returns
@@ -320,7 +325,10 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         dates = self.stas[0].dates
 
         # avoid alias/refrence issues
-        _subplots_kws = subplots_kws.copy()
+        if subplots_kws is None:
+            _subplots_kws = {}
+        else:
+            _subplots_kws = subplots_kws.copy()
         figsize = _subplots_kws.pop('figsize', None)
         if figsize is None:
             figwidth, figheight = plt.rcParams['figure.figsize']
@@ -330,6 +338,8 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         fig, axes = plt.subplots(len(self.buffer_dists), len(dates),
                                  figsize=figsize, **_subplots_kws)
 
+        if show_kws is None:
+            show_kws = {}
         flat_axes = axes.flat
         for buffer_dist, sta in zip(self.buffer_dists, self.stas):
             for date, landscape in zip(sta.dates, sta.landscapes):
@@ -344,7 +354,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             ax.set_ylabel(buffer_dist)
 
         # adjust spacing between axes
-        if subplots_adjust_kws:
+        if subplots_adjust_kws is not None:
             fig.subplots_adjust(**subplots_adjust_kws)
 
         return fig

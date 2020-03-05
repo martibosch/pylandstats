@@ -529,8 +529,9 @@ class Landscape:
             patch_euclidean_nearest_neighbor_ser = (
                 self._patch_euclidean_nearest_neighbor_ser)
         else:
-            patch_euclidean_nearest_neighbor_ser = self._patch_euclidean_nearest_neighbor_ser[
-                self._patch_class_ser == class_val]
+            patch_euclidean_nearest_neighbor_ser = \
+                self._patch_euclidean_nearest_neighbor_ser[
+                    self._patch_class_ser == class_val]
 
         # TODO: return a copy? even when `class_val` is set and thus
         # `patch_perimeter_ser` is a slice: although we would not have alias
@@ -540,14 +541,17 @@ class Landscape:
     # metric distribution statistics
 
     def _metric_reduce(
-            self,
-            class_val,
-            patch_metric_method,
-            patch_metric_method_kwargs,
-            reduce_method,
+        self,
+        class_val,
+        patch_metric_method,
+        patch_metric_method_kws,
+        reduce_method,
     ):
-        patch_metrics = patch_metric_method(class_val,
-                                            **patch_metric_method_kwargs)
+        if patch_metric_method_kws is None:
+            patch_metrics = patch_metric_method(class_val)
+        else:
+            patch_metrics = patch_metric_method(class_val,
+                                                **patch_metric_method_kws)
         if class_val is None:
             # ACHTUNG: dropping columns from a `pd.DataFrame` until leaving it
             # with only one column will still return a `pd.DataFrame`, so we
@@ -557,12 +561,12 @@ class Landscape:
         return reduce_method(patch_metrics)
 
     def _metric_mn(self, class_val, patch_metric_method,
-                   patch_metric_method_kwargs={}):
+                   patch_metric_method_kws=None):
         return self._metric_reduce(class_val, patch_metric_method,
-                                   patch_metric_method_kwargs, np.mean)
+                                   patch_metric_method_kws, np.mean)
 
     def _metric_am(self, class_val, patch_metric_method,
-                   patch_metric_method_kwargs={}):
+                   patch_metric_method_kws=None):
         # `area` can be `pd.Series` or `pd.DataFrame`
         area = self.area(class_val)
 
@@ -572,40 +576,40 @@ class Landscape:
         return self._metric_reduce(
             class_val,
             patch_metric_method,
-            patch_metric_method_kwargs,
+            patch_metric_method_kws,
             partial(np.average, weights=area),
         )
 
     def _metric_md(self, class_val, patch_metric_method,
-                   patch_metric_method_kwargs={}):
+                   patch_metric_method_kws=None):
         return self._metric_reduce(class_val, patch_metric_method,
-                                   patch_metric_method_kwargs, np.median)
+                                   patch_metric_method_kws, np.median)
 
     def _metric_ra(self, class_val, patch_metric_method,
-                   patch_metric_method_kwargs={}):
+                   patch_metric_method_kws=None):
         return self._metric_reduce(
             class_val,
             patch_metric_method,
-            patch_metric_method_kwargs,
+            patch_metric_method_kws,
             lambda ser: ser.max() - ser.min(),
         )
 
     def _metric_sd(self, class_val, patch_metric_method,
-                   patch_metric_method_kwargs={}):
+                   patch_metric_method_kws=None):
         return self._metric_reduce(class_val, patch_metric_method,
-                                   patch_metric_method_kwargs, np.std)
+                                   patch_metric_method_kws, np.std)
 
     def _metric_cv(
-            self,
-            class_val,
-            patch_metric_method,
-            patch_metric_method_kwargs={},
-            percent=True,
+        self,
+        class_val,
+        patch_metric_method,
+        patch_metric_method_kws=None,
+        percent=True,
     ):
         metric_cv = self._metric_reduce(
             class_val,
             patch_metric_method,
-            patch_metric_method_kwargs,
+            patch_metric_method_kws,
             stats.variation,
         )
         if percent:
@@ -2416,7 +2420,7 @@ class Landscape:
     ###########################################################################
     # compute metrics data frames
 
-    def compute_patch_metrics_df(self, metrics=None, metrics_kws={}):
+    def compute_patch_metrics_df(self, metrics=None, metrics_kws=None):
         """
         Computes the patch-level metrics
 
@@ -2426,12 +2430,12 @@ class Landscape:
             A list-like of strings with the names of the metrics that should
             be computed. If None, all the implemented patch-level metrics will
             be computed.
-        metrics_kws : dict, optional
+        metrics_kws : dict, default None
             Dictionary mapping the keyword arguments (values) that should be
             passed to each metric method (key), e.g., to compute `area` in
             meters instead of hectares, metric_kws should map the string 'area'
-            (method name) to {'hectares': False}. The default empty dictionary
-            will compute each metric according to FRAGSTATS defaults.
+            (method name) to {'hectares': False}. If `None`, each metric will
+            be computed according to FRAGSTATS defaults.
 
         Returns
         -------
@@ -2442,6 +2446,9 @@ class Landscape:
 
         if metrics is None:
             metrics = Landscape.PATCH_METRICS
+
+        if metrics_kws is None:
+            metrics_kws = {}
 
         try:
             # # in order to avoid adding a duplicate 'class_val' column for
@@ -2475,7 +2482,7 @@ class Landscape:
         return df
 
     def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws={}):
+                                 metrics_kws=None):
         """
         Computes the class-level metrics
 
@@ -2493,8 +2500,8 @@ class Landscape:
             passed to each metric method (key), e.g., to exclude the boundary
             from the computation of `total_edge`, metric_kws should map the
             string 'total_edge' (method name) to {'count_boundary': False}.
-            The default empty dictionary will compute each metric according to
-            FRAGSTATS defaults.
+            If `None`, each metric will be computed according to FRAGSTATS
+            defaults.
 
         Returns
         -------
@@ -2521,6 +2528,9 @@ class Landscape:
 
         if classes is None:
             classes = self.classes
+
+        if metrics_kws is None:
+            metrics_kws = {}
 
         try:
             metrics_sers = []
@@ -2553,7 +2563,7 @@ class Landscape:
 
         return df
 
-    def compute_landscape_metrics_df(self, metrics=None, metrics_kws={}):
+    def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
         """
         Computes the landscape-level metrics
 
@@ -2568,8 +2578,8 @@ class Landscape:
             passed to each metric method (key), e.g., to exclude the boundary
             from the computation of `total_edge`, metric_kws should map the
             string 'total_edge' (method name) to {'count_boundary': False}.
-            The default empty dictionary will compute each metric according to
-            FRAGSTATS defaults.
+            If `None`, each metric will be computed according to FRAGSTATS
+            defaults.
 
         Returns
         -------
@@ -2580,6 +2590,9 @@ class Landscape:
 
         if metrics is None:
             metrics = Landscape.LANDSCAPE_METRICS
+
+        if metrics_kws is None:
+            metrics_kws = {}
 
         try:
             metrics_dict = {}

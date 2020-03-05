@@ -207,7 +207,7 @@ class BufferAnalysis(ZonalAnalysis):
 
     # override docs
     def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws={}):
+                                 metrics_kws=None):
         return super(BufferAnalysis,
                      self).compute_class_metrics_df(metrics=metrics,
                                                     classes=classes,
@@ -218,7 +218,7 @@ class BufferAnalysis(ZonalAnalysis):
             index_descr='multi-indexed by the class and buffer distance',
             index_return='class, buffer distance (multi-index)')
 
-    def compute_landscape_metrics_df(self, metrics=None, metrics_kws={}):
+    def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
         return super(BufferAnalysis, self).compute_landscape_metrics_df(
             metrics=metrics, metrics_kws=metrics_kws)
 
