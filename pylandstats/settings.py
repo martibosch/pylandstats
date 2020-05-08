@@ -36,6 +36,7 @@ fragstats_abbrev_dict = {
     'total_edge': 'TE',
     'edge_density': 'ED',
     'landscape_shape_index': 'LSI',
+    'effective_mesh_size': 'MESH',
     # landscape-level metrics
     'contagion': 'CONTAG',
     'shannon_diversity_index': 'SHDI'

@@ -163,6 +163,7 @@ class Landscape:
         "total_edge",
         "edge_density",
         "landscape_shape_index",
+        "effective_mesh_size",
     ] + DISTR_METRICS
 
     LANDSCAPE_METRICS = ([
@@ -173,6 +174,7 @@ class Landscape:
         "total_edge",
         "edge_density",
         "landscape_shape_index",
+        "effective_mesh_size",
     ] + DISTR_METRICS + ["contagion", "shannon_diversity_index"])
 
     # compute methods
@@ -2314,6 +2316,45 @@ class Landscape:
 
         # TODO
         raise NotImplementedError
+
+    def effective_mesh_size(self, class_val=None, hectares=True):
+        """
+        Measure of aggregation based on the cumulative patch size distribution.
+        If `class_val` is provided, the metric is computed at the class level
+        as in:
+
+        .. math::
+           MESH_i = \\frac{1}{A} \\sum_{j=1}^{n_i} a_{i,j}^2 \\quad [m] \\quad
+           (class \; i)
+
+        otherwise, the metric is computed at the landscape level as in:
+
+        .. math::
+           MESH = \\frac{1}{A} \\sum_{i=1}^{m} \\sum_{j=1}^{n_i} a_{i,j}^2
+           \\quad [m] \\quad (landscape)
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the
+            corresponding class, otherwise it will be computed at the
+            landscape level
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends
+            to yield more legible values for the metric)
+
+        Returns
+        -------
+        mesh : float
+            cell_area / A <= MESH <= A
+        """
+        mesh = np.sum(self._get_patch_area_ser(class_val)**2) / \
+            self.landscape_area
+
+        if hectares:
+            mesh /= 10000
+
+        return mesh
 
     ###########################################################################
     # landscape-level metrics

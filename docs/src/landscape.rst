@@ -66,6 +66,7 @@ Aggregation
 -----------
                 
 .. automethod:: pylandstats.Landscape.landscape_shape_index
+.. automethod:: pylandstats.Landscape.effective_mesh_size
                 
 Landscape-level metrics
 =======================

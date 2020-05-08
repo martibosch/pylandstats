@@ -235,6 +235,9 @@ class TestLandscape(unittest.TestCase):
         # TODO: assert 0 < ls.interspersion_juxtaposition_index(
         #           class_val) <= 100
         self.assertGreaterEqual(ls.landscape_shape_index(class_val), 1)
+        self.assertTrue(
+            ls.cell_area / ls.landscape_area <=
+            ls.effective_mesh_size(class_val) <= ls.landscape_area, 1)
 
         # landscape-level metrics
         self.assertGreater(ls.total_area(), 0)
@@ -281,6 +284,10 @@ class TestLandscape(unittest.TestCase):
             enn = getattr(ls, 'euclidean_nearest_neighbor' + var_suffix)()
             self.assertTrue(enn >= 0 or np.isnan(enn))
 
+        self.assertGreaterEqual(ls.landscape_shape_index(), 1)
+        self.assertTrue(
+            ls.cell_area / ls.landscape_area <= ls.effective_mesh_size() <=
+            ls.landscape_area, 1)
         self.assertTrue(0 < ls.contagion() <= 100)
         # TODO: assert 0 < ls.interspersion_juxtaposition_index() <= 100
         self.assertGreaterEqual(ls.shannon_diversity_index(), 0)
