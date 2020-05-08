@@ -79,6 +79,7 @@ class Landscape:
     """Class representing a raster landscape upon which the landscape metrics
     will be computed
     """
+
     def __init__(self, landscape, res=None, nodata=None, transform=None,
                  **kwargs):
         """
@@ -541,11 +542,11 @@ class Landscape:
     # metric distribution statistics
 
     def _metric_reduce(
-        self,
-        class_val,
-        patch_metric_method,
-        patch_metric_method_kws,
-        reduce_method,
+            self,
+            class_val,
+            patch_metric_method,
+            patch_metric_method_kws,
+            reduce_method,
     ):
         if patch_metric_method_kws is None:
             patch_metrics = patch_metric_method(class_val)
@@ -600,11 +601,11 @@ class Landscape:
                                    patch_metric_method_kws, np.std)
 
     def _metric_cv(
-        self,
-        class_val,
-        patch_metric_method,
-        patch_metric_method_kws=None,
-        percent=True,
+            self,
+            class_val,
+            patch_metric_method,
+            patch_metric_method_kws=None,
+            percent=True,
     ):
         metric_cv = self._metric_reduce(
             class_val,
