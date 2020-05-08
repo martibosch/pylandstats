@@ -2206,7 +2206,7 @@ class Landscape:
 
         Returns
         -------
-        enn_sd :
+        enn_sd : float
         """
 
         return self._metric_sd(class_val, self.euclidean_nearest_neighbor)
