@@ -169,8 +169,12 @@ class MultiLandscape:
         if metrics_kws is None:
             metrics_kws = {}
 
-        landscape_metrics_df = pd.DataFrame(index=attribute_values,
-                                            columns=columns)
+        if isinstance(attribute_values[0], tuple):
+            # for the zonal statistics analysis mainly
+            index = pd.MultiIndex.from_tuples(attribute_values)
+        else:
+            index = attribute_values
+        landscape_metrics_df = pd.DataFrame(index=index, columns=columns)
         landscape_metrics_df.index.name = self.attribute_name
         landscape_metrics_df.columns.name = 'metric'
 

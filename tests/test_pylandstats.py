@@ -1,6 +1,8 @@
+import os
+import shutil
 import unittest
 import warnings
-from test import support
+from os import path
 
 import affine
 import geopandas as gpd
@@ -610,7 +612,7 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
                     lines[0].get_xdata() == self.dates))
 
 
-class TestZonalAnalysis(unittest.TestCase):
+class TestZonaAlnalysis(unittest.TestCase):
     def setUp(self):
         self.masks_arr = np.load('tests/input_data/masks_arr.npy',
                                  allow_pickle=True)
@@ -625,6 +627,12 @@ class TestZonalAnalysis(unittest.TestCase):
         # for buffer analysis
         self.geom = geometry.Point(6.6327025, 46.5218269)
         self.buffer_dists = [10000, 15000, 20000]
+
+        self.tmp_dir = path.join('tests/tmp')
+        os.mkdir(self.tmp_dir)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp_dir)
 
     def test_zonal_init(self):
         # test that the attribute names and values are consistent with the
@@ -645,6 +653,47 @@ class TestZonalAnalysis(unittest.TestCase):
         self.assertEqual(len(za), len(za.attribute_values))
 
         # from this point on, always instantiate from filepaths
+
+    def test_zonal_plot_metrics(self):
+        za = pls.ZonalAnalysis(self.landscape_fp, self.masks_arr)
+
+        # test for `None` (landscape-level) and an existing class (class-level)
+        for class_val in [None, za.present_classes[0]]:
+            # test that the x data of the line corresponds to the attribute
+            # values
+            self.assertTrue(
+                np.all(
+                    za.plot_metric('patch_density', class_val=class_val).
+                    lines[0].get_xdata() == za.attribute_values))
+
+    def test_compute_zonal_statistics_arr(self):
+        za = pls.ZonalAnalysis(self.landscape_fp, self.masks_arr)
+
+        # test that the array has the proper shape
+        zs_arr = za.compute_zonal_statistics_arr('patch_density')
+        zs_arr.shape = za.landscape_meta['height'], za.landscape_meta['width']
+
+        # test that a zonal statistics array computed at the class level has
+        # at least as many nan values than its landscape-level counterpart
+        self.assertGreaterEqual(
+            np.isnan(zs_arr).sum(),
+            np.isnan(
+                za.compute_zonal_statistics_arr(
+                    'patch_density', class_val=za.present_classes[0])).sum())
+
+        # test that the zonal statistics when excluding boundaries should be
+        # less or equal than including them
+        self.assertLessEqual(
+            np.nansum(za.compute_zonal_statistics_arr('total_edge')),
+            np.nansum(
+                za.compute_zonal_statistics_arr(
+                    'total_edge', metric_kws={'count_boundary': True})))
+
+        # test that passing `dst_filepath` dumps a raster file
+        dst_filepath = path.join(self.tmp_dir, 'foo.tif')
+        za.compute_zonal_statistics_arr('patch_density',
+                                        dst_filepath=dst_filepath)
+        self.assertTrue(path.exists(dst_filepath))
 
     def test_buffer_init(self):
         naive_gser = gpd.GeoSeries([self.geom])
@@ -735,17 +784,20 @@ class TestZonalAnalysis(unittest.TestCase):
         for mask_arr, ring_mask_arr in zip(ba.masks_arr, ba_rings.masks_arr):
             self.assertGreaterEqual(np.sum(mask_arr), np.sum(ring_mask_arr))
 
-    def test_buffer_plot_metrics(self):
-        ba = pls.BufferAnalysis(self.landscape_fp, self.geom,
-                                self.buffer_dists, base_mask_crs=geom_crs)
+    def test_grid_init(self):
+        # test init by number of zone rows/cols
+        num_zone_rows, num_zone_cols = 10, 10
+        zga = pls.ZonalGridAnalysis(self.landscape_fp,
+                                    num_zone_rows=num_zone_rows,
+                                    num_zone_cols=num_zone_cols)
+        self.assertEqual(len(zga.data_zones), num_zone_rows * num_zone_cols)
+        self.assertGreaterEqual(len(zga.data_zones), len(zga.masks_arr))
 
-        # test for `None` (landscape-level) and an existing class (class-level)
-        for class_val in [None, ba.present_classes[0]]:
-            # test that the x data of the line corresponds to `buffer_dists`
-            self.assertTrue(
-                np.all(
-                    ba.plot_metric('patch_density', class_val=class_val).
-                    lines[0].get_xdata() == self.buffer_dists))
+        # test init by zone pixel width/height
+        zone_pixel_width, zone_pixel_height = 100, 100
+        zga = pls.ZonalGridAnalysis(self.landscape_fp,
+                                    zone_pixel_width=zone_pixel_width,
+                                    zone_pixel_height=zone_pixel_height)
 
 
 class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
