@@ -22,10 +22,10 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         """
         Parameters
         ----------
-        landscapes : list-like
-            A list-like of `Landscape` objects or of strings/file objects/
-            pathlib.Path objects so that each is passed as the `landscape`
-            argument of `Landscape.__init__`
+        landscape : `Landscape` or str, file object or pathlib.Path object
+            A `Landscape` object or of string/file object/pathlib.Path object
+            that will be passed as the `landscape` argument of
+            `Landscape.__init__`
         masks_arr : list-like or np.ndarray
             A list-like of numpy arrays of shape (width, height), i.e., of the
             same shape as the landscape raster image. Each array will serve to
@@ -77,10 +77,10 @@ class BufferAnalysis(ZonalAnalysis):
         """
         Parameters
         ----------
-        landscapes : list-like
-            A list-like of `Landscape` objects or of strings/file objects/
-            pathlib.Path objects so that each is passed as the `landscape`
-            argument of `Landscape.__init__`
+        landscape : `Landscape` or str, file object or pathlib.Path object
+            A `Landscape` object or of string/file object/pathlib.Path object
+            that will be passed as the `landscape` argument of
+            `Landscape.__init__`
         base_mask : shapely geometry or geopandas GeoSeries
             Geometry that will serve as a base mask to buffer around
         buffer_dists : list-like
