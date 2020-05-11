@@ -2,6 +2,10 @@
 Landscape analysis
 ==================
 
+The `Landscape` class is the core code unit of PyLandStats and is used to compute the metrics over a given landscape raster. It can be instantiated as follows:
+
+.. automethod:: pylandstats.Landscape.__init__
+
 ---------------------------
 List of implemented metrics
 ---------------------------
