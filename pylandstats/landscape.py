@@ -880,8 +880,8 @@ class Landscape:
             nearest neighbors decreases
         """
 
-        euclidean_nearest_neighbor_ser = self._get_patch_euclidean_nearest_neighbor_ser(
-            class_val)
+        euclidean_nearest_neighbor_ser = \
+            self._get_patch_euclidean_nearest_neighbor_ser(class_val)
 
         if class_val is None:
             for class_val in self.classes:

@@ -30,6 +30,7 @@ install:
 # command to run tests, e.g. python setup.py test
 script:
   - coverage run -p --source pylandstats -m pytest
+  - flake8
   - TRANSONIC_NO_REPLACE=1 coverage run -p --source pylandstats -m pytest tests/test_pylandstats.py::TestLandscape::test_transonic
   - git clone https://github.com/martibosch/pylandstats-notebooks
   - cd pylandstats-notebooks
