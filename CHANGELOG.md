@@ -1,5 +1,11 @@
 # Change log
 
+## 2.1.0 (11/05/2020)
+
+* configured flake8 in setup.cfg and added flake8 test in travis.yml
+* added `compute_zonal_statistics` method to `ZonalAnalysis` and aded `ZonalGridAnalysis` class
+* Implemented the `effective_mesh_size` metric
+
 ## 2.0.0a1 (24/09/2019)
 
 * gradient -> zonal
