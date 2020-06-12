@@ -403,7 +403,7 @@ class ZonalGridAnalysis(ZonalAnalysis):
         if num_zone_rows is None:
             num_zone_rows = height // zone_pixel_height
         if num_zone_cols is None:
-            num_zone_cols = height // zone_pixel_width
+            num_zone_cols = width // zone_pixel_width
 
         # raster meta
         # transform.from_origin(landscape_transform.c, landscape_transform.f)
