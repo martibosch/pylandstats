@@ -1,5 +1,10 @@
 # Change log
 
+## 2.1.1 (12/06/2020)
+
+* corrected `ZonalGridAnalysis` docstring
+* corrected computation of `num_zone_cols` in `ZonalGridAnalysis`
+
 ## 2.1.0 (11/05/2020)
 
 * configured flake8 in setup.cfg and added flake8 test in travis.yml
