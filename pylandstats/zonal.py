@@ -367,7 +367,7 @@ class ZonalGridAnalysis(ZonalAnalysis):
             dimensions and the desired zones do not divide evenly, the zones
             will be defined for the maximum subset (starting from the top,
             left corner) for which there is an even division. If not provided,
-            then `num_pixel_width`/`num_pixel_height` must be provided.
+            then `num_zone_rows`/`num_zone_cols` must be provided.
         landscape_crs : dict, optional
             The coordinate reference system of the landscapes. Required to
             reconstruct the zonal statistics rasters if the passed-in
