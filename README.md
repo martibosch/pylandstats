@@ -1,5 +1,5 @@
 [![PyPI version fury.io](https://badge.fury.io/py/pylandstats.svg)](https://pypi.python.org/pypi/pylandstats/)
-[![Anaconda-Server Badge](https://anaconda.org/conda-forge/pylandstats/badges/version.svg)](https://anaconda.org/conda-forge/pylandstats)
+[![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/pylandstats.svg)](https://anaconda.org/conda-forge/pylandstats)
 [![Documentation Status](https://readthedocs.org/projects/pylandstats/badge/?version=latest)](https://pylandstats.readthedocs.io/en/latest/?badge=latest)
 [![Build Status](https://travis-ci.org/martibosch/pylandstats.svg?branch=master)](https://travis-ci.org/martibosch/pylandstats)
 [![Coverage Status](https://coveralls.io/repos/github/martibosch/pylandstats/badge.svg?branch=master)](https://coveralls.io/github/martibosch/pylandstats?branch=master)
