@@ -149,7 +149,8 @@ class MultiLandscape:
             # put every row of the filtered DataFrame of this particular
             # attribute value
             for class_val, row in df.iterrows():
-                class_metrics_df.loc[class_val, attribute_value] = row
+                class_metrics_df.loc[(class_val,
+                                      attribute_value), columns] = row
 
         return class_metrics_df
 
@@ -180,7 +181,7 @@ class MultiLandscape:
 
         for attribute_value, landscape in zip(attribute_values,
                                               self.landscapes):
-            landscape_metrics_df.loc[attribute_value] = \
+            landscape_metrics_df.loc[attribute_value, columns] = \
                 landscape.compute_landscape_metrics_df(
                     metrics,
                     metrics_kws=metrics_kws).iloc[0]
