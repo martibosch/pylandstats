@@ -1,5 +1,9 @@
 # Change log
 
+## 2.1.2 (03/08/2020)
+
+* more robust `loc` (with index and columns) to compute metrics data frames in `MultiLandscape`
+
 ## 2.1.1 (12/06/2020)
 
 * corrected `ZonalGridAnalysis` docstring
