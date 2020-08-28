@@ -2691,8 +2691,10 @@ class Landscape:
             fig, ax = plt.subplots(figsize=figsize)
             ax.set_aspect("equal")
 
-        ax = plot.show(self.landscape_arr, ax=ax, transform=self.transform,
-                       cmap=cmap, **show_kws)
+        ax = plot.show(
+            np.where(self.landscape_arr != self.nodata, self.landscape_arr,
+                     self.nodata), ax=ax, transform=self.transform, cmap=cmap,
+            **show_kws)
 
         if legend:
             im = ax.get_images()[0]
