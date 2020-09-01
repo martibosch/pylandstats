@@ -152,7 +152,7 @@ class MultiLandscape:
                 class_metrics_df.loc[(class_val,
                                       attribute_value), columns] = row
 
-        return class_metrics_df
+        return class_metrics_df.apply(pd.to_numeric)
 
     compute_class_metrics_df.__doc__ = _compute_class_metrics_df_doc.format(
         index_descr='multi-indexed by the class and attribute value',
@@ -186,7 +186,7 @@ class MultiLandscape:
                     metrics,
                     metrics_kws=metrics_kws).iloc[0]
 
-        return landscape_metrics_df
+        return landscape_metrics_df.apply(pd.to_numeric)
 
     compute_landscape_metrics_df.__doc__ = \
         _compute_landscape_metrics_df_doc.format(
