@@ -16,7 +16,7 @@ before_install:
   - conda config --add channels conda-forge --force
   - conda create --quiet --name pylandstats python=$TRAVIS_PYTHON_VERSION
   - source activate pylandstats
-  - conda install -c conda-forge geopandas descartes fiona=1.8.6 ipykernel nbconvert "python-dateutil<=2.8.0"
+  - conda install -c conda-forge descartes ipykernel geopandas nbconvert rasterio
   - conda info --all
   - conda list
   - python -m ipykernel install --user --name pylandstats --display-name "Python (pylandstats)"  

@@ -4,27 +4,17 @@ import unittest
 import warnings
 from os import path
 
-import affine
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import rasterio as rio
 from shapely import geometry
 
 import pylandstats as pls
 
 plt.switch_backend('agg')  # only for testing purposes
-geom_crs = '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs'
-landscape_crs = 'PROJCS["ETRS_1989_LAEA",GEOGCS["GCS_ETRS_1989",DATUM[' \
-                '"European_Terrestrial_Reference_System_1989",SPHEROID['\
-                '"GRS_1980",6378137,298.257222101,AUTHORITY["EPSG","7019"]],'\
-                'AUTHORITY["EPSG","6258"]],PRIMEM["Greenwich",0],UNIT['\
-                '"degree",0.0174532925199433]],PROJECTION['\
-                '"Lambert_Azimuthal_Equal_Area"],PARAMETER['\
-                '"latitude_of_center",52],PARAMETER["longitude_of_center",'\
-                '10],PARAMETER["false_easting",4321000],PARAMETER['\
-                '"false_northing",3210000],UNIT["metre",1,AUTHORITY['\
-                '"EPSG","9001"]]]'
+geom_crs = 'epsg:4326'
 
 
 class TestImports(unittest.TestCase):
@@ -620,10 +610,9 @@ class TestZonaAlnalysis(unittest.TestCase):
             np.load('tests/input_data/ls250_06.npy', allow_pickle=True),
             res=(250, 250))
         self.landscape_fp = 'tests/input_data/ls250_06.tif'
-        self.landscape_transform = affine.Affine(249.96431809611167, 0.0,
-                                                 4037084.1862939927, 0.0,
-                                                 -250.7188576750866,
-                                                 2631436.6068059015)
+        with rio.open(self.landscape_fp) as src:
+            self.landscape_transform = src.transform
+            self.landscape_crs = src.crs
         # for buffer analysis
         self.geom = geometry.Point(6.6327025, 46.5218269)
         self.buffer_dists = [10000, 15000, 20000]
@@ -713,7 +702,7 @@ class TestZonaAlnalysis(unittest.TestCase):
             self.assertRaises(ValueError, pls.BufferAnalysis, self.landscape,
                               base_mask, self.buffer_dists, {
                                   'base_mask_crs': geom_crs,
-                                  'landscape_crs': landscape_crs
+                                  'landscape_crs': self.landscape_crs
                               })
             self.assertRaises(
                 ValueError, pls.BufferAnalysis, self.landscape, base_mask,
@@ -741,7 +730,7 @@ class TestZonaAlnalysis(unittest.TestCase):
                                    base_mask_crs=geom_crs),
                 pls.BufferAnalysis(
                     self.landscape, gser, self.buffer_dists,
-                    base_mask_crs=geom_crs, landscape_crs=landscape_crs,
+                    base_mask_crs=geom_crs, landscape_crs=self.landscape_crs,
                     landscape_transform=self.landscape_transform)
         ]:
             self.assertEqual(ba.attribute_name, 'buffer_dists')

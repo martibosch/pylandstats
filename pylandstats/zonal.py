@@ -36,7 +36,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             mask the base landscape and define a region of study for which the
             metrics will be computed separately. The same information can also
             be provided as a single array of shape (num_masks, width, height).
-        landscape_crs : dict, optional
+        landscape_crs : str, dict or pyproj.CRS, optional
             The coordinate reference system of the landscapes. Used to dump
             rasters in the `compute_zonal_statistics_arr` method. Ignored if
             the passed-in `landscape` is a path to a GeoTiff raster that
@@ -202,11 +202,11 @@ class BufferAnalysis(ZonalAnalysis):
             lies within the respective buffer distance around the base mask.
             If `True`, buffer zones will take the form of rings around the
             base mask.
-        base_mask_crs : dict, optional
+        base_mask_crs : str, dict or pyproj.CRS, optional
             The coordinate reference system of the base mask. Required if the
             base mask is a shapely geometry or a geopandas GeoSeries without
             the `crs` attribute set
-        landscape_crs : dict, optional
+        landscape_crs : str, dict or pyproj.CRS, optional
             The coordinate reference system of the landscapes. Required if the
             passed-in landscapes are `Landscape` objects, ignored if they are
             paths to GeoTiff rasters that already contain such information.
@@ -273,13 +273,15 @@ class BufferAnalysis(ZonalAnalysis):
         ).unary_union.centroid.x
         # trick from OSMnx to be able to buffer in meters
         utm_zone = int(np.floor((avg_longitude + 180) / 6.) + 1)
-        utm_crs = {
-            'datum': 'WGS84',
-            'ellps': 'WGS84',
-            'proj': 'utm',
-            'zone': utm_zone,
-            'units': 'm'
-        }
+        # utm_crs = {
+        #     'datum': 'WGS84',
+        #     'ellps': 'WGS84',
+        #     'proj': 'utm',
+        #     'zone': utm_zone,
+        #     'units': 'm'
+        # }
+        utm_crs = f'+proj=utm +zone={utm_zone} +ellps=WGS84 +datum=WGS84 ' \
+            '+units=m +no_defs'
         base_mask_geom = base_mask_gser.to_crs(utm_crs).iloc[0]
         if buffer_rings:
             if not isinstance(base_mask_geom, Point):
@@ -368,7 +370,7 @@ class ZonalGridAnalysis(ZonalAnalysis):
             will be defined for the maximum subset (starting from the top,
             left corner) for which there is an even division. If not provided,
             then `num_zone_rows`/`num_zone_cols` must be provided.
-        landscape_crs : dict, optional
+        landscape_crs : str, dict or pyproj.CRS, optional
             The coordinate reference system of the landscapes. Required to
             reconstruct the zonal statistics rasters if the passed-in
             landscapes are `Landscape` objects, ignored if they are paths to

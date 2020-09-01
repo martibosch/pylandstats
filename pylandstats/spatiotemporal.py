@@ -77,11 +77,11 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             lies within the respective buffer distance around the base mask.
             If `True`, buffer zones will take the form of rings around the
             base mask.
-        base_mask_crs : dict, optional
+        base_mask_crs : str, dict or pyproj.CRS, optional
             The coordinate reference system of the base mask. Required if the
             base mask is a shapely geometry or a geopandas GeoSeries without
             the `crs` attribute set
-        landscape_crs : dict, optional
+        landscape_crs : str, dict or pyproj.CRS, optional
             The coordinate reference system of the landscapes. Required if the
             passed-in landscapes are `Landscape` objects, ignored if they are
             paths to GeoTiff rasters that already contain such information.
