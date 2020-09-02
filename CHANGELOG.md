@@ -1,5 +1,10 @@
 # Change log
 
+## 2.1.3 (02/09/2020)
+
+* ensure numeric dtypes in metrics data frames
+* `np.nan` nodata in img passed to `rasterio.plot.show` in `plot_landscape`
+
 ## 2.1.2 (03/08/2020)
 
 * more robust `loc` (with index and columns) to compute metrics data frames in `MultiLandscape`
