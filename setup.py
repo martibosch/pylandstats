@@ -13,7 +13,7 @@ from transonic.dist import init_transonic_extensions, make_backend_files
 if sys.version_info[:2] < (3, 6):
     raise RuntimeError("Python version >= 3.6 required.")
 
-__version__ = '2.1.2'
+__version__ = '2.1.3'
 
 classifiers = [
     "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
