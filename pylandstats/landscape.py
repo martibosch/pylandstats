@@ -630,7 +630,7 @@ class Landscape:
         The area of each patch of the landscape
 
         .. math::
-           AREA = a_{i,j} \\quad [hec] \; or \; [m]
+           AREA = a_{i,j} \\quad [hec] \\; or \\; [m]
 
         Parameters
         ----------
@@ -710,7 +710,7 @@ class Landscape:
         smaller perimeter-area ratio.
 
         .. math::
-           PARA = \\frac{p_{i,j}}{a_{i,j}} \\quad [m/hec] \; or \; [m/m^2]
+           PARA = \\frac{p_{i,j}}{a_{i,j}} \\quad [m/hec] \\; or \\; [m/m^2]
 
         Parameters
         ----------
@@ -763,7 +763,7 @@ class Landscape:
         shape.
 
         .. math::
-           SHAPE = \\frac{.25 \; p_{i,j}}{\\sqrt{a_{i,j}}}
+           SHAPE = \\frac{.25 \\; p_{i,j}}{\\sqrt{a_{i,j}}}
 
         Parameters
         ----------
@@ -802,7 +802,7 @@ class Landscape:
         sizes
 
         .. math::
-           FRAC = \\frac{2 \; ln (.25 \; p_{i,j})}{ln (a_{i,j})}
+           FRAC = \\frac{2 \\; ln (.25 \\; p_{i,j})}{ln (a_{i,j})}
 
         Parameters
         ----------
@@ -945,13 +945,13 @@ class Landscape:
         class level as in:
 
         .. math::
-           TA_i = \\sum_{j=1}^{n_i} a_{i,j} \\quad [hec] \; or \; [m] \\quad
-           (class \; i)
+           TA_i = \\sum_{j=1}^{n_i} a_{i,j} \\quad [hec] \\; or \\; [m] \\quad
+           (class \\; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
         .. math::
-           TA = A \\quad [hec] \; or \; [m] \\quad (landscape)
+           TA = A \\quad [hec] \\; or \\; [m] \\quad (landscape)
 
         Parameters
         ----------
@@ -1017,7 +1017,7 @@ class Landscape:
         at the class level as in:
 
         .. math::
-           NP_i = n_i \\quad (class \; i)
+           NP_i = n_i \\quad (class \\; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
@@ -1051,13 +1051,14 @@ class Landscape:
         the class level as in:
 
         .. math::
-           PD_i = \\frac{n_i}{A} \\quad [1/hec] \; or \; [1/m^2] \\quad (class
-           \; i)
+           PD_i = \\frac{n_i}{A} \\quad [1/hec] \\; or \\; [1/m^2] \\quad
+           (class \\; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
         .. math::
-           PD = \\frac{N}{A} \\quad [1/hec] \; or \; [1/m^2] \\quad (landscape)
+           PD = \\frac{N}{A} \\quad [1/hec] \\; or \\; [1/m^2] \\quad
+           (landscape)
 
         Parameters
         ----------
@@ -1101,7 +1102,7 @@ class Landscape:
         in:
 
         .. math::
-           LPI_i = \\frac{1}{A} \\max_{j=1}^{n_i} a_{i,j} \\quad (class \; i)
+           LPI_i = \\frac{1}{A} \\max_{j=1}^{n_i} a_{i,j} \\quad (class \\; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
@@ -1142,7 +1143,7 @@ class Landscape:
         metric is computed at the class level as in:
 
         .. math::
-           TE_i = \\sum_{k=1}^{m} e_{i,k} \\quad [m] \\quad (class \; i)
+           TE_i = \\sum_{k=1}^{m} e_{i,k} \\quad [m] \\quad (class \\; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
@@ -1232,13 +1233,14 @@ class Landscape:
         metric is computed at the class level as in:
 
         .. math::
-           ED_i = \\frac{1}{A} \\sum_{k=1}^{m} e_{i,k} \\quad [m/hec] \; or
-           \; [m/m^2] \\quad (class \; i)
+           ED_i = \\frac{1}{A} \\sum_{k=1}^{m} e_{i,k} \\quad [m/hec] \\; or
+           \\; [m/m^2] \\quad (class \\; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
         .. math::
-           ED = \\frac{E}{A} \\quad [m/hec] \; or \; [m/m^2] \\quad (landscape)
+           ED = \\frac{E}{A} \\quad [m/hec] \\; or \\; [m/m^2] \\quad
+           (landscape)
 
         Parameters
         ----------
@@ -2245,7 +2247,7 @@ class Landscape:
 
         .. math::
            LSI_i = \\frac{.25 \\sum \\limits_{k=1}^{m} e_{i,k}}{\\sqrt{A}}
-           \\quad (class \; i)
+           \\quad (class \\; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
@@ -2325,7 +2327,7 @@ class Landscape:
 
         .. math::
            MESH_i = \\frac{1}{A} \\sum_{j=1}^{n_i} a_{i,j}^2 \\quad [m] \\quad
-           (class \; i)
+           (class \\; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
@@ -2432,7 +2434,7 @@ class Landscape:
         computed at the landscape level as in:
 
         .. math::
-           SHDI = - \\sum \\limits_{i=1}^{m} \\Big( P_i \; ln P_i \\Big)
+           SHDI = - \\sum \\limits_{i=1}^{m} \\Big( P_i \\; ln P_i \\Big)
 
         Returns
         -------
