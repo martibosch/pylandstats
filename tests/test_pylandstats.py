@@ -613,6 +613,7 @@ class TestZonaAlnalysis(unittest.TestCase):
         with rio.open(self.landscape_fp) as src:
             self.landscape_transform = src.transform
             self.landscape_crs = src.crs
+        self.masks_fp = 'tests/input_data/gmb-lausanne'
         # for buffer analysis
         self.geom = geometry.Point(6.6327025, 46.5218269)
         self.buffer_dists = [10000, 15000, 20000]
@@ -626,7 +627,7 @@ class TestZonaAlnalysis(unittest.TestCase):
     def test_zonal_init(self):
         # test that the attribute names and values are consistent with the
         # provided `masks_arr`
-        za = pls.ZonalAnalysis(self.landscape, self.masks_arr)
+        za = pls.ZonalAnalysis(self.landscape, masks=self.masks_arr)
         self.assertEqual(za.attribute_name, 'attribute_values')
         self.assertEqual(len(za), len(self.masks_arr))
         self.assertEqual(len(za), len(za.attribute_values))
@@ -634,17 +635,45 @@ class TestZonaAlnalysis(unittest.TestCase):
         # test that if we init a `ZonalAnalysis` from filepaths, Landscape
         # instances are automaticaly built, and the attribute names and values
         # are also consistent with the provided `masks_arr`
-        za = pls.ZonalAnalysis(self.landscape_fp, self.masks_arr)
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=self.masks_arr)
         for landscape in za.landscapes:
             self.assertIsInstance(landscape, pls.Landscape)
         self.assertEqual(za.attribute_name, 'attribute_values')
         self.assertEqual(len(za), len(self.masks_arr))
         self.assertEqual(len(za), len(za.attribute_values))
 
+        # test passing GeoSeries, GeoDataFrame and geopandas files as `masks`
+        masks_gdf = gpd.read_file(self.masks_fp)
+        masks_index_col = 'GMDNAME'
+
+        # first test the GeoSeries, which works like the others except that we
+        # cannot set a column as the zone index
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gdf['geometry'])
+        self.assertLessEqual(len(za), len(masks_gdf))
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gdf['geometry'],
+                               masks_index_col=masks_index_col)
+        self.assertLessEqual(len(za), len(masks_gdf))
+
+        # now test the GeoDataFrame and geopandas file
+        for masks in self.masks_fp, masks_gdf:
+            # test init
+            za = pls.ZonalAnalysis(self.landscape_fp, masks=masks)
+            self.assertLessEqual(len(za), len(masks_gdf))
+            self.assertTrue(
+                np.all(np.isin(getattr(za, za.attribute_name),
+                               masks_gdf.index)))
+            # test that we can set a column as the zone index
+            za = pls.ZonalAnalysis(self.landscape_fp, masks=masks,
+                                   masks_index_col=masks_index_col)
+            self.assertTrue(
+                np.all(
+                    np.isin(getattr(za, masks_index_col),
+                            masks_gdf[masks_index_col])))
+
         # from this point on, always instantiate from filepaths
 
     def test_zonal_plot_metrics(self):
-        za = pls.ZonalAnalysis(self.landscape_fp, self.masks_arr)
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=self.masks_arr)
 
         # test for `None` (landscape-level) and an existing class (class-level)
         for class_val in [None, za.present_classes[0]]:
@@ -656,7 +685,7 @@ class TestZonaAlnalysis(unittest.TestCase):
                     lines[0].get_xdata() == za.attribute_values))
 
     def test_compute_zonal_statistics_arr(self):
-        za = pls.ZonalAnalysis(self.landscape_fp, self.masks_arr)
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=self.masks_arr)
 
         # test that the array has the proper shape
         zs_arr = za.compute_zonal_statistics_arr('patch_density')

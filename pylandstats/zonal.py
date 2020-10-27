@@ -1,3 +1,5 @@
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -10,6 +12,7 @@ from . import multilandscape
 
 try:
     import geopandas as gpd
+
     from shapely.geometry import Point
     from shapely.geometry.base import BaseGeometry
     geo_imports = True
@@ -20,9 +23,10 @@ __all__ = ['ZonalAnalysis', 'BufferAnalysis', 'ZonalGridAnalysis']
 
 
 class ZonalAnalysis(multilandscape.MultiLandscape):
-    def __init__(self, landscape, masks_arr, landscape_crs=None,
+    def __init__(self, landscape, masks_arr=None, landscape_crs=None,
                  landscape_transform=None, attribute_name=None,
-                 attribute_values=None, **kwargs):
+                 attribute_values=None, masks=None, masks_index_col=None,
+                 **kwargs):
         """
         Parameters
         ----------
@@ -30,12 +34,13 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             A `Landscape` object or of string/file object/pathlib.Path object
             that will be passed as the `landscape` argument of
             `Landscape.__init__`
-        masks_arr : list-like or np.ndarray
+        masks_arr : list-like or np.ndarray, optional
             A list-like of numpy arrays of shape (width, height), i.e., of the
             same shape as the landscape raster image. Each array will serve to
             mask the base landscape and define a region of study for which the
             metrics will be computed separately. The same information can also
             be provided as a single array of shape (num_masks, width, height).
+            Ignored if `masks` is provided.
         landscape_crs : str, dict or pyproj.CRS, optional
             The coordinate reference system of the landscapes. Used to dump
             rasters in the `compute_zonal_statistics_arr` method. Ignored if
@@ -50,6 +55,23 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             Name of the attribute that will distinguish each landscape
         attribute_values : str, optional
             Values of the attribute that correspond to each of the landscapes
+        masks : list-like, np.ndarray, gpd.GeoSeries, gpd.GeoDataFrame, str,
+            file object or pathlib.Path object, optional
+            This can either be:
+            (a) A list-like of numpy arrays of shape (width, height), i.e., of
+                the same shape as the landscape raster image. Each array will
+                serve to mask the base landscape and define a region of study
+                for which the metrics will be computed separately. The same
+                information can also be provided as a single array of shape
+                (num_masks, width, height).
+            (b) A geopandas geo-series or geo-data frame
+            (c) A filename or URL, a file object opened in binary ('rb') mode,
+                or a Path object that will be passed to `geopandas.read_file`
+        masks_index_col : str, optional
+            Column of the `masks` geo-data frame that will be used as
+            attribute values, i.e., index of the metrics data frames. Ignored
+            if `masks` is not a geo-data frame or a geo-data frame file, e.g.,
+            a shapefile
         """
 
         # read input data/metadata
@@ -62,6 +84,93 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         if landscape.transform is not None:
             landscape_transform = landscape.transform
 
+        # masks
+        if masks_arr is not None:
+            msg = (
+                "The `masks_arr` parameter is deprecated and will be removed "
+                "in a future version. Use the `masks` parameter instead")
+            warnings.warn(msg, FutureWarning)
+        if masks is not None:
+            if not geo_imports:
+                # if geopandas is not installed, `masks` must be either a
+                # list-like object or an ndarray - in both cases, an iterable
+                try:
+                    _ = iter(masks)
+                except TypeError:
+                    raise ImportError(
+                        "If `masks` is not a list-like of numpy arrays or a "
+                        "numpy array, it must be a `geopandas.GeoDataFrame` or"
+                        " a vector-based spatial data file, which requires the"
+                        " geopandas package.")
+
+                # rename the variable to `masks_arr` so that it is properly
+                # used below
+                masks_arr = masks
+            else:
+                if isinstance(masks, gpd.GeoSeries):
+                    # if we have a GeoSeries, convert it to a GeoDataFrame so
+                    # that we can use the same code
+                    masks = gpd.GeoDataFrame(geometry=masks, index=masks.index)
+                    # since `masks_index_col` is meant to be a column of the
+                    # geodataframe (or geodataframe file, e.g., shapefile)
+                    # provided as the `masks` argument, if `masks` is a
+                    # GeoSeries, such a column will not exist - we therefore
+                    # set it to `None` so that we do not enter the respective
+                    # "if" below and get errors
+                    masks_index_col = None
+                elif not isinstance(masks, gpd.GeoDataFrame):
+                    try:
+                        masks = gpd.read_file(masks)
+                    except AttributeError:
+                        # AttributeError: 'list'/'numpy.ndarray' object has no
+                        # attribute 'startswith'
+                        # we assume that `masks` is a list-like of numpy
+                        # arrays or a numpy array, in which case we rename the
+                        # variable to `masks_arr` so that it is properly used
+                        # below
+                        masks_arr = masks
+
+                # at this point, `masks` can either be a GeoDataFrame (in
+                # which case, we process it inside the "if" below) or a
+                # list-like of numpy arrays/numpy array (in which case no
+                # further pre-processing needs to be done)
+                if isinstance(masks, gpd.GeoDataFrame):
+                    # first of all, let us transform our geometries into the
+                    # CRS of the landscape
+                    masks_gser = masks['geometry'].to_crs(landscape_crs)
+                    # we first rasterize the geometries using the values of
+                    # each geometry's index key in the raster
+                    zone_arr = features.rasterize(
+                        shapes=((geom, val)
+                                for geom, val in zip(masks_gser, masks.index)),
+                        out_shape=landscape_arr.shape, fill=landscape.nodata,
+                        transform=landscape.transform)
+                    # we now filter so that only the zone geometries that
+                    # intersect the data region of our landscape are considered
+                    zone_arr = np.where(landscape_arr != landscape.nodata,
+                                        zone_arr, landscape.nodata)
+                    # we now get all the non-nodata values (i.e., index keys of
+                    # the GeoDataFrame) that intersect the data region of our
+                    # landscape
+                    zone_values = np.setdiff1d(np.unique(zone_arr),
+                                               [landscape.nodata])
+                    # we now transform `zone_arr` into a list of boolean masks
+                    # that delineate the extent of each zone
+                    masks_arr = [
+                        zone_arr == mask_id for mask_id in zone_values
+                    ]
+
+                    if masks_index_col is not None:
+                        # to index the data frames of landscape metrics with
+                        # the values of the `masks_index_col` of the
+                        # GeoDataFrame (instead of the index keys), we set the
+                        # `attribute_name` and `attribute_values` variables,
+                        # which will be set as instance attributes below
+                        attribute_name = masks_index_col
+                        attribute_values = masks[masks_index_col].loc[
+                            zone_values]
+
+        # we generate the landscapes of each zone here
         landscapes = [
             pls_landscape.Landscape(
                 np.where(mask_arr, landscape_arr, landscape.nodata).astype(
@@ -317,7 +426,7 @@ class BufferAnalysis(ZonalAnalysis):
         # now we can call the parent's init with the landscape and the
         # constructed buffer_masks_arr
         super(BufferAnalysis,
-              self).__init__(landscape, buffer_masks_arr,
+              self).__init__(landscape, masks=buffer_masks_arr,
                              landscape_crs=landscape_crs,
                              landscape_transform=landscape_transform,
                              attribute_name='buffer_dists',
