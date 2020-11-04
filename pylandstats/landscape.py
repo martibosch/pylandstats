@@ -777,7 +777,7 @@ class Landscape:
         SHAPE : pd.Series if `class_val` is provided, pd.DataFrame otherwise
             SHAPE >= 1, without limit ; SHAPE equals 1 when the patch
             is maximally compact, and increases without limit as patch shape
-            becomes more regular
+            becomes more irregular
         """
 
         area_ser = self._get_patch_area_ser(class_val)
@@ -2348,7 +2348,9 @@ class Landscape:
         Returns
         -------
         mesh : float
-            cell_area / A <= MESH <= A
+            cell_area / A <= MESH <= A ; MESH approaches its minimum when
+            there is a single corresponding patch of one pixel, and approaches
+            its maximum when the landscape consists of a single patch
         """
         mesh = np.sum(self._get_patch_area_ser(class_val)**2) / \
             self.landscape_area
