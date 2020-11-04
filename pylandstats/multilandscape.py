@@ -1,5 +1,5 @@
 import abc
-from functools import reduce
+import functools
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,7 +29,7 @@ metrics_kws : dict, optional
 
 Returns
 -------
-df : pd.DataFrame
+df : pandas.DataFrame
     Dataframe with the values computed for each {index_return} and metric
     (columns)
 """
@@ -52,7 +52,7 @@ metrics_kws : dict, optional
 
 Returns
 -------
-df : pd.DataFrame
+df : pandas.DataFrame
     Dataframe with the values computed at the landscape level for each
     {index_return} and metric (columns)
 """
@@ -96,7 +96,7 @@ class MultiLandscape:
         setattr(self, 'attribute_name', attribute_name)
 
         # get the all classes present in the provided landscapes
-        self.present_classes = reduce(
+        self.present_classes = functools.reduce(
             np.union1d,
             tuple(landscape.classes for landscape in self.landscapes))
 
@@ -215,20 +215,20 @@ class MultiLandscape:
             If the provided value is `None`, the label will be taken from the
             `settings` module
         fmt : str, default '--o'
-            A format string for `plt.plot`
+            A format string for `matplotlib.pyplot.plot`
         plot_kws : dict, default None
-            Keyword arguments to be passed to `plt.plot`
+            Keyword arguments to be passed to `matplotlib.pyplot.plot`
         subplots_kws : dict, default None
-            Keyword arguments to be passed to `plt.subplots`, only if no axis
-            is given (through the `ax` argument)
+            Keyword arguments to be passed to `matplotlib.pyplot.plot.subplots`
+            only if no axis is given (through the `ax` argument)
         metric_kws : dict, default None
             Keyword arguments to be passed to the method that computes the
             metric (specified in the `metric` argument) for each landscape
 
         Returns
         -------
-        ax : axis object
-            Returns the Axes object with the plot drawn onto it
+        ax : matplotlib.axes.Axes
+            Returns the `Axes` object with the plot drawn onto it
         """
 
         # TODO: metric_legend parameter acepting a set of str values
@@ -306,15 +306,16 @@ class MultiLandscape:
         legend : bool, optional
             If ``True``, display the legend of the land use/cover color codes
         subplots_kws: dict, default None
-            Keyword arguments to be passed to `plt.subplots`
+            Keyword arguments to be passed to `matplotlib.pyplot.subplots`
         show_kws : dict, default Nonte
             Keyword arguments to be passed to `rasterio.plot.show`
         subplots_adjust_kws: dict, default None
-            Keyword arguments to be passed to `plt.subplots_adjust`
+            Keyword arguments to be passed to
+            `matplotlib.pyplot.subplots_adjust`
 
         Returns
         -------
-        fig : `matplotlib.figure.Figure`
+        fig : matplotlib.figure.Figure
             The figure with its corresponding plots drawn into its axes
         """
 

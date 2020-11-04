@@ -311,7 +311,7 @@ class TestLandscape(unittest.TestCase):
 
 class TestMultiLandscape(unittest.TestCase):
     def setUp(self):
-        from pylandstats.multilandscape import MultiLandscape
+        from pylandstats import multilandscape
 
         self.landscapes = [
             pls.Landscape(
@@ -329,7 +329,7 @@ class TestMultiLandscape(unittest.TestCase):
         self.inexistent_class_val = 999
 
         # use this class just for testing purposes
-        class InstantiableMultiLandscape(MultiLandscape):
+        class InstantiableMultiLandscape(multilandscape.MultiLandscape):
             def __init__(self, *args, **kwargs):
                 super(InstantiableMultiLandscape,
                       self).__init__(*args, **kwargs)
@@ -337,10 +337,10 @@ class TestMultiLandscape(unittest.TestCase):
         self.InstantiableMultiLandscape = InstantiableMultiLandscape
 
     def test_multilandscape_init(self):
-        from pylandstats.multilandscape import MultiLandscape
+        from pylandstats import multilandscape
 
         # test that we cannot instantiate an abstract class
-        self.assertRaises(TypeError, MultiLandscape)
+        self.assertRaises(TypeError, multilandscape.MultiLandscape)
 
         # test that if we init a MultiLandscape from filepaths, Landscape
         # instances are automaticaly built

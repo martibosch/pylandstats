@@ -1,23 +1,23 @@
 from __future__ import division
 
+import functools
 import platform
 import warnings
-from functools import partial
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import rasterio
+import rasterio as rio
+import transonic
 from rasterio import plot
 from scipy import ndimage, spatial, stats
-from transonic import boost, set_backend_for_this_module
 
 if platform.system() == "Windows":
     backend = "numba"
 else:
     backend = "pythran"
 
-set_backend_for_this_module(backend)
+transonic.set_backend_for_this_module(backend)
 
 __all__ = ["Landscape"]
 
@@ -28,7 +28,7 @@ CELLLENGTH_RTOL = 0.001
 KERNEL_MOORE = ndimage.generate_binary_structure(2, 2)
 
 
-@boost
+@transonic.boost
 def compute_adjacency_arr(padded_arr: "uint32[:,:]", num_classes: "int"):
     # flat-array approach to pixel adjacency from link below:
     # https://ilovesymposia.com/2016/12/20/numba-in-the-real-world/
@@ -85,24 +85,24 @@ class Landscape:
         """
         Parameters
         ----------
-        landscape : np.ndarray or str, file object or pathlib.Path object
+        landscape : numpy.ndarray or str, file object or pathlib.Path object
             A landscape array with pixel values corresponding to a set of land
             use/land cover classes, or a filename or URL, a file object opened
-            in binary ('rb') mode, or a Path object. If not a `np.ndarray`,
+            in binary ('rb') mode, or a Path object. If not a `numpy.ndarray`,
             `landscape` will be passed to `rasterio.open`
         res : tuple, optional
             The (x, y) resolution of the dataset. Required if `landscape` is a
-            `np.ndarray`
+            `numpy.ndarray`
         nodata : int, optional
             Value to be assigned to pixels with no data. It will be set to 0
-            if `landscape` is a `np.ndarray`
+            if `landscape` is a `numpy.ndarray`
         transform : affine.Affine, optional
             Transformation from pixel coordinates to coordinate reference
             system. If `landscape` is a path to a GeoTiff, this argument will
             be ignored and extracted from the raster's metadata instead
         **kwargs : optional
             Keyword arguments to be passed to `rasterio.open`. Ignored if
-            `landscape` is an `np.ndarray`
+            `landscape` is an `numpy.ndarray`
         """
         if isinstance(landscape, np.ndarray):
             landscape_arr = np.copy(landscape)
@@ -112,7 +112,7 @@ class Landscape:
             if nodata is None:
                 nodata = 0
         else:
-            with rasterio.open(landscape, nodata=nodata, **kwargs) as src:
+            with rio.open(landscape, nodata=nodata, **kwargs) as src:
                 landscape_arr = src.read(1)
                 if res is None:
                     res = src.res
@@ -580,7 +580,7 @@ class Landscape:
             class_val,
             patch_metric_method,
             patch_metric_method_kws,
-            partial(np.average, weights=area),
+            functools.partial(np.average, weights=area),
         )
 
     def _metric_md(self, class_val, patch_metric_method,
@@ -644,7 +644,8 @@ class Landscape:
 
         Returns
         -------
-        AREA : pd.Series if `class_val` is provided, pd.DataFrame otherwise
+        AREA : pandas.Series if `class_val` is provided, pandas.DataFrame
+            otherwise
             AREA > 0, without limit
         """
 
@@ -684,7 +685,8 @@ class Landscape:
 
         Returns
         -------
-        PERIM : pd.Series if `class_val` is provided, pd.DataFrame otherwise
+        PERIM : pandas.Series if `class_val` is provided, pandas.DataFrame
+            otherwise
             PERIM > 0, without limit
         """
 
@@ -724,7 +726,8 @@ class Landscape:
 
         Returns
         -------
-        PARA : pd.Series if `class_val` is provided, pd.DataFrame otherwise
+        PARA : pandas.Series if `class_val` is provided, pandas.DataFrame
+            otherwise
             PARA > 0, without limit
         """
 
@@ -774,7 +777,8 @@ class Landscape:
 
         Returns
         -------
-        SHAPE : pd.Series if `class_val` is provided, pd.DataFrame otherwise
+        SHAPE : pandas.Series if `class_val` is provided, pandas.DataFrame
+            otherwise
             SHAPE >= 1, without limit ; SHAPE equals 1 when the patch
             is maximally compact, and increases without limit as patch shape
             becomes more irregular
@@ -813,7 +817,8 @@ class Landscape:
 
         Returns
         -------
-        FRAC : pd.Series if `class_val` is provided, pd.DataFrame otherwise
+        FRAC : pandas.Series if `class_val` is provided, pandas.DataFrame
+            otherwise
             1 <= FRAC <=2 ; for a two-dimensional patch, FRAC approaches 1 for
             very simple shapes such as squares, and approaches 2 for complex
             plane-filling shapes
@@ -2485,7 +2490,7 @@ class Landscape:
 
         Returns
         -------
-        df : pd.DataFrame
+        df : pandas.DataFrame
             Dataframe with the values computed for each patch (index) and
             metric (columns)
         """
@@ -2551,7 +2556,7 @@ class Landscape:
 
         Returns
         -------
-        df : pd.DataFrame
+        df : pandas.DataFrame
             Dataframe with the values computed for each class (index) and
             metric (columns)
         """
@@ -2629,7 +2634,7 @@ class Landscape:
 
         Returns
         -------
-        df : pd.DataFrame
+        df : pandas.DataFrame
             Dataframe with the values computed at the landscape level (one row
             only) for each metric (columns)
         """
@@ -2681,8 +2686,8 @@ class Landscape:
 
         Returns
         -------
-        ax : matplotlib axis
-            axis with plot data
+        ax : matplotlib.axes.Axes
+            Returns the `Axes` object with the plot drawn onto it
         """
 
         if cmap is None:

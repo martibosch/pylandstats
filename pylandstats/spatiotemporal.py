@@ -1,4 +1,4 @@
-from functools import reduce
+import functools
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -70,7 +70,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             A list-like of `Landscape` objects or of strings/file objects/
             pathlib.Path objects so that each is passed as the `landscape`
             argument of `Landscape.__init__`
-        base_mask : shapely geometry or geopandas GeoSeries
+        base_mask : shapely geometry or geopandas.GeoSeries
             Geometry that will serve as a base mask to buffer around
         buffer_rings : bool, default False
             If `False`, each buffer zone will consist of the whole region that
@@ -128,7 +128,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         # any of buffer zones. We therefore need to get the union of the
         # classes found at the spatio-temporal analysis instance of each
         # `buffer_dist`
-        self.present_classes = reduce(
+        self.present_classes = functools.reduce(
             np.union1d, tuple(sta.present_classes for sta in self.stas))
 
         # the dates will be the same for all the `SpatioTemporalAnalysis`
@@ -251,17 +251,17 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             Whether a legend linking each plotted line to a buffer distance
             should be displayed within the plot
         fmt : str, default '--o'
-            A format string for `plt.plot`
+            A format string for `matplotlib.pyplot.plot`
         plot_kws : dict, default None
-            Keyword arguments to be passed to `plt.plot`
+            Keyword arguments to be passed to `matplotlib.pyplot.plot`
         subplots_kws : dict, default None
-            Keyword arguments to be passed to `plt.subplots`, only if no axis
-            is given (through the `ax` argument)
+            Keyword arguments to be passed to `matplotlib.pyplot.subplots`
+            only if no axis is given (through the `ax` argument)
 
         Returns
         -------
-        ax : axis object
-            Returns the Axes object with the plot drawn onto it
+        ax : matplotlib.axes.Axes
+            Returns the `Axes` object with the plot drawn onto it
         """
         # TODO: refactor this method so that it uses `class_metrics_df` and
         # `landscape_metrics_df` properties?
@@ -308,15 +308,16 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         legend : bool, optional
             If ``True``, display the legend of the land use/cover color codes
         subplots_kws: dict, default None
-            Keyword arguments to be passed to `plt.subplots`
+            Keyword arguments to be passed to `matplotlib.pyplot.subplots`
         show_kws : dict, default None
             Keyword arguments to be passed to `rasterio.plot.show`
         subplots_adjust_kws: dict, default None
-            Keyword arguments to be passed to `plt.subplots_adjust`
+            Keyword arguments to be passed to
+            `matplotlib.pyplot.subplots_adjust`
 
         Returns
         -------
-        fig : `matplotlib.figure.Figure`
+        fig : matplotlib.figure.Figure
             The figure with its corresponding plots drawn into its axes
         """
 

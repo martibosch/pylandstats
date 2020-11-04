@@ -1,16 +1,13 @@
-import os
+from os import environ
 
 from . import landscape
 
 try:
-    from dotenv import find_dotenv, load_dotenv
-    dotenv = True
-except ImportError:
-    dotenv = False
-
-if dotenv:
+    import dotenv
     # load environment variables from a '.env' file of a parent directory
-    load_dotenv(find_dotenv())
+    dotenv.load_dotenv(dotenv.find_dotenv())
+except ImportError:
+    pass
 
 # BASIC DEFINITIONS
 fragstats_abbrev_dict = {
@@ -56,4 +53,4 @@ for metric in landscape.Landscape.PATCH_METRICS:
 # `landscape.Landscape.compute_{level}_metrics_df`, where 'level' can be
 # `patch`, `class` or `landscape`. On the other hand, integrating `metrics_kws`
 # should be more straight-forward.
-metric_label_dict = os.environ.get('METRIC_LABEL_DICT', fragstats_abbrev_dict)
+metric_label_dict = environ.get('METRIC_LABEL_DICT', fragstats_abbrev_dict)

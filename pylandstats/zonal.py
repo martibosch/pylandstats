@@ -3,7 +3,7 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import rasterio
+import rasterio as rio
 from numpy.lib import stride_tricks
 from rasterio import features
 
@@ -13,8 +13,8 @@ from . import multilandscape
 try:
     import geopandas as gpd
 
-    from shapely.geometry import Point
-    from shapely.geometry.base import BaseGeometry
+    from shapely import geometry
+    from shapely.geometry import base as geometry_base
     geo_imports = True
 except ImportError:
     geo_imports = False
@@ -34,7 +34,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             A `Landscape` object or of string/file object/pathlib.Path object
             that will be passed as the `landscape` argument of
             `Landscape.__init__`
-        masks_arr : list-like or np.ndarray, optional
+        masks_arr : list-like or numpy.ndarray, optional
             A list-like of numpy arrays of shape (width, height), i.e., of the
             same shape as the landscape raster image. Each array will serve to
             mask the base landscape and define a region of study for which the
@@ -55,8 +55,9 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             Name of the attribute that will distinguish each landscape
         attribute_values : str, optional
             Values of the attribute that correspond to each of the landscapes
-        masks : list-like, np.ndarray, gpd.GeoSeries, gpd.GeoDataFrame, str,
-            file object or pathlib.Path object, optional
+        masks : list-like, numpy.ndarray, geopandas.GeoSeries,
+            geopandas.GeoDataFrame, str, file object or pathlib.Path object,
+            optional
             This can either be:
             (a) A list-like of numpy arrays of shape (width, height), i.e., of
                 the same shape as the landscape raster image. Each array will
@@ -76,7 +77,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
 
         # read input data/metadata
         if not isinstance(landscape, pls_landscape.Landscape):
-            with rasterio.open(landscape) as src:
+            with rio.open(landscape) as src:
                 landscape_crs = src.crs
             landscape = pls_landscape.Landscape(landscape)
         landscape_arr = landscape.landscape_arr
@@ -237,7 +238,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
 
         Returns
         -------
-        zonal_statistics_arr : ndarray
+        zonal_statistics_arr : numpy.ndarray
             Two-dimensional array with the computed zonal statistics
         """
         # ACHTUNG: do not confuse `metric_kws` and `metrics_kws`. The former
@@ -286,7 +287,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                     zonal_statistics_arr[np.isnan(
                         zonal_statistics_arr)] = custom_meta['nodata']
                 dst_meta.update(**custom_meta)
-            with rasterio.open(dst_filepath, 'w', **dst_meta) as dst:
+            with rio.open(dst_filepath, 'w', **dst_meta) as dst:
                 dst.write(zonal_statistics_arr, 1)
         return zonal_statistics_arr
 
@@ -302,7 +303,7 @@ class BufferAnalysis(ZonalAnalysis):
             A `Landscape` object or of string/file object/pathlib.Path object
             that will be passed as the `landscape` argument of
             `Landscape.__init__`
-        base_mask : shapely geometry or geopandas GeoSeries
+        base_mask : shapely geometry or geopandas.GeoSeries
             Geometry that will serve as a base mask to buffer around
         buffer_dists : list-like
             Buffer distances
@@ -339,7 +340,7 @@ class BufferAnalysis(ZonalAnalysis):
         # get `buffer_masks_arr` from a base geometry and a list of buffer
         # distances
         # 1. get a GeoSeries with the base mask geometry
-        if isinstance(base_mask, BaseGeometry):
+        if isinstance(base_mask, geometry_base.BaseGeometry):
             if base_mask_crs is None:
                 raise ValueError(
                     "If `base_mask` is a shapely geometry, `base_mask_crs` "
@@ -371,7 +372,7 @@ class BufferAnalysis(ZonalAnalysis):
                     "filepaths), `landscape_transform` must be provided")
             landscape_shape = landscape.landscape_arr.shape
         else:
-            with rasterio.open(landscape) as src:
+            with rio.open(landscape) as src:
                 landscape_crs = src.crs
                 landscape_transform = src.transform
                 landscape_shape = src.height, src.width
@@ -393,7 +394,7 @@ class BufferAnalysis(ZonalAnalysis):
             '+units=m +no_defs'
         base_mask_geom = base_mask_gser.to_crs(utm_crs).iloc[0]
         if buffer_rings:
-            if not isinstance(base_mask_geom, Point):
+            if not isinstance(base_mask_geom, geometry.Point):
                 raise ValueError(
                     "Buffer rings can only work when `base_mask_geom` is a "
                     "`Point`")
@@ -492,7 +493,7 @@ class ZonalGridAnalysis(ZonalAnalysis):
         """
 
         if not isinstance(landscape, pls_landscape.Landscape):
-            with rasterio.open(landscape) as src:
+            with rio.open(landscape) as src:
                 landscape_crs = src.crs
             landscape = pls_landscape.Landscape(landscape)
         landscape_arr = landscape.landscape_arr
@@ -634,8 +635,8 @@ class ZonalGridAnalysis(ZonalAnalysis):
 
         Returns
         -------
-        ax : matplotlib axis
-            axis with plot data
+        ax : matplotlib.axes.Axes
+            Returns the `Axes` object with the plot drawn onto it
         """
 
         if cmap is None:
