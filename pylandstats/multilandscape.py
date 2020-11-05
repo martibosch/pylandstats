@@ -26,6 +26,12 @@ metrics_kws : dict, optional
     computation of `total_edge`, metric_kws should map the string 'total_edge'
     (method name) to {{'count_boundary': False}}. The default empty dictionary
     will compute each metric according to FRAGSTATS defaults.
+fillna : bool, optional
+    Whether `NaN` values representing landscapes with no occurrences of
+    patches of the provided class should be replaced by zero when appropriate,
+    e.g., area and edge metrics (no ocurrences mean zero area/edge). If the
+    provided value is `None` (default), the value will be taken from
+    `settings.CLASS_METRICS_DF_FILLNA`.
 
 Returns
 -------
@@ -100,11 +106,31 @@ class MultiLandscape:
             np.union1d,
             tuple(landscape.classes for landscape in self.landscapes))
 
+    # fillna for metrics in class metrics dataframes. Since some classes might
+    # not apprear in some of the landscapes (e.g., zones or temporal snapshots
+    # without any pixel of a particular class type), they will appear as `NaN`
+    # in the data frame. We can, however, infer the meaning of this situation
+    # for certain metrics, e.g, non-occurence of a given class in a landscape
+    # means a number of patches, total area, proportion of landscape, total
+    # edge... of the class of 0
+    METRIC_FILLNA_DICT = {
+        metric: 0
+        for metric in [
+            patch_metric + '_' + suffix
+            for patch_metric in ['area', 'perimeter']
+            for suffix in ['mn', 'am', 'md', 'ra', 'sd']
+        ] + [
+            'total_area', 'proportion_of_landscape', 'number_of_patches',
+            'patch_density', 'largest_patch_index', 'total_edge',
+            'edge_density'
+        ]
+    }
+
     def __len__(self):
         return len(self.landscapes)
 
     def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws=None):
+                                 metrics_kws=None, fillna=None):
         attribute_values = getattr(self, self.attribute_name)
 
         # get the columns to init the data frame
@@ -119,6 +145,10 @@ class MultiLandscape:
         # to avoid issues with mutable defaults
         if metrics_kws is None:
             metrics_kws = {}
+        # to avoid setting the same default keyword argument in multiple
+        # methods, use the settings module
+        if fillna is None:
+            fillna = settings.CLASS_METRICS_DF_FILLNA
 
         # IMPORTANT: here we need this approach (uglier when compared to the
         # `compute_landscape_metrics_df` method below) because we need to
@@ -152,7 +182,11 @@ class MultiLandscape:
                 class_metrics_df.loc[(class_val,
                                       attribute_value), columns] = row
 
-        return class_metrics_df.apply(pd.to_numeric)
+        class_metrics_df = class_metrics_df.apply(pd.to_numeric)
+        if fillna:
+            class_metrics_df = class_metrics_df.fillna(
+                MultiLandscape.METRIC_FILLNA_DICT)
+        return class_metrics_df
 
     compute_class_metrics_df.__doc__ = _compute_class_metrics_df_doc.format(
         index_descr='multi-indexed by the class and attribute value',

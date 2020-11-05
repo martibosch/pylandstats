@@ -33,11 +33,12 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
 
     # override docs
     def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws=None):
+                                 metrics_kws=None, fillna=None):
         return super(SpatioTemporalAnalysis,
                      self).compute_class_metrics_df(metrics=metrics,
                                                     classes=classes,
-                                                    metrics_kws=metrics_kws)
+                                                    metrics_kws=metrics_kws,
+                                                    fillna=fillna)
 
     compute_class_metrics_df.__doc__ = \
         multilandscape._compute_class_metrics_df_doc.format(
@@ -143,7 +144,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         self.dates = self.stas[0].dates
 
     def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws=None):
+                                 metrics_kws=None, fillna=None):
         if classes is None:
             classes = self.present_classes
 
@@ -174,7 +175,8 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             # `SpatioTemporalAnalysis` instance that corresponds to this
             # `buffer_dist`
             df = sta.compute_class_metrics_df(metrics=metrics, classes=classes,
-                                              metrics_kws=metrics_kws)
+                                              metrics_kws=metrics_kws,
+                                              fillna=fillna)
             # put the metrics data frame of the `SpatioTemporalAnalysis`
             # of this `buffer_dist` into the global metrics data frame of
             # the `SpatioTemporalBufferAnalysis`

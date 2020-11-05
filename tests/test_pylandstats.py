@@ -399,6 +399,25 @@ class TestMultiLandscape(unittest.TestCase):
             np.all(landscape_metrics_df.columns == landscape_metrics))
         self.assertTrue(np.all(landscape_metrics_df.index == attribute_values))
 
+    def test_multilandscape_class_metrics_fillna(self):
+        ml = self.InstantiableMultiLandscape(self.landscape_fps,
+                                             self.attribute_name,
+                                             self.attribute_values)
+        fillna_df = ml.compute_class_metrics_df()
+        nofillna_df = ml.compute_class_metrics_df(fillna=False)
+
+        for metric in fillna_df.columns:
+            if metric in self.InstantiableMultiLandscape.METRIC_FILLNA_DICT:
+                # this metric should be zero in the first data frame and `NaN`
+                # in the second one
+                self.assertEqual(
+                    np.count_nonzero(
+                        fillna_df[metric][nofillna_df[metric].isna()]), 0)
+            else:
+                # the columns for this metric should be identical in both data
+                # frames
+                self.assertTrue(fillna_df[metric].equals(nofillna_df[metric]))
+
     def test_multilandscape_metric_kws(self):
         # Instantiate two multilandscape analyses, one with FRAGSTATS'
         # defaults and the other with keyword arguments specifying the total
@@ -410,6 +429,9 @@ class TestMultiLandscape(unittest.TestCase):
         metrics_kws = {
             'total_area': {
                 'hectares': False
+            },
+            'perimeter_area_ratio_mn': {
+                'hectares': True
             },
             'total_edge': {
                 'count_boundary': True
@@ -441,15 +463,17 @@ class TestMultiLandscape(unittest.TestCase):
                                                              attribute_value]
 
                 # It could be that for some attribute values, some classes are
-                # not present within the respective Landscape. If so, all of
-                # the metrics will be `nan`, both for the analysis with and
-                # without keyword arguments. Otherwise, we just perform the
-                # usual checks
+                # not present within the respective Landscape. If so, some
+                # metrics (e.g., 'perimeter_area_ratio_mn') will be `nan`,
+                # both for the analysis with and without keyword arguments.
+                # For area and edge metrics, PyLandStats inteprets such `nan`
+                # values as 0, which is why we need to include the equality in
+                # the comparison
                 if class_metrics.isnull().all():
                     self.assertTrue(class_metrics_kws.isnull().all())
                 else:
-                    self.assertLess(class_metrics['total_area'],
-                                    class_metrics_kws['total_area'])
+                    self.assertLessEqual(class_metrics['total_area'],
+                                         class_metrics_kws['total_area'])
                     # we need quite some tolerance because pixel resolutions in
                     # raster files might be wierd float values, e.g., 99.13213
                     # instead of 100 (meters)

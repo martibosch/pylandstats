@@ -435,11 +435,12 @@ class BufferAnalysis(ZonalAnalysis):
 
     # override docs
     def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws=None):
+                                 metrics_kws=None, fillna=None):
         return super(BufferAnalysis,
                      self).compute_class_metrics_df(metrics=metrics,
                                                     classes=classes,
-                                                    metrics_kws=metrics_kws)
+                                                    metrics_kws=metrics_kws,
+                                                    fillna=fillna)
 
     compute_class_metrics_df.__doc__ = \
         multilandscape._compute_class_metrics_df_doc.format(

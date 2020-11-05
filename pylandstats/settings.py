@@ -54,3 +54,6 @@ for metric in landscape.Landscape.PATCH_METRICS:
 # `patch`, `class` or `landscape`. On the other hand, integrating `metrics_kws`
 # should be more straight-forward.
 metric_label_dict = environ.get('METRIC_LABEL_DICT', fragstats_abbrev_dict)
+
+# OTHER
+CLASS_METRICS_DF_FILLNA = True
