@@ -12,14 +12,14 @@ import transonic
 from rasterio import plot
 from scipy import ndimage, spatial, stats
 
-if platform.system() == "Windows":
-    backend = "numba"
+if platform.system() == 'Windows':
+    backend = 'numba'
 else:
-    backend = "pythran"
+    backend = 'pythran'
 
 transonic.set_backend_for_this_module(backend)
 
-__all__ = ["Landscape"]
+__all__ = ['Landscape']
 
 # sometimes pixel resolutions in GeoTIFF files are floats therefore
 # compparisons (e.g., `cell_width == cell_height`) should allow for some
@@ -29,7 +29,7 @@ KERNEL_MOORE = ndimage.generate_binary_structure(2, 2)
 
 
 @transonic.boost
-def compute_adjacency_arr(padded_arr: "uint32[:,:]", num_classes: "int"):
+def compute_adjacency_arr(padded_arr: 'uint32[:,:]', num_classes: 'int'):
     # flat-array approach to pixel adjacency from link below:
     # https://ilovesymposia.com/2016/12/20/numba-in-the-real-world/
     # the first axis of `adjacency_arr` is of fixed size of 2 and serves to
@@ -141,41 +141,41 @@ class Landscape:
     # constants
 
     PATCH_METRICS = [
-        "area",
-        "perimeter",
-        "perimeter_area_ratio",
-        "shape_index",
-        "fractal_dimension",
-        "euclidean_nearest_neighbor",
+        'area',
+        'perimeter',
+        'perimeter_area_ratio',
+        'shape_index',
+        'fractal_dimension',
+        'euclidean_nearest_neighbor',
     ]  # 'contiguity_index', 'proximity'
 
     DISTR_METRICS = [
-        patch_metric + "_" + suffix for patch_metric in PATCH_METRICS
-        for suffix in ["mn", "am", "md", "ra", "sd", "cv"]
+        patch_metric + '_' + suffix for patch_metric in PATCH_METRICS
+        for suffix in ['mn', 'am', 'md', 'ra', 'sd', 'cv']
     ]
 
     CLASS_METRICS = [
-        "total_area",
-        "proportion_of_landscape",
-        "number_of_patches",
-        "patch_density",
-        "largest_patch_index",
-        "total_edge",
-        "edge_density",
-        "landscape_shape_index",
-        "effective_mesh_size",
+        'total_area',
+        'proportion_of_landscape',
+        'number_of_patches',
+        'patch_density',
+        'largest_patch_index',
+        'total_edge',
+        'edge_density',
+        'landscape_shape_index',
+        'effective_mesh_size',
     ] + DISTR_METRICS
 
     LANDSCAPE_METRICS = ([
-        "total_area",
-        "number_of_patches",
-        "patch_density",
-        "largest_patch_index",
-        "total_edge",
-        "edge_density",
-        "landscape_shape_index",
-        "effective_mesh_size",
-    ] + DISTR_METRICS + ["contagion", "shannon_diversity_index"])
+        'total_area',
+        'number_of_patches',
+        'patch_density',
+        'largest_patch_index',
+        'total_edge',
+        'edge_density',
+        'landscape_shape_index',
+        'effective_mesh_size',
+    ] + DISTR_METRICS + ['contagion', 'shannon_diversity_index'])
 
     # compute methods
 
@@ -218,7 +218,7 @@ class Landscape:
             patch_arr = np.pad(
                 label_arr[patch_slice] == i,
                 pad_width=1,
-                mode="constant",
+                mode='constant',
                 constant_values=False,
             )  # self.nodata
 
@@ -401,7 +401,7 @@ class Landscape:
                     np.full(self._num_patches_dict[class_val], class_val)
                     for class_val in self.classes
                 ]),
-                name="class_val",
+                name='class_val',
             )
 
             return self._cached_patch_class_ser
@@ -416,7 +416,7 @@ class Landscape:
                     self.compute_patch_areas(self.class_label(class_val)[0])
                     for class_val in self.classes
                 ]),
-                name="area",
+                name='area',
             )
 
             return self._cached_patch_area_ser
@@ -432,7 +432,7 @@ class Landscape:
                         self.class_label(class_val)[0])
                     for class_val in self.classes
                 ]),
-                name="perimeter",
+                name='perimeter',
             )
 
             return self._cached_patch_perimeter_ser
@@ -448,7 +448,7 @@ class Landscape:
                         self.class_label(class_val)[0])
                     for class_val in self.classes
                 ]),
-                name="euclidean_nearest_neighbor",
+                name='euclidean_nearest_neighbor',
             )
 
             return self._cached_patch_euclidean_nearest_neighbor_ser
@@ -475,7 +475,7 @@ class Landscape:
             padded_arr = np.pad(
                 reclassified_arr,
                 pad_width=1,
-                mode="constant",
+                mode='constant',
                 constant_values=num_classes,
             ).astype(np.uint32)
 
@@ -487,13 +487,13 @@ class Landscape:
             adjacency_cols = np.concatenate([self.classes, [self.nodata]])
             adjacency_df = pd.DataFrame(
                 index=pd.MultiIndex.from_product(
-                    [["horizontal", "vertical"], adjacency_cols],
-                    names=["direction", "class_val"],
+                    [['horizontal', 'vertical'], adjacency_cols],
+                    names=['direction', 'class_val'],
                 ),
                 columns=adjacency_cols,
             )
-            adjacency_df.loc["horizontal"] = adjacency_arr[0]
-            adjacency_df.loc["vertical"] = adjacency_arr[1]
+            adjacency_df.loc['horizontal'] = adjacency_arr[0]
+            adjacency_df.loc['vertical'] = adjacency_arr[1]
 
             # cache it
             self._cached_adjacency_df = adjacency_df
@@ -559,7 +559,7 @@ class Landscape:
             # ACHTUNG: dropping columns from a `pd.DataFrame` until leaving it
             # with only one column will still return a `pd.DataFrame`, so we
             # must convert to `pd.Series` manually (e.g., with `iloc`)
-            patch_metrics = patch_metrics.drop("class_val", axis=1).iloc[:, 0]
+            patch_metrics = patch_metrics.drop('class_val', axis=1).iloc[:, 0]
 
         return reduce_method(patch_metrics)
 
@@ -574,7 +574,7 @@ class Landscape:
         area = self.area(class_val)
 
         if class_val is None:
-            area = area["area"]
+            area = area['area']
 
         return self._metric_reduce(
             class_val,
@@ -663,8 +663,8 @@ class Landscape:
 
         if class_val is None:
             return pd.DataFrame({
-                "class_val": self._patch_class_ser,
-                "area": area_ser
+                'class_val': self._patch_class_ser,
+                'area': area_ser
             })
         else:
             return area_ser
@@ -696,8 +696,8 @@ class Landscape:
 
         if class_val is None:
             return pd.DataFrame({
-                "class_val": self._patch_class_ser,
-                "perimeter": perimeter_ser
+                'class_val': self._patch_class_ser,
+                'perimeter': perimeter_ser
             })
         else:
             return perimeter_ser
@@ -748,15 +748,15 @@ class Landscape:
 
         if class_val is None:
             return pd.DataFrame({
-                "class_val":
+                'class_val':
                 self._patch_class_ser,
-                "perimeter_area_ratio":
+                'perimeter_area_ratio':
                 perimeter_area_ratio_ser,
             })
         else:
             # ensure that the returned `pd.Series` has a name (so `seaborn`
             # plots can automatically label the axes)
-            perimeter_area_ratio_ser.name = "perimeter_area_ratio"
+            perimeter_area_ratio_ser.name = 'perimeter_area_ratio'
             return perimeter_area_ratio_ser
 
     def shape_index(self, class_val=None):
@@ -791,13 +791,13 @@ class Landscape:
 
         if class_val is None:
             return pd.DataFrame({
-                "class_val": self._patch_class_ser,
-                "shape_index": shape_index_ser,
+                'class_val': self._patch_class_ser,
+                'shape_index': shape_index_ser,
             })
         else:
             # ensure that the returned `pd.Series` has a name (so `seaborn`
             # plots can automatically label the axes)
-            shape_index_ser.name = "shape_index"
+            shape_index_ser.name = 'shape_index'
             return shape_index_ser
 
     def fractal_dimension(self, class_val=None):
@@ -833,13 +833,13 @@ class Landscape:
 
         if class_val is None:
             return pd.DataFrame({
-                "class_val": self._patch_area_ser,
-                "fractal_dimension": fractal_dimension_ser,
+                'class_val': self._patch_area_ser,
+                'fractal_dimension': fractal_dimension_ser,
             })
         else:
             # ensure that the returned `pd.Series` has a name (so `seaborn`
             # plots can automatically label the axes)
-            fractal_dimension_ser.name = "fractal_dimension"
+            fractal_dimension_ser.name = 'fractal_dimension'
             return fractal_dimension_ser
 
     def continguity_index(self, class_val=None):
@@ -900,9 +900,9 @@ class Landscape:
                     )
 
             return pd.DataFrame({
-                "class_val":
+                'class_val':
                 self._patch_class_ser,
-                "euclidean_nearest_neighbor":
+                'euclidean_nearest_neighbor':
                 euclidean_nearest_neighbor_ser,
             })
         else:
@@ -1178,7 +1178,7 @@ class Landscape:
                     np.pad(
                         self.landscape_arr,
                         pad_width=1,
-                        mode="constant",
+                        mode='constant',
                         constant_values=self.nodata,
                     ))
             else:
@@ -1193,8 +1193,8 @@ class Landscape:
                 else:
                     total_edge = 0
                     for direction, length in [
-                        ("horizontal", self.cell_width),
-                        ("vertical", self.cell_height),
+                        ('horizontal', self.cell_width),
+                        ('vertical', self.cell_height),
                     ]:
                         adjacency_arr = np.triu(
                             self._adjacency_df.loc[direction].drop(
@@ -1221,8 +1221,8 @@ class Landscape:
                 else:
                     total_edge = 0
                     for direction, length in [
-                        ("horizontal", self.cell_width),
-                        ("vertical", self.cell_height),
+                        ('horizontal', self.cell_width),
+                        ('vertical', self.cell_height),
                     ]:
                         total_edge += (
                             np.sum(self._adjacency_df.loc[direction].drop(
@@ -1297,7 +1297,7 @@ class Landscape:
         area_mn : float
         """
 
-        return self._metric_mn(class_val, self.area, {"hectares": hectares})
+        return self._metric_mn(class_val, self.area, {'hectares': hectares})
 
     def area_am(self, class_val=None, hectares=True):
         """
@@ -1319,7 +1319,7 @@ class Landscape:
         area_am : float
         """
 
-        return self._metric_am(class_val, self.area, {"hectares": hectares})
+        return self._metric_am(class_val, self.area, {'hectares': hectares})
 
     def area_md(self, class_val=None, hectares=True):
         """
@@ -1341,7 +1341,7 @@ class Landscape:
         area_md : float
         """
 
-        return self._metric_md(class_val, self.area, {"hectares": hectares})
+        return self._metric_md(class_val, self.area, {'hectares': hectares})
 
     def area_ra(self, class_val=None, hectares=True):
         """
@@ -1363,7 +1363,7 @@ class Landscape:
         area_ra : float
         """
 
-        return self._metric_ra(class_val, self.area, {"hectares": hectares})
+        return self._metric_ra(class_val, self.area, {'hectares': hectares})
 
     def area_sd(self, class_val=None, hectares=True):
         """
@@ -1385,7 +1385,7 @@ class Landscape:
         area_sd : float
         """
 
-        return self._metric_sd(class_val, self.area, {"hectares": hectares})
+        return self._metric_sd(class_val, self.area, {'hectares': hectares})
 
     def area_cv(self, class_val=None, percent=True):
         """
@@ -1549,7 +1549,7 @@ class Landscape:
         """
 
         return self._metric_mn(class_val, self.perimeter_area_ratio,
-                               {"hectares": hectares})
+                               {'hectares': hectares})
 
     def perimeter_area_ratio_am(self, class_val=None, hectares=True):
         """
@@ -1572,7 +1572,7 @@ class Landscape:
         """
 
         return self._metric_am(class_val, self.perimeter_area_ratio,
-                               {"hectares": hectares})
+                               {'hectares': hectares})
 
     def perimeter_area_ratio_md(self, class_val=None, hectares=True):
         """
@@ -1595,7 +1595,7 @@ class Landscape:
         """
 
         return self._metric_md(class_val, self.perimeter_area_ratio,
-                               {"hectares": hectares})
+                               {'hectares': hectares})
 
     def perimeter_area_ratio_ra(self, class_val=None, hectares=True):
         """
@@ -1618,7 +1618,7 @@ class Landscape:
         """
 
         return self._metric_ra(class_val, self.perimeter_area_ratio,
-                               {"hectares": hectares})
+                               {'hectares': hectares})
 
     def perimeter_area_ratio_sd(self, class_val=None, hectares=True):
         """
@@ -1641,7 +1641,7 @@ class Landscape:
         """
 
         return self._metric_sd(class_val, self.perimeter_area_ratio,
-                               {"hectares": hectares})
+                               {'hectares': hectares})
 
     def perimeter_area_ratio_cv(self, class_val=None, percent=True):
         """
@@ -2518,7 +2518,7 @@ class Landscape:
 
                 metrics_dfs.append(
                     getattr(self,
-                            metric)(**metric_kws).drop("class_val", axis=1))
+                            metric)(**metric_kws).drop('class_val', axis=1))
 
         except AttributeError:
             raise ValueError("{metric} is not among {Landscape.PATCH_METRICS}")
@@ -2528,7 +2528,7 @@ class Landscape:
                     metric=metric))
 
         df = pd.concat(metrics_dfs, axis=1)  # [['class_val'] + patch_metrics]
-        df.index.name = "patch_id"
+        df.index.name = 'patch_id'
 
         return df
 
@@ -2610,7 +2610,7 @@ class Landscape:
                     metric=metric))
 
         df = pd.concat(metrics_sers, axis=1)
-        df.index.name = "class_val"
+        df.index.name = 'class_val'
 
         return df
 
@@ -2698,7 +2698,7 @@ class Landscape:
 
         if ax is None:
             fig, ax = plt.subplots(figsize=figsize)
-            ax.set_aspect("equal")
+            ax.set_aspect('equal')
 
         ax = plot.show(
             np.where(self.landscape_arr != self.nodata, self.landscape_arr,
@@ -2711,7 +2711,7 @@ class Landscape:
                 ax.plot(
                     ax.get_xlim()[0],
                     ax.get_ylim()[0],
-                    "o",
+                    'o',
                     c=cmap(im.norm(class_val)),
                     label=class_val,
                 )

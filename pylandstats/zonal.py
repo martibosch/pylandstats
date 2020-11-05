@@ -647,7 +647,7 @@ class ZonalGridAnalysis(ZonalAnalysis):
 
         if ax is None:
             fig, ax = plt.subplots(figsize=figsize)
-            ax.set_aspect("equal")
+            ax.set_aspect('equal')
 
         if show_kws is None:
             show_kws = {}
