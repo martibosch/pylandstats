@@ -1,5 +1,11 @@
 # Change log
 
+## 2.2.0 (05/11/2020)
+
+* fill `NaN` values according to the metric in `MultiLandscape.compute_class_metrics_df`
+* consistent imports so that there are no direct class/function calls, and no module abbreviations in the documentation
+* zonal analysis with more general `masks` argument, which also accepts vector geometries (and replaces the now deprecated `masks_arr`)
+
 ## 2.1.3 (02/09/2020)
 
 * ensure numeric dtypes in metrics data frames
