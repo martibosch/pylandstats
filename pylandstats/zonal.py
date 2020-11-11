@@ -30,8 +30,8 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         """
         Parameters
         ----------
-        landscape : `Landscape` or str, file object or pathlib.Path object
-            A `Landscape` object or of string/file object/pathlib.Path object
+        landscape : `Landscape` or str, file-like object or pathlib.Path object
+            A `Landscape` object or string/file-like object/pathlib.Path object
             that will be passed as the `landscape` argument of
             `Landscape.__init__`
         masks_arr : list-like or numpy.ndarray, optional
@@ -55,19 +55,21 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             Name of the attribute that will distinguish each landscape
         attribute_values : str, optional
             Values of the attribute that correspond to each of the landscapes
-        masks : list-like, numpy.ndarray, geopandas.GeoSeries,
-            geopandas.GeoDataFrame, str, file object or pathlib.Path object,
-            optional
+        masks : list-like, numpy.ndarray, geopandas.GeoSeries, \
+                geopandas.GeoDataFrame, str, file-like object or pathlib.Path \
+                object, optional
             This can either be:
-            (a) A list-like of numpy arrays of shape (width, height), i.e., of
-                the same shape as the landscape raster image. Each array will
-                serve to mask the base landscape and define a region of study
-                for which the metrics will be computed separately. The same
-                information can also be provided as a single array of shape
-                (num_masks, width, height).
-            (b) A geopandas geo-series or geo-data frame
-            (c) A filename or URL, a file object opened in binary ('rb') mode,
-                or a Path object that will be passed to `geopandas.read_file`
+
+            * A list-like of numpy arrays of shape (width, height), i.e., of
+              the same shape as the landscape raster image. Each array will
+              serve to mask the base landscape and define a region of study
+              for which the metrics will be computed separately. The same
+              information can also be provided as a single array of shape
+              (num_masks, width, height).
+            * A geopandas geo-series or geo-data frame
+            * A filename or URL, a file-like object opened in binary ('rb')
+              mode, or a Path object that will be passed to
+              `geopandas.read_file`
         masks_index_col : str, optional
             Column of the `masks` geo-data frame that will be used as
             attribute values, i.e., index of the metrics data frames. Ignored
@@ -229,7 +231,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         metric_kws : dict, optional
             Keyword arguments to be passed to the method that computes the
             metric (specified in the `metric` argument) for each landscape
-        dst_filepath : str, file object or pathlib.Path object, optional
+        dst_filepath : str, file-like object or pathlib.Path object, optional
             Path to dump the zonal statistics raster. If not provided, no
             raster will be dumped.
         custom_meta : dict, optional
@@ -299,9 +301,9 @@ class BufferAnalysis(ZonalAnalysis):
         """
         Parameters
         ----------
-        landscape : `Landscape` or str, file object or pathlib.Path object
-            A `Landscape` object or of string/file object/pathlib.Path object
-            that will be passed as the `landscape` argument of
+        landscape : `Landscape` or str, file-like object or pathlib.Path object
+            A `Landscape` object or of string/file-like object/pathlib.Path
+            object that will be passed as the `landscape` argument of
             `Landscape.__init__`
         base_mask : shapely geometry or geopandas.GeoSeries
             Geometry that will serve as a base mask to buffer around
@@ -464,9 +466,9 @@ class ZonalGridAnalysis(ZonalAnalysis):
         """
         Parameters
         ----------
-        landscape : `Landscape` or str, file object or pathlib.Path object
-            A `Landscape` object or of string/file object/pathlib.Path object
-            that will be passed as the `landscape` argument of
+        landscape : `Landscape` or str, file-like object or pathlib.Path object
+            A `Landscape` object or of string/file-like object/pathlib.Path
+            object that will be passed as the `landscape` argument of
             `Landscape.__init__`
         num_zone_rows, num_zone_cols : int, optional
             The number of zone rows/columns into which the landscape will be

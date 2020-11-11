@@ -16,7 +16,7 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
         Parameters
         ----------
         landscapes : list-like
-            A list-like of `Landscape` objects or of strings/file objects/
+            A list-like of `Landscape` objects or of strings/file-like objects/
             pathlib.Path objects so that each is passed as the `landscape`
             argument of `Landscape.__init__`
         dates : list-like, optional
@@ -68,7 +68,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         Parameters
         ----------
         landscapes : list-like
-            A list-like of `Landscape` objects or of strings/file objects/
+            A list-like of `Landscape` objects or of strings/file-like objects/
             pathlib.Path objects so that each is passed as the `landscape`
             argument of `Landscape.__init__`
         base_mask : shapely geometry or geopandas.GeoSeries

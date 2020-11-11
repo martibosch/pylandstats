@@ -85,11 +85,12 @@ class Landscape:
         """
         Parameters
         ----------
-        landscape : numpy.ndarray or str, file object or pathlib.Path object
+        landscape : numpy.ndarray or str, file-like object or pathlib.Path \
+                object
             A landscape array with pixel values corresponding to a set of land
-            use/land cover classes, or a filename or URL, a file object opened
-            in binary ('rb') mode, or a Path object. If not a `numpy.ndarray`,
-            `landscape` will be passed to `rasterio.open`
+            use/land cover classes, or a filename or URL, a file-like object
+            opened in binary ('rb') mode, or a Path object. If not a
+            `numpy.ndarray`, `landscape` will be passed to `rasterio.open`
         res : tuple, optional
             The (x, y) resolution of the dataset. Required if `landscape` is a
             `numpy.ndarray`
