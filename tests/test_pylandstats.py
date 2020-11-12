@@ -672,11 +672,39 @@ class TestZonaAlnalysis(unittest.TestCase):
 
         # first test the GeoSeries, which works like the others except that we
         # cannot set a column as the zone index
-        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gdf['geometry'])
+        masks_gser = masks_gdf['geometry'].copy()
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gser)
         self.assertLessEqual(len(za), len(masks_gdf))
-        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gdf['geometry'],
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gser,
                                masks_index_col=masks_index_col)
         self.assertLessEqual(len(za), len(masks_gdf))
+        # also test that attribute name is properly set when using geoseries
+        # as `masks` note that if a non-None `attriubte_name` is provided, it
+        # always takes precedence
+        attribute_name = 'foo'
+        # first test for a geoseries with name and unnamed index
+        masks_gser.name = 'bar'
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gser)
+        self.assertEqual(za.attribute_name, masks_gser.name)
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gser,
+                               attribute_name=attribute_name)
+        self.assertEqual(za.attribute_name, attribute_name)
+        # now test that for a geoseries with name and named index, the
+        # geoseries name takes precedence
+        masks_gser.index.name = 'name'
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gser)
+        self.assertEqual(za.attribute_name, masks_gser.name)
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gser,
+                               attribute_name=attribute_name)
+        self.assertEqual(za.attribute_name, attribute_name)
+        # finally test that for an unnamed geoseries with named index, the
+        # geoseries index name is taken
+        masks_gser.name = None
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gser)
+        self.assertEqual(za.attribute_name, masks_gser.index.name)
+        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gser,
+                               attribute_name=attribute_name)
+        self.assertEqual(za.attribute_name, attribute_name)
 
         # now test the GeoDataFrame and geopandas file
         for masks in self.masks_fp, masks_gdf:

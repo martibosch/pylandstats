@@ -113,6 +113,14 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                 if isinstance(masks, gpd.GeoSeries):
                     # if we have a GeoSeries, convert it to a GeoDataFrame so
                     # that we can use the same code
+                    if attribute_name is None:
+                        # if no attribute_name is provided, we will first see
+                        # if there is a name in the geoseries or geoseries'
+                        # index that we might use as attribute name
+                        if masks.name:
+                            attribute_name = masks.name
+                        elif masks.index.name:
+                            attribute_name = masks.index.name
                     masks = gpd.GeoDataFrame(geometry=masks, index=masks.index)
                     # since `masks_index_col` is meant to be a column of the
                     # geodataframe (or geodataframe file, e.g., shapefile)
