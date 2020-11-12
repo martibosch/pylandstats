@@ -140,7 +140,20 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                 if isinstance(masks, gpd.GeoDataFrame):
                     # first of all, let us transform our geometries into the
                     # CRS of the landscape
-                    masks_gser = masks['geometry'].to_crs(landscape_crs)
+                    try:
+                        masks_gser = masks['geometry'].to_crs(landscape_crs)
+                    except AttributeError as e:
+                        # geopandas uses pyproj's `is_exact_same` method,
+                        # which might return `False` for equivalent CRSs and
+                        # raise "AttributeError: 'NoneType' object has no
+                        # attribute 'is_empty'". To avoid that, we can try
+                        # using the basic equality test for the CRSs and avoid
+                        # reprojecting:
+                        if masks.crs == landscape_crs:
+                            masks_gser = masks['geometry']
+                        else:
+                            raise e
+
                     # we first rasterize the geometries using the values of
                     # each geometry's index key in the raster
                     zone_arr = features.rasterize(
