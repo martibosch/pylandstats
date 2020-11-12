@@ -1,5 +1,10 @@
 # Change log
 
+## 2.2.1 (12/11/2020)
+
+* `ZonalAnalysis.attribute_name` from `masks` when providing geoseries
+* avoid reprojecting equivalent CRS (pyproj `__eq__` vs. `is_exact_same`) in `ZonalAnalysis`
+
 ## 2.2.0 (05/11/2020)
 
 * fill `NaN` values according to the metric in `MultiLandscape.compute_class_metrics_df`
