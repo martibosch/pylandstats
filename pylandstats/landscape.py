@@ -12,6 +12,8 @@ import transonic
 from rasterio import plot
 from scipy import ndimage, spatial, stats
 
+from . import settings
+
 if platform.system() == 'Windows':
     backend = 'numba'
 else:
@@ -111,7 +113,7 @@ class Landscape:
                 raise ValueError(
                     "If `landscape` is a `np.ndarray`, `res` must be provided")
             if nodata is None:
-                nodata = 0
+                nodata = settings.DEFAULT_LANDSCAPE_NODATA
         else:
             with rio.open(landscape, nodata=nodata, **kwargs) as src:
                 landscape_arr = src.read(1)

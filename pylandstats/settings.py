@@ -1,7 +1,5 @@
 from os import environ
 
-from . import landscape
-
 try:
     import dotenv
     # load environment variables from a '.env' file of a parent directory
@@ -40,7 +38,10 @@ fragstats_abbrev_dict = {
 }
 # add the class/landscape distribution statistics metrics to the fragstats
 # abbreviation dictionary
-for metric in landscape.Landscape.PATCH_METRICS:
+for metric in [
+        'area', 'perimeter', 'perimeter_area_ratio', 'shape_index',
+        'fractal_dimension', 'euclidean_nearest_neighbor'
+]:
     for suffix in ['mn', 'am', 'md', 'ra', 'sd', 'cv']:
         fragstats_abbrev_dict['{}_{}'.format(metric, suffix)] = '{}_{}'.format(
             fragstats_abbrev_dict[metric], suffix.upper())
@@ -56,4 +57,5 @@ for metric in landscape.Landscape.PATCH_METRICS:
 metric_label_dict = environ.get('METRIC_LABEL_DICT', fragstats_abbrev_dict)
 
 # OTHER
+DEFAULT_LANDSCAPE_NODATA = 0
 CLASS_METRICS_DF_FILLNA = True
