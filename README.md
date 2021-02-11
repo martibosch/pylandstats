@@ -86,6 +86,19 @@ Nevertheless, note that in order to define zones by vector geometries in `ZonalA
     
 and you will be able to use the aforementioned features (without having to use conda).
 
+### Development install
+
+To install a development version of PyLandStats, you can first use conda to create an environment with all the dependencies and activate it as in:
+
+    $ conda create -n pylandstats -c conda-forge geopandas matplotlib-base rasterio scipy openblas
+    $ conda activate pylandstats
+
+and then clone the repository and use pip to install it in development mode
+
+    $ git clone https://github.com/martibosch/pylandstats.git
+    $ cd pylandstats/
+    $ pip install -e .
+
 ## Acknowledgments
 
 * The computation of the adjacency matrix in [transonic](https://github.com/fluiddyn/transonic) has been implemented by Pierre Augier ([paugier](https://github.com/paugier)).
