@@ -86,6 +86,39 @@ def compute_adjacency_arr(padded_arr: "uint32[:,:]", num_classes: "int"):
     )
 
 
+def compute_entropy(counts, base=None):
+    """
+    Compute the entropy for a set of category count values.
+
+    The counts are given in integer amounts and the proportional abundances are
+    computed inside the function.
+
+    The base of the logarithm calculates the entropy in different units. Shannon's
+    entropy definition uses base 2 with units of "bits" or "shannons". Base e provides
+    entropy in units of "nats", and base 10 calculates entropy in units of "dits" or
+    "bans".
+
+    See https://en.wikipedia.org/wiki/Entropy_(information_theory) for more information.
+
+    Parameters
+    ----------
+    counts: list-like
+        The number of occurrences of each category
+    base: numeric
+        The base for logarithm calculation, with default as the natural
+        logarithm (Euler's number).
+
+    Returns
+    -------
+    entropy: numeric
+    """
+    pcounts = counts / counts.sum()
+    entropy = -np.sum(pcounts * np.log(pcounts))
+    if base:
+        entropy /= np.log(base)
+    return entropy
+
+
 class Landscape:
     """Raster landscape upon which landscape metrics are computed."""
 
@@ -2542,12 +2575,11 @@ class Landscape:
             )
             return np.nan
 
-        shdi = 0
-        for class_val in self.classes:
-            p_class = np.sum(self._get_patch_area_ser(class_val)) / self.landscape_area
-            shdi += p_class * np.log(p_class)
-
-        return -shdi
+        # TODO: This should be absolute counts or area. But this is partial?
+        class_abundances = [self._get_patch_area_ser(cid) for cid in self.classes]
+        # TODO: Should it return the original definition of log2?
+        # TODO: Update docstring to reflect choice
+        return compute_entropy(class_abundances, base=2)
 
     ###########################################################################
     # compute metrics data frames
