@@ -85,6 +85,12 @@ def compute_adjacency_arr(padded_arr: "uint32[:,:]", num_classes: "int"):
         (2, num_cols_adjacency, num_cols_adjacency)
     )
 
+def compute_total_adjacency_df(landscape):
+    # first `sum` to sum vertical and horizontal adjacencies (first-level index),
+    # then ` loc` to overlook the nodata row/column
+    return landscape._adjacency_df.sum(
+        level=[1]).loc[landscape.classes, landscape.classes]
+
 
 def compute_entropy(counts, base=None):
     """
@@ -2484,6 +2490,134 @@ class Landscape:
 
     ###########################################################################
     # landscape-level metrics
+
+    # landscape complexity (information theory)
+    # see https://doi.org/10.1007/s10980-019-00830-x
+
+    def entropy_marginal(self, base=2):
+        """
+        Compute the marginal entropy of the landscape classes
+
+        Parameters
+        -----------
+        base: int
+            The base of the logarithm (default 2)
+
+        Returns
+        ---------
+        H: float
+            The marginal entropy as a measure of compositional complexity.
+            With a base of 2, this is identical to the definition of
+            Shannon's diversity
+
+        See Also
+        ---------
+        :meth:`complexity_metrics`
+        :meth:`shannon_diversity_index`
+
+        """
+        # TODO: alias shannon_diversity_index to this method? API change
+        adjacency_df = compute_total_adjacency_df(self)
+        counts = adjacency_df.sum()
+        # sum along column to get counts of each class
+        return compute_entropy(counts, base=base)
+
+
+    def entropy_joint(self, base=2):
+        """
+        Compute the joint entropy of the landscape classes
+
+        Parameters
+        -----------
+        base: int
+            The base of the logarithm (default 2)
+
+        Returns
+        ---------
+        H: float
+            The joint entropy of the class adjacencies
+
+        See Also
+        ---------
+        :meth:`complexity_metrics`
+
+        """
+        adjacency_df = compute_total_adjacency_df(self)
+        adjacencies = adjacency_df.values.flatten()
+        # this would be the "adjacency vector"
+
+        return compute_entropy(adjacencies, base=base)
+
+
+    def complexity_metrics(self, base=2):
+        """
+        Metrics for the compositional and configurational complexity of a
+        landscape, based on an information-theory framework.
+
+        The compositional complexity is measured through the marginal entropy
+        of the classes in the landscape. The configurational complexity is
+        measured through the relative mutual information, by considering the
+        conditional entropy of class adjacencies in the landscape.
+
+        These complexity metrics are  considered, in the original source, to be
+        a consistent measure across landscapes. Thus, The two complexity
+        metrics can be used to order several landscapes as measured by the
+        two complexity terms.
+
+        Briefly, the mathematical description to calculate the compositional
+        complexity `H(y)` and configurational complexity `U` is:
+
+        .. math::
+
+           H(y) = - \\sum \\limits_{i=1}^{m} \\Big( P(x=c_i) \\; log_2(P(x=c_i)
+           \\Big)
+
+           H(y|x) = - \\sum \\limits_{i=1}^{m} \\sum \\limits_{j=1}^{m}
+           \\Big( P(x=c_i, y=c_j) \\; log_2(P(x=c_i, y=c_j)
+
+           U = 1 - \\frac{H(y|x)} {H(y)}
+
+        The entropy calculations must be consistent in terms of the base of
+        the logarithm used. The default is 2, as in the original source.
+
+        Parameters
+        -----------
+        base: int
+            The base of the logarithm (default 2)
+
+        Returns
+        ---------
+        H: float
+            The marginal entropy as a measure of compositional complexity.
+            With a base of 2, this is identical to the definition of
+            Shannon's diversity
+        U: float
+            The relative mutual information as a measure of configurational
+            complexity
+
+        Notes
+        ------
+        The information theoretic framework for landsape complexity is
+        described in the reference:
+
+        `Information theory as a consistent framework for quantification and
+        classification of landscape patterns`
+        <https://doi.org/10.1007/s10980-019-00830-x>`_
+
+        See Also
+        ---------
+        :meth:`entropy_marginal`
+        :meth:`entropy_joint`
+
+        """
+        # TODO: DRY for computing total adjacency?
+
+        H = self.entropy_marginal(base=base)
+        J = self.entropy_joint(base=base)
+        entropy_conditional = J - H
+        mutual_info = H - entropy_conditional
+        U = mutual_info / H
+        return H, U
 
     # contagion, interspersion
 
