@@ -308,6 +308,13 @@ class TestLandscape(unittest.TestCase):
         self.assertAlmostEqual(ax.get_xlim()[0], ls.transform.xoff)
         self.assertAlmostEqual(ax.get_ylim()[1], ls.transform.yoff)
 
+        # test legend arguments
+        self.assertIsNone(ls.plot_landscape(legend=False).get_legend())
+        self.assertIsNotNone(ls.plot_landscape(legend=True))
+        self.assertIsNotNone(
+            ls.plot_landscape(legend=True,
+                              legend_kws=dict(loc='center right')))
+
 
 class TestMultiLandscape(unittest.TestCase):
     def setUp(self):

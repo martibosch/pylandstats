@@ -4,6 +4,7 @@ import functools
 import platform
 import warnings
 
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -81,7 +82,6 @@ class Landscape:
     """Class representing a raster landscape upon which the landscape metrics
     will be computed
     """
-
     def __init__(self, landscape, res=None, nodata=None, transform=None,
                  **kwargs):
         """
@@ -547,11 +547,11 @@ class Landscape:
     # metric distribution statistics
 
     def _metric_reduce(
-            self,
-            class_val,
-            patch_metric_method,
-            patch_metric_method_kws,
-            reduce_method,
+        self,
+        class_val,
+        patch_metric_method,
+        patch_metric_method_kws,
+        reduce_method,
     ):
         if patch_metric_method_kws is None:
             patch_metrics = patch_metric_method(class_val)
@@ -606,11 +606,11 @@ class Landscape:
                                    patch_metric_method_kws, np.std)
 
     def _metric_cv(
-            self,
-            class_val,
-            patch_metric_method,
-            patch_metric_method_kws=None,
-            percent=True,
+        self,
+        class_val,
+        patch_metric_method,
+        patch_metric_method_kws=None,
+        percent=True,
     ):
         metric_cv = self._metric_reduce(
             class_val,
@@ -2669,7 +2669,7 @@ class Landscape:
         return pd.DataFrame(metrics_dict, index=[0])
 
     def plot_landscape(self, cmap=None, ax=None, legend=False, figsize=None,
-                       **show_kws):
+                       legend_kws=None, **show_kws):
         """
         Plots the landscape with a categorical legend by means of
         `rasterio.plot.show`
@@ -2682,8 +2682,10 @@ class Landscape:
             Plot in given axis; if None creates a new figure
         legend : bool, optional
             If ``True``, display the legend
-        figsize: tuple of two numeric types, optional
+        figsize : tuple of two numeric types, optional
             Size of the figure to create. Ignored if axis `ax` is provided
+        legend_kws : optional
+            Keyword arguments to be passed to `matplotlib.axes.Axes.legend`
         **show_kws : optional
             Keyword arguments to be passed to `rasterio.plot.show`
 
@@ -2710,15 +2712,19 @@ class Landscape:
 
         if legend:
             im = ax.get_images()[0]
-            for class_val in self.classes:
-                ax.plot(
-                    ax.get_xlim()[0],
-                    ax.get_ylim()[0],
-                    'o',
-                    c=cmap(im.norm(class_val)),
-                    label=class_val,
-                )
-
-            ax.legend()
+            # get the colors of the values, according to the
+            # colormap used by imshow
+            colors = [
+                im.cmap(im.norm(class_val)) for class_val in self.classes
+            ]
+            # create a patch (proxy artist) for every color
+            patches = [
+                mpatches.Patch(color=colors[i], label=f"{class_val}")
+                for i, class_val in enumerate(self.classes)
+            ]
+            # put those patched as legend-handles into the legend
+            if legend_kws is None:
+                legend_kws = {}
+            ax.legend(handles=patches, **legend_kws)
 
         return ax
