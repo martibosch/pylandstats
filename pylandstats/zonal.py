@@ -12,7 +12,6 @@ from . import multilandscape
 
 try:
     import geopandas as gpd
-
     from shapely import geometry
     from shapely.geometry import base as geometry_base
     geo_imports = True
@@ -164,15 +163,23 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
 
                     # we first rasterize the geometries using the values of
                     # each geometry's index key in the raster
+                    # to avoid confusing values used to map each zones (in
+                    # `zone_arr`) with the landscape nodata value, we start
+                    # with an array of zeros and use a sequence of integers
+                    # starting at 1 to map each zone
                     zone_arr = features.rasterize(
-                        shapes=((geom, val)
-                                for geom, val in zip(masks_gser, masks.index)),
-                        out_shape=landscape_arr.shape, fill=landscape.nodata,
+                        shapes=(
+                            (geom, val)
+                            for val, geom in enumerate(masks_gser, start=1)),
+                        out_shape=landscape_arr.shape, fill=0,
                         transform=landscape.transform)
                     # we now filter so that only the zone geometries that
                     # intersect the data region of our landscape are considered
-                    zone_arr = np.where(landscape_arr != landscape.nodata,
-                                        zone_arr, landscape.nodata)
+                    # and also replace the zeros of `zone_arr` with the
+                    # landscape nodata value
+                    zone_arr = np.where(
+                        (landscape_arr != landscape.nodata) & (zone_arr != 0),
+                        zone_arr, landscape.nodata)
                     # we now get all the non-nodata values (i.e., index keys of
                     # the GeoDataFrame) that intersect the data region of our
                     # landscape
@@ -191,8 +198,8 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                         # `attribute_name` and `attribute_values` variables,
                         # which will be set as instance attributes below
                         attribute_name = masks_index_col
-                        attribute_values = masks[masks_index_col].loc[
-                            zone_values]
+                        attribute_values = masks[masks_index_col].iloc[
+                            zone_values - 1]
 
         # we generate the landscapes of each zone here
         landscapes = [
