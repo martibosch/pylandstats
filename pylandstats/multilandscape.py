@@ -179,8 +179,8 @@ class MultiLandscape:
             # put every row of the filtered DataFrame of this particular
             # attribute value
             for class_val, row in df.iterrows():
-                class_metrics_df.loc[(class_val,
-                                      attribute_value), columns] = row
+                class_metrics_df.loc[(class_val, attribute_value),
+                                     columns] = row
 
         class_metrics_df = class_metrics_df.apply(pd.to_numeric)
         if fillna:
@@ -367,7 +367,8 @@ class MultiLandscape:
 
         fig, axes = plt.subplots(1, len(attribute_values), figsize=figsize,
                                  **_subplots_kws)
-
+        if len(axes) == 1:  # len(attribute_values) == 1
+            axes = [axes]
         if show_kws is None:
             show_kws = {}
         for attribute_value, landscape, ax in zip(attribute_values,
