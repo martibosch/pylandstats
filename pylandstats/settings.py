@@ -2,6 +2,7 @@ from os import environ
 
 try:
     import dotenv
+
     # load environment variables from a '.env' file of a parent directory
     dotenv.load_dotenv(dotenv.find_dotenv())
 except ImportError:
@@ -58,4 +59,5 @@ metric_label_dict = environ.get('METRIC_LABEL_DICT', fragstats_abbrev_dict)
 
 # OTHER
 DEFAULT_LANDSCAPE_NODATA = 0
+DEFAULT_NEIGHBORHOOD_RULE = '8'
 CLASS_METRICS_DF_FILLNA = True

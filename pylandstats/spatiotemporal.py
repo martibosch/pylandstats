@@ -11,7 +11,8 @@ __all__ = ['SpatioTemporalAnalysis', 'SpatioTemporalBufferAnalysis']
 
 
 class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
-    def __init__(self, landscapes, dates=None):
+    def __init__(self, landscapes, dates=None, neighborhood_rule=None,
+                 **landscape_kws):
         """
         Parameters
         ----------
@@ -22,14 +23,32 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
         dates : list-like, optional
             A list-like of ints or strings that label the date of each
             snapshot of `landscapes` (for DataFrame indices and plot labels)
+        neighborhood_rule : {'8', '4'}, optional
+            Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
+            case/Moore neighborhood) or '4' (rook's case/Von Neumann
+            neighborhood). Ignored if the passed-in landscapes are `Landscape`
+            instances. If no value is provided and the passed-in landscapes are
+            file-like objects or paths, the default value set in
+            `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
+        landscape_kws : dict, optional
+            Other keyword arguments to be passed to the instantiation of
+            `pylandstats.Landscape` for each element of `landscapes`. Ignored
+            if the elements of `landscapes` are already instances of
+            `pylandstats.Landcape`.
         """
 
         if dates is None:
             dates = ['t{}'.format(i) for i in range(len(landscapes))]
 
-        # Call the parent's init
-        super(SpatioTemporalAnalysis, self).__init__(landscapes, 'dates',
-                                                     dates)
+        # pop the `neighborhood_rule` from `landscape_kws` (this is merely done
+        # so that the `neighborhood_rule` argument is explicitly documented in
+        # this method
+        _ = landscape_kws.pop('neighborhood_rule', None)
+        # call the parent's init
+        super(SpatioTemporalAnalysis,
+              self).__init__(landscapes, 'dates', dates,
+                             neighborhood_rule=neighborhood_rule,
+                             **landscape_kws)
 
     # override docs
     def compute_class_metrics_df(self, metrics=None, classes=None,
@@ -63,7 +82,7 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
 class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
     def __init__(self, landscapes, base_mask, buffer_dists, buffer_rings=False,
                  base_mask_crs=None, landscape_crs=None,
-                 landscape_transform=None, dates=None):
+                 landscape_transform=None, dates=None, neighborhood_rule=None):
         """
         Parameters
         ----------
@@ -94,9 +113,17 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         dates : list-like, optional
             A list-like of ints or strings that label the date of each
             snapshot of `landscapes` (for DataFrame indices and plot labels)
+        neighborhood_rule : {'8', '4'}, optional
+            Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
+            case/Moore neighborhood) or '4' (rook's case/Von Neumann
+            neighborhood). Ignored if the passed-in landscapes are `Landscape`
+            instances. If no value is provided and the passed-in landscapes are
+            file-like objects or paths, the default value set in
+            `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
         super(SpatioTemporalBufferAnalysis,
-              self).__init__(landscapes, dates=dates)
+              self).__init__(landscapes, dates=dates,
+                             neighborhood_rule=neighborhood_rule)
         ba = zonal.BufferAnalysis(landscapes[0], base_mask=base_mask,
                                   buffer_dists=buffer_dists,
                                   buffer_rings=buffer_rings,
@@ -119,7 +146,8 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
                                  landscape.nodata).astype(
                                      landscape.landscape_arr.dtype),
                         res=(landscape.cell_width, landscape.cell_height),
-                        nodata=landscape.nodata, transform=landscape.transform)
+                        nodata=landscape.nodata, transform=landscape.transform,
+                        neighborhood_rule=landscape.neighborhood_rule)
                     for landscape in self.landscapes
                 ], dates=dates))
 

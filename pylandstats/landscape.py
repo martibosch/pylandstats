@@ -28,7 +28,10 @@ __all__ = ['Landscape']
 # compparisons (e.g., `cell_width == cell_height`) should allow for some
 # tolerance (i.e., using `np.isclose`)
 CELLLENGTH_RTOL = 0.001
-KERNEL_MOORE = ndimage.generate_binary_structure(2, 2)
+NEIGHBORHOOD_KERNEL_DICT = {
+    '8': ndimage.generate_binary_structure(2, 2),  # Moore/queen
+    '4': ndimage.generate_binary_structure(2, 1)  # Von Neumann/rook
+}
 
 
 @transonic.boost
@@ -83,7 +86,7 @@ class Landscape:
     will be computed
     """
     def __init__(self, landscape, res=None, nodata=None, transform=None,
-                 **kwargs):
+                 neighborhood_rule='8', **kwargs):
         """
         Parameters
         ----------
@@ -103,6 +106,10 @@ class Landscape:
             Transformation from pixel coordinates to coordinate reference
             system. If `landscape` is a path to a GeoTiff, this argument will
             be ignored and extracted from the raster's metadata instead
+        neighborhood_rule : {'8', '4'}, default '8'
+            Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
+            case/Moore neighborhood) or '4' (rook's case/Von Neumann
+            neighborhood).
         **kwargs : optional
             Keyword arguments to be passed to `rasterio.open`. Ignored if
             `landscape` is an `numpy.ndarray`
@@ -128,6 +135,16 @@ class Landscape:
         self.cell_area = res[0] * res[1]
         self.nodata = nodata
         self.transform = transform
+
+        # set the neigbhor adjacency rule
+        if neighborhood_rule is None:
+            neighborhood_rule = settings.DEFAULT_NEIGHBORHOOD_RULE
+        elif isinstance(neighborhood_rule, int):
+            neighborhood_rule = str(neighborhood_rule)
+        if neighborhood_rule not in ('8', '4'):
+            raise ValueError("`neighborhood_rule` is not among ('8', '4')")
+        self.neighborhood_rule = neighborhood_rule
+
         # by default, numpy creates arrays of floats. Instead, land use/land
         # cover rasters are often of integer dtypes. Therefore, we will
         # explicitly set the dtype of the landscape classes to ensure
@@ -183,7 +200,8 @@ class Landscape:
     # compute methods
 
     def class_label(self, class_val):
-        return ndimage.label(self.landscape_arr == class_val, KERNEL_MOORE)
+        return ndimage.label(self.landscape_arr == class_val,
+                             NEIGHBORHOOD_KERNEL_DICT[self.neighborhood_rule])
 
     # compute methods to obtain a scalar from an array
 
@@ -240,7 +258,7 @@ class Landscape:
             # going to be between pixels at their corresponding patch edge
             label_mask = label_arr != 0
             edges_mask = label_mask & ~ndimage.binary_erosion(
-                label_mask, KERNEL_MOORE)
+                label_mask, NEIGHBORHOOD_KERNEL_DICT[self.neighborhood_rule])
             edges_arr = label_arr * edges_mask
 
             # get coordinates with non-zero values

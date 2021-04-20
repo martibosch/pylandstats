@@ -64,6 +64,29 @@ class TestLandscape(unittest.TestCase):
         for landscape_metric in pls.Landscape.LANDSCAPE_METRICS:
             self.assertTrue(np.isreal(getattr(ls, landscape_metric)()))
 
+    def test_neighborhood_rules(self):
+        # test that providing a value different than 8 or 4 raises a
+        # `ValueError`
+        with self.assertRaises(ValueError) as cm:
+            pls.Landscape('tests/input_data/ls250_06.tif',
+                          neighborhood_rule='2')
+            self.assertIn('is not among', str(cm.exception))
+        # test that we can provide the argument as int as long as it is 8 or 4
+        for neighborhood_rule in (8, 4):
+            self.assertEqual(
+                pls.Landscape(
+                    'tests/input_data/ls250_06.tif',
+                    neighborhood_rule=neighborhood_rule).neighborhood_rule,
+                str(neighborhood_rule))
+        # test that there is at least the same number of patches with the Moore
+        # neighborhood than with Von Neumann's
+        ls_moore = pls.Landscape('tests/input_data/ls250_06.tif',
+                                 neighborhood_rule='8')
+        ls_von_neumann = pls.Landscape('tests/input_data/ls250_06.tif',
+                                       neighborhood_rule='4')
+        self.assertLessEqual(ls_moore.number_of_patches(),
+                             ls_von_neumann.number_of_patches())
+
     def test_metrics_warnings(self):
         # test that warnings are raised
 
@@ -356,6 +379,25 @@ class TestMultiLandscape(unittest.TestCase):
                                              self.attribute_values)
         for landscape in ml.landscapes:
             self.assertIsInstance(landscape, pls.Landscape)
+        # test that we can pass keyword arguments to the `Landscape`
+        # instantiation when providing filepaths
+        landscape_kws = {'neighborhood_rule': '4'}
+        ml = self.InstantiableMultiLandscape(self.landscape_fps,
+                                             self.attribute_name,
+                                             self.attribute_values,
+                                             **landscape_kws)
+        for landscape in ml.landscapes:
+            self.assertEqual(landscape.neighborhood_rule,
+                             landscape_kws['neighborhood_rule'])
+        # test that if we instantiate providing `Landscape` instances, the
+        # provided keyword arguments are ignored
+        ml = self.InstantiableMultiLandscape(self.landscapes,
+                                             self.attribute_name,
+                                             self.attribute_values,
+                                             **landscape_kws)
+        for landscape in ml.landscapes:
+            self.assertNotEqual(landscape.neighborhood_rule,
+                                landscape_kws['neighborhood_rule'])
 
         # from this point on, always instantiate from filepaths
 
@@ -591,6 +633,30 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
         self.assertEqual(sta.attribute_name, 'dates')
         self.assertEqual(len(sta), len(sta.dates))
 
+        # test the `neighborhood_rule` argument
+        neighborhood_rule = '4'
+        other_neighborhood_rule = '8'
+        # test that if provided and the elements of `landscapes` are filepaths,
+        # the value is passed to each landscape
+        for ls in pls.SpatioTemporalAnalysis(
+                self.landscape_fps, dates=self.dates,
+                neighborhood_rule=neighborhood_rule).landscapes:
+            self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
+        # test that if provided and the elements of `landscapes` are
+        # `Landscape` instances, the value is ignored
+        for ls in pls.SpatioTemporalAnalysis([
+                pls.Landscape(landscape_fp,
+                              neighborhood_rule=other_neighborhood_rule)
+                for landscape_fp in self.landscape_fps
+        ], dates=self.dates, neighborhood_rule=neighborhood_rule).landscapes:
+            self.assertEqual(ls.neighborhood_rule, other_neighborhood_rule)
+        # test that if not provided and the elements of `landscapes` are
+        # filepaths, the default value is taken
+        for ls in pls.SpatioTemporalAnalysis(self.landscape_fps,
+                                             dates=self.dates).landscapes:
+            self.assertEqual(ls.neighborhood_rule,
+                             pls.settings.DEFAULT_NEIGHBORHOOD_RULE)
+
     def test_spatiotemporalanalysis_dataframes(self):
         # test with the default constructor
         sta = pls.SpatioTemporalAnalysis(self.landscape_fps)
@@ -729,7 +795,30 @@ class TestZonaAlnalysis(unittest.TestCase):
                     np.isin(getattr(za, masks_index_col),
                             masks_gdf[masks_index_col])))
 
+        # test the `neighborhood_rule` argument
+        neighborhood_rule = '4'
+        other_neighborhood_rule = '8'
+        # test that if provided and `landscape` is a filepath, the
+        # value is passed to each landscape
+        for ls in pls.ZonalAnalysis(
+                self.landscape_fp, masks=self.masks_arr,
+                neighborhood_rule=neighborhood_rule).landscapes:
+            self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
+        # test that if provided and `landscape` is a `Landscape` instance, the
+        # value is ignored
+        for ls in pls.ZonalAnalysis(
+                pls.Landscape(self.landscape_fp,
+                              neighborhood_rule=other_neighborhood_rule),
+                masks=self.masks_arr,
+                neighborhood_rule=neighborhood_rule).landscapes:
+            self.assertEqual(ls.neighborhood_rule, other_neighborhood_rule)
+        # test that if not provided and `landscape` is a filepath, the default
+        # value is taken
         # from this point on, always instantiate from filepaths
+        for ls in pls.ZonalAnalysis(self.landscape_fp,
+                                    masks=self.masks_arr).landscapes:
+            self.assertEqual(ls.neighborhood_rule,
+                             pls.settings.DEFAULT_NEIGHBORHOOD_RULE)
 
     def test_zonal_plot_metrics(self):
         za = pls.ZonalAnalysis(self.landscape_fp, masks=self.masks_arr)
@@ -876,6 +965,34 @@ class TestZonaAlnalysis(unittest.TestCase):
                                     zone_pixel_width=zone_pixel_width,
                                     zone_pixel_height=zone_pixel_height)
 
+        # test the `neighborhood_rule` argument
+        neighborhood_rule = '4'
+        other_neighborhood_rule = '8'
+        # test that if provided and `landscape` is a filepath, the
+        # value is passed to each landscape
+        for ls in pls.ZonalGridAnalysis(
+                self.landscape_fp, zone_pixel_width=zone_pixel_width,
+                zone_pixel_height=zone_pixel_height,
+                neighborhood_rule=neighborhood_rule).landscapes:
+            self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
+        # test that if provided and `landscape` is a `Landscape` instance, the
+        # value is ignored
+        for ls in pls.ZonalGridAnalysis(
+                pls.Landscape(self.landscape_fp,
+                              neighborhood_rule=other_neighborhood_rule),
+                zone_pixel_width=zone_pixel_width,
+                zone_pixel_height=zone_pixel_height,
+                neighborhood_rule=neighborhood_rule).landscapes:
+            self.assertEqual(ls.neighborhood_rule, other_neighborhood_rule)
+        # test that if not provided and `landscape` is a filepath, the default
+        # value is taken
+        # from this point on, always instantiate from filepaths
+        for ls in pls.ZonalGridAnalysis(
+                self.landscape_fp, zone_pixel_width=zone_pixel_width,
+                zone_pixel_height=zone_pixel_height).landscapes:
+            self.assertEqual(ls.neighborhood_rule,
+                             pls.settings.DEFAULT_NEIGHBORHOOD_RULE)
+
 
 class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
     def setUp(self):
@@ -898,6 +1015,41 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
         self.assertEqual(len(stba.buffer_dists), len(stba.stas))
         for sta in stba.stas:
             self.assertEqual(sta.dates, self.dates)
+
+        # test the `neighborhood_rule` argument
+        neighborhood_rule = '4'
+        other_neighborhood_rule = '8'
+        # test that if provided and the elements of `landscapes` are filepaths,
+        # the value is passed to each landscape
+        for sta in pls.SpatioTemporalBufferAnalysis(
+                self.landscape_fps, self.base_mask, self.buffer_dists,
+                dates=self.dates, neighborhood_rule=neighborhood_rule).stas:
+            for ls in sta.landscapes:
+                self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
+        # test that if provided and the elements of `landscapes` are
+        # `Landscape` instances, the value is ignored
+        with rio.open(self.landscape_fps[0]) as src:
+            landscape_crs = src.crs
+            landscape_transform = src.transform
+        for sta in pls.SpatioTemporalBufferAnalysis(
+            [
+                pls.Landscape(landscape_fp,
+                              neighborhood_rule=other_neighborhood_rule)
+                for landscape_fp in self.landscape_fps
+            ], self.base_mask, self.buffer_dists, landscape_crs=landscape_crs,
+                landscape_transform=landscape_transform, dates=self.dates,
+                neighborhood_rule=neighborhood_rule).stas:
+            for ls in sta.landscapes:
+                self.assertEqual(ls.neighborhood_rule, other_neighborhood_rule)
+        # test that if not provided and the elements of `landscapes` are
+        # filepaths, the default value is taken
+        for sta in pls.SpatioTemporalBufferAnalysis(self.landscape_fps,
+                                                    self.base_mask,
+                                                    self.buffer_dists,
+                                                    dates=self.dates).stas:
+            for ls in sta.landscapes:
+                self.assertEqual(ls.neighborhood_rule,
+                                 pls.settings.DEFAULT_NEIGHBORHOOD_RULE)
 
     def test_spatiotemporalbufferanalysis_dataframes(self):
         stba = pls.SpatioTemporalBufferAnalysis(self.landscape_fps,

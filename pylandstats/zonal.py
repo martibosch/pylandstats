@@ -25,7 +25,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
     def __init__(self, landscape, masks_arr=None, landscape_crs=None,
                  landscape_transform=None, attribute_name=None,
                  attribute_values=None, masks=None, masks_index_col=None,
-                 **kwargs):
+                 neighborhood_rule=None):
         """
         Parameters
         ----------
@@ -74,6 +74,13 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             attribute values, i.e., index of the metrics data frames. Ignored
             if `masks` is not a geo-data frame or a geo-data frame file, e.g.,
             a shapefile
+        neighborhood_rule : {'8', '4'}, optional
+            Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
+            case/Moore neighborhood) or '4' (rook's case/Von Neumann
+            neighborhood). Ignored if `landscape` is a `Landscape` instance.
+            If no value is provided and `landscape` is a file-like object or a
+            path, the default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE`
+            will be taken.
         """
 
         # read input data/metadata
@@ -81,6 +88,8 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             with rio.open(landscape) as src:
                 landscape_crs = src.crs
             landscape = pls_landscape.Landscape(landscape)
+        else:
+            neighborhood_rule = landscape.neighborhood_rule
         landscape_arr = landscape.landscape_arr
         height, width = landscape_arr.shape
         if landscape.transform is not None:
@@ -207,8 +216,8 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                 np.where(mask_arr, landscape_arr, landscape.nodata).astype(
                     landscape.landscape_arr.dtype),
                 res=(landscape.cell_width, landscape.cell_height),
-                nodata=landscape.nodata, transform=landscape.transform)
-            for mask_arr in masks_arr
+                nodata=landscape.nodata, transform=landscape.transform,
+                neighborhood_rule=neighborhood_rule) for mask_arr in masks_arr
         ]
 
         # store `landscape_meta`/`masks_arr` as instance attributes so that we
@@ -238,7 +247,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
 
         # now call the parent's init
         super(ZonalAnalysis, self).__init__(landscapes, attribute_name,
-                                            attribute_values, **kwargs)
+                                            attribute_values)
 
     def compute_zonal_statistics_arr(self, metric, class_val=None,
                                      metric_kws=None, dst_filepath=None,
@@ -325,7 +334,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
 class BufferAnalysis(ZonalAnalysis):
     def __init__(self, landscape, base_mask, buffer_dists, buffer_rings=False,
                  base_mask_crs=None, landscape_crs=None,
-                 landscape_transform=None):
+                 landscape_transform=None, neighborhood_rule=None):
         """
         Parameters
         ----------
@@ -355,6 +364,13 @@ class BufferAnalysis(ZonalAnalysis):
             system. Required if the passed-in landscapes are `Landscape`
             objects, ignored if they are paths to GeoTiff rasters that already
             contain such information.
+        neighborhood_rule : {'8', '4'}, optional
+            Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
+            case/Moore neighborhood) or '4' (rook's case/Von Neumann
+            neighborhood). Ignored if `landscape` is a `Landscape` instance.
+            If no value is provided and `landscape` is a file-like object or a
+            path, the default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE`
+            will be taken.
         """
 
         # first check that we meet the package dependencies
@@ -401,6 +417,9 @@ class BufferAnalysis(ZonalAnalysis):
                     "If passing `Landscape` objects (instead of geotiff "
                     "filepaths), `landscape_transform` must be provided")
             landscape_shape = landscape.landscape_arr.shape
+            # note that we DO NOT have to get `neighborhood_rule` from
+            # `landscape` since this will be done when calling
+            # `ZonalAnalysis.__init__` at the end of this method
         else:
             with rio.open(landscape) as src:
                 landscape_crs = src.crs
@@ -456,12 +475,11 @@ class BufferAnalysis(ZonalAnalysis):
 
         # now we can call the parent's init with the landscape and the
         # constructed buffer_masks_arr
-        super(BufferAnalysis,
-              self).__init__(landscape, masks=buffer_masks_arr,
-                             landscape_crs=landscape_crs,
-                             landscape_transform=landscape_transform,
-                             attribute_name='buffer_dists',
-                             attribute_values=buffer_dists)
+        super(BufferAnalysis, self).__init__(
+            landscape, masks=buffer_masks_arr, landscape_crs=landscape_crs,
+            landscape_transform=landscape_transform,
+            attribute_name='buffer_dists', attribute_values=buffer_dists,
+            neighborhood_rule=neighborhood_rule)
 
     # override docs
     def compute_class_metrics_df(self, metrics=None, classes=None,
@@ -490,7 +508,8 @@ class BufferAnalysis(ZonalAnalysis):
 class ZonalGridAnalysis(ZonalAnalysis):
     def __init__(self, landscape, num_zone_rows=None, num_zone_cols=None,
                  zone_pixel_width=None, zone_pixel_height=None,
-                 landscape_crs=None, landscape_transform=None):
+                 landscape_crs=None, landscape_transform=None,
+                 neighborhood_rule=None):
         """
         Parameters
         ----------
@@ -521,12 +540,24 @@ class ZonalGridAnalysis(ZonalAnalysis):
             system. Required if the passed-in landscapes are `Landscape`
             objects, ignored if they are paths to GeoTiff rasters that already
             contain such information.
+        neighborhood_rule : {'8', '4'}, optional
+            Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
+            case/Moore neighborhood) or '4' (rook's case/Von Neumann
+            neighborhood). If no value is provided, the value will be taken
+            from `landscape` if it is an instance of `Landscape`, otherwise the
+            default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE` will be
+            taken.
         """
 
         if not isinstance(landscape, pls_landscape.Landscape):
             with rio.open(landscape) as src:
                 landscape_crs = src.crs
             landscape = pls_landscape.Landscape(landscape)
+        else:
+            # note that we DO HAVE to get the neighborhood from `landscape`
+            # since we are bypassing the parent's (i.e., `ZonalAnalysis`)
+            # initialization method at the end of this method
+            neighborhood_rule = landscape.neighborhood_rule
         landscape_arr = landscape.landscape_arr
         height, width = landscape_arr.shape
 
@@ -599,7 +630,7 @@ class ZonalGridAnalysis(ZonalAnalysis):
             pls_landscape.Landscape(
                 landscape_arr,
                 res=(landscape.cell_width, landscape.cell_height),
-                nodata=landscape.nodata)
+                nodata=landscape.nodata, neighborhood_rule=neighborhood_rule)
             for landscape_arr in landscape_arrs[self.data_zones]
         ]
         zone_ids = list(map(tuple, zone_ids[self.data_zones]))

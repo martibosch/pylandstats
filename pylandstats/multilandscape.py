@@ -67,7 +67,8 @@ df : pandas.DataFrame
 @six.add_metaclass(abc.ABCMeta)
 class MultiLandscape:
     @abc.abstractmethod
-    def __init__(self, landscapes, attribute_name, attribute_values):
+    def __init__(self, landscapes, attribute_name, attribute_values,
+                 **landscape_kws):
         """
         Parameters
         ----------
@@ -79,11 +80,19 @@ class MultiLandscape:
             Name of the attribute that will distinguish each landscape
         attribute_values : list-like
             Values of the attribute that are characteristic to each landscape
+        landscape_kws : dict, optional
+            Keyword arguments to be passed to the instantiation of
+            `pylandstats.Landscape` for each element of `landscapes`. Ignored
+            if the elements of `landscapes` are already instances of
+            `pylandstats.Landcape`.
         """
         if isinstance(landscapes[0], pls_landscape.Landscape):
             self.landscapes = landscapes
         else:
-            self.landscapes = list(map(pls_landscape.Landscape, landscapes))
+            self.landscapes = [
+                pls_landscape.Landscape(landscape, **landscape_kws)
+                for landscape in landscapes
+            ]
 
         if len(self.landscapes) != len(attribute_values):
             raise ValueError(
