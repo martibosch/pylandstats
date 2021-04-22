@@ -16,10 +16,10 @@ Parameters
 ----------
 metrics : list-like, optional
     A list-like of strings with the names of the metrics that should be
-    computed in the context of this analysis case
+    computed in the context of this analysis case.
 classes : list-like, optional
     A list-like of ints or strings with the class values that should be
-    considered in the context of this analysis case
+    considered in the context of this analysis case.
 metrics_kws : dict, optional
     Dictionary mapping the keyword arguments (values) that should be passed to
     each metric method (key), e.g., to exclude the boundary from the
@@ -37,7 +37,7 @@ Returns
 -------
 df : pandas.DataFrame
     Dataframe with the values computed for each {index_return} and metric
-    (columns)
+    (columns).
 """
 
 _compute_landscape_metrics_df_doc = """
@@ -60,7 +60,7 @@ Returns
 -------
 df : pandas.DataFrame
     Dataframe with the values computed at the landscape level for each
-    {index_return} and metric (columns)
+    {index_return} and metric (columns).
 """
 
 
@@ -73,13 +73,13 @@ class MultiLandscape:
         Parameters
         ----------
         landscapes : list-like
-            A list-like of `Landscape` objects or of strings/file objects/
-            pathlib.Path objects so that each is passed as the `landscape`
-            argument of `Landscape.__init__`
+            A list-like of `Landscape` instances or of
+            strings/file-like/pathlib.Path objects so that each is passed as
+            the `landscape` argument of `Landscape.__init__`.
         attribute_name : str
-            Name of the attribute that will distinguish each landscape
+            Name of the attribute that will distinguish each landscape.
         attribute_values : list-like
-            Values of the attribute that are characteristic to each landscape
+            Values of the attribute that are characteristic to each landscape.
         landscape_kws : dict, optional
             Keyword arguments to be passed to the instantiation of
             `pylandstats.Landscape` for each element of `landscapes`. Ignored
@@ -243,35 +243,35 @@ class MultiLandscape:
         Parameters
         ----------
         metric : str
-            A string indicating the name of the metric to plot
+            A string indicating the name of the metric to plot.
         class_val : int, optional
             If provided, the metric will be plotted at the level of the
             corresponding class, otherwise it will be plotted at the landscape
-            level
+            level.
         ax : axis object, optional
-            Plot in given axis; if None creates a new figure
+            Plot in given axis; if None creates a new figure.
         metric_legend : bool, default True
             Whether the metric label should be displayed within the plot (as
-            label of the y-axis)
+            label of the y-axis).
         metric_label : str, optional
             Label of the y-axis to be displayed if `metric_legend` is `True`.
             If the provided value is `None`, the label will be taken from the
-            `settings` module
+            `settings` module.
         fmt : str, default '--o'
-            A format string for `matplotlib.pyplot.plot`
+            A format string for `matplotlib.pyplot.plot`.
         plot_kws : dict, default None
-            Keyword arguments to be passed to `matplotlib.pyplot.plot`
+            Keyword arguments to be passed to `matplotlib.pyplot.plot`.
         subplots_kws : dict, default None
             Keyword arguments to be passed to `matplotlib.pyplot.plot.subplots`
-            only if no axis is given (through the `ax` argument)
+            only if no axis is given (through the `ax` argument).
         metric_kws : dict, default None
             Keyword arguments to be passed to the method that computes the
-            metric (specified in the `metric` argument) for each landscape
+            metric (specified in the `metric` argument) for each landscape.
 
         Returns
         -------
         ax : matplotlib.axes.Axes
-            Returns the `Axes` object with the plot drawn onto it
+            Returns the `Axes` object with the plot drawn onto it.
         """
 
         # TODO: metric_legend parameter acepting a set of str values
@@ -340,26 +340,26 @@ class MultiLandscape:
                         show_kws=None, subplots_adjust_kws=None):
         """
         Plots each landscape snapshot in a dedicated matplotlib axis by means
-        of the `Landscape.plot_landscape` method of each instance
+        of the `Landscape.plot_landscape` method of each instance.
 
         Parameters
         -------
         cmap : str or `~matplotlib.colors.Colormap`, optional
-            A Colormap instance
+            A Colormap instance.
         legend : bool, optional
-            If ``True``, display the legend of the land use/cover color codes
-        subplots_kws: dict, default None
-            Keyword arguments to be passed to `matplotlib.pyplot.subplots`
-        show_kws : dict, default Nonte
-            Keyword arguments to be passed to `rasterio.plot.show`
-        subplots_adjust_kws: dict, default None
+            If ``True``, display the legend of the land use/cover color codes.
+        subplots_kws : dict, default None
+            Keyword arguments to be passed to `matplotlib.pyplot.subplots`.
+        show_kws : dict, default None
+            Keyword arguments to be passed to `rasterio.plot.show`.
+        subplots_adjust_kws : dict, default None
             Keyword arguments to be passed to
-            `matplotlib.pyplot.subplots_adjust`
+            `matplotlib.pyplot.subplots_adjust`.
 
         Returns
         -------
         fig : matplotlib.figure.Figure
-            The figure with its corresponding plots drawn into its axes
+            The figure with its corresponding plots drawn into its axes.
         """
 
         attribute_values = getattr(self, self.attribute_name)

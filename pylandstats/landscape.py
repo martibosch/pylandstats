@@ -83,7 +83,7 @@ def compute_adjacency_arr(padded_arr: 'uint32[:,:]', num_classes: 'int'):
 
 class Landscape:
     """Class representing a raster landscape upon which the landscape metrics
-    will be computed
+    will be computed.
     """
     def __init__(self, landscape, res=None, nodata=None, transform=None,
                  neighborhood_rule='8', **kwargs):
@@ -95,24 +95,26 @@ class Landscape:
             A landscape array with pixel values corresponding to a set of land
             use/land cover classes, or a filename or URL, a file-like object
             opened in binary ('rb') mode, or a Path object. If not a
-            `numpy.ndarray`, `landscape` will be passed to `rasterio.open`
+            `numpy.ndarray`, `landscape` will be passed to `rasterio.open`.
         res : tuple, optional
             The (x, y) resolution of the dataset. Required if `landscape` is a
-            `numpy.ndarray`
+            `numpy.ndarray`.
         nodata : int, optional
-            Value to be assigned to pixels with no data. It will be set to 0
-            if `landscape` is a `numpy.ndarray`
+            Value to be assigned to pixels with no data. If no value is
+            provided, the default value set in
+            `settings.DEFAULT_LANDSCAPE_NODATA` will be taken.
         transform : affine.Affine, optional
             Transformation from pixel coordinates to coordinate reference
-            system. If `landscape` is a path to a GeoTiff, this argument will
-            be ignored and extracted from the raster's metadata instead
-        neighborhood_rule : {'8', '4'}, default '8'
+            system. If `landscape` is a path to a raster dataset, this argument
+            will be ignored and extracted from the raster's metadata instead.
+        neighborhood_rule : {'8', '4'}, optional
             Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
             case/Moore neighborhood) or '4' (rook's case/Von Neumann
-            neighborhood).
+            neighborhood). If no value is provided, the default value set in
+            `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         **kwargs : optional
             Keyword arguments to be passed to `rasterio.open`. Ignored if
-            `landscape` is an `numpy.ndarray`
+            `landscape` is an `numpy.ndarray`.
         """
         if isinstance(landscape, np.ndarray):
             landscape_arr = np.copy(landscape)
@@ -648,7 +650,7 @@ class Landscape:
 
     def area(self, class_val=None, hectares=True):
         """
-        The area of each patch of the landscape
+        The area of each patch of the landscape.
 
         .. math::
            AREA = a_{i,j} \\quad [hec] \\; or \\; [m]
@@ -658,16 +660,16 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed for the corresponding
             class only, otherwise it will be computed for all the classes of
-            the landscape
+            the landscape.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
-        AREA : pandas.Series if `class_val` is provided, pandas.DataFrame
-            otherwise
-            AREA > 0, without limit
+        AREA : pandas.Series if `class_val` is provided, pandas.DataFrame \
+                otherwise
+            AREA > 0, without limit.
         """
 
         # class_ser = self._patch_class_ser
@@ -692,7 +694,7 @@ class Landscape:
 
     def perimeter(self, class_val=None):
         """
-        The perimeter of each patch of the landscape
+        The perimeter of each patch of the landscape.
 
         .. math::
            PERIM = p_{i,j} \\quad [m]
@@ -702,13 +704,13 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed for the corresponding
             class only, otherwise it will be computed for all the classes of
-            the landscape
+            the landscape.
 
         Returns
         -------
-        PERIM : pandas.Series if `class_val` is provided, pandas.DataFrame
-            otherwise
-            PERIM > 0, without limit
+        PERIM : pandas.Series if `class_val` is provided, pandas.DataFrame \
+                otherwise
+            PERIM > 0, without limit.
         """
 
         # class_ser = self._patch_class_ser
@@ -740,16 +742,16 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed for the corresponding
             class only, otherwise it will be computed for all the classes of
-            the landscape
+            the landscape.
         hectares : bool, default True
             Whether the area should be converted to hectares (tends to yield
-            more legible values for the metric)
+            more legible values for the metric).
 
         Returns
         -------
-        PARA : pandas.Series if `class_val` is provided, pandas.DataFrame
-            otherwise
-            PARA > 0, without limit
+        PARA : pandas.Series if `class_val` is provided, pandas.DataFrame \
+                otherwise
+            PARA > 0, without limit.
         """
 
         # class_ser = self._patch_class_ser
@@ -794,15 +796,15 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed for the corresponding
             class only, otherwise it will be computed for all the classes of
-            the landscape
+            the landscape.
 
         Returns
         -------
-        SHAPE : pandas.Series if `class_val` is provided, pandas.DataFrame
-            otherwise
+        SHAPE : pandas.Series if `class_val` is provided, pandas.DataFrame \
+                otherwise
             SHAPE >= 1, without limit ; SHAPE equals 1 when the patch
             is maximally compact, and increases without limit as patch shape
-            becomes more irregular
+            becomes more irregular.
         """
 
         area_ser = self._get_patch_area_ser(class_val)
@@ -824,7 +826,7 @@ class Landscape:
     def fractal_dimension(self, class_val=None):
         """
         A measure of shape complexity appropriate across a wide range of patch
-        sizes
+        sizes.
 
         .. math::
            FRAC = \\frac{2 \\; ln (.25 \\; p_{i,j})}{ln (a_{i,j})}
@@ -834,15 +836,15 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed for the corresponding
             class only, otherwise it will be computed for all the classes of
-            the landscape
+            the landscape.
 
         Returns
         -------
-        FRAC : pandas.Series if `class_val` is provided, pandas.DataFrame
-            otherwise
+        FRAC : pandas.Series if `class_val` is provided, pandas.DataFrame \
+                otherwise
             1 <= FRAC <=2 ; for a two-dimensional patch, FRAC approaches 1 for
             very simple shapes such as squares, and approaches 2 for complex
-            plane-filling shapes
+            plane-filling shapes.
         """
 
         area_ser = self._get_patch_area_ser(class_val)
@@ -870,13 +872,13 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed for the corresponding
             class only, otherwise it will be computed for all the classes of
-            the landscape
+            the landscape.
 
         Returns
         -------
-        contig : float
-            0 <= contig <= 1 ; contig equals 0 for a one-pixel
-            patch and increases to a limit of 1 as patch contiguity increases
+        contig : numeric
+            0 <= contig <= 1 ; contig equals 0 for a one-pixel patch and
+            increases to a limit of 1 as patch contiguity increases.
         """
 
         # TODO
@@ -887,7 +889,7 @@ class Landscape:
     def euclidean_nearest_neighbor(self, class_val=None):
         """
         Distance to the nearest neighboring patch of the same class based on
-        the shortest edge-to-edge distance
+        the shortest edge-to-edge distance.
 
         .. math::
            ENN = h_{i,j} \\quad [m]
@@ -897,13 +899,13 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed for the corresponding
             class only, otherwise it will be computed for all the classes of
-            the landscape
+            the landscape.
 
         Returns
         -------
         ENN : numeric
             ENN > 0, without limit ; ENN approaches 0 as the distance to the
-            nearest neighbors decreases
+            nearest neighbors decreases.
         """
 
         euclidean_nearest_neighbor_ser = \
@@ -943,18 +945,18 @@ class Landscape:
         ----------
         search_radius : numeric
             Search radius defining the neighborhood at which the metric will
-            be computed for each patch
+            be computed for each patch.
         class_val : int, optional
             If provided, the metric will be computed for the corresponding
             class only, otherwise it will be computed for all the classes of
-            the landscape
+            the landscape.
 
         Returns
         -------
-        prox : float
+        prox : numeric
             prox >= 0 ; prox equals 0 if a patch has no neighbors, and
             increases as the neighborhood is occupied by patches of the same
-            type and those patches become more contiguous (or less fragmented)
+            type and those patches become more contiguous (or less fragmented).
         """
 
         # TODO
@@ -984,10 +986,10 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         hectares : bool, default True
             Whether the area should be converted to hectares (tends to yield
-            more legible values for the metric)
+            more legible values for the metric).
 
         Returns
         -------
@@ -1016,11 +1018,11 @@ class Landscape:
         Parameters
         ----------
         class_val : int
-            Class for which the metric should be computed
+            Class for which the metric should be computed.
         percent : bool, default True
             Whether the index should be expressed as proportion or converted
             to percentage. If True, this method returns FRAGSTATS' percentage
-            of landscape (PLAND)
+            of landscape (PLAND).
 
         Returns
         -------
@@ -1055,12 +1057,12 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
         NP : int
-            NP >= 1, without limit
+            NP >= 1, without limit.
         """
         if class_val is None:
             num_patches = np.sum(list(self._num_patches_dict.values()))
@@ -1091,19 +1093,19 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         percent : bool, default True
             Whether the index should be expressed as proportion or converted
-            to percentage
+            to percentage.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
         PD : numeric
             PD > 0, constrained by cell size ; maximum PD is attained when
-            every cell is a separate patch
+            every cell is a separate patch.
         """
 
         # TODO: DRY and use `self.number_of_patches` as in:
@@ -1140,10 +1142,10 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         percent : bool, default True
             Whether the index should be expressed as proportion or converted
-            to percentage
+            to percentage.
 
         Returns
         -------
@@ -1151,7 +1153,7 @@ class Landscape:
             0 < LPI <= 100 (or 0 < LPI <= 1 if percent argument is False) ;
             LPI approaches 0 when the largest patch of the corresponding class
             is increasingly small, and approaches its maximum value when such
-            largest patch comprises the totality of the landscape
+            largest patch comprises the totality of the landscape.
         """
 
         area_ser = self._get_patch_area_ser(class_val)
@@ -1181,16 +1183,16 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         count_boundary : bool, default False
             Whether the boundary of the landscape should be included in the
-            total edge length
+            total edge length.
 
         Returns
         -------
         TE : numeric
             TE >= 0 ; TE equals 0 when the entire landscape and its border
-            consist of the corresponding class
+            consist of the corresponding class.
         """
 
         if class_val is None:
@@ -1273,12 +1275,12 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         count_boundary : bool, default False
-            Whether the boundary of the landscape should be considered
+            Whether the boundary of the landscape should be considered.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
@@ -1301,21 +1303,21 @@ class Landscape:
     def area_mn(self, class_val=None, hectares=True):
         """
         Mean of the patch area distribution. See also the documentation of
-        `area`
+        `area`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
-        area_mn : float
+        area_mn : numeric
         """
 
         return self._metric_mn(class_val, self.area, {'hectares': hectares})
@@ -1330,14 +1332,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
-        area_am : float
+        area_am : numeric
         """
 
         return self._metric_am(class_val, self.area, {'hectares': hectares})
@@ -1352,14 +1354,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
-        area_md : float
+        area_md : numeric
         """
 
         return self._metric_md(class_val, self.area, {'hectares': hectares})
@@ -1374,14 +1376,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
-        area_ra : float
+        area_ra : numeric
         """
 
         return self._metric_ra(class_val, self.area, {'hectares': hectares})
@@ -1396,14 +1398,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
-        area_sd : float
+        area_sd : numeric
         """
 
         return self._metric_sd(class_val, self.area, {'hectares': hectares})
@@ -1418,14 +1420,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         percent : bool, default True
             whether the index should be expressed as proportion or converted
-            to percentage
+            to percentage.
 
         Returns
         -------
-        area_cv : float
+        area_cv : numeric
         """
 
         return self._metric_cv(class_val, self.area, percent=percent)
@@ -1433,18 +1435,18 @@ class Landscape:
     def perimeter_mn(self, class_val=None):
         """
         Mean of the patch perimeter distribution. See also the documentation of
-        `perimeter`
+        `perimeter`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        perimeter_mn : float
+        perimeter_mn : numeric
         """
 
         return self._metric_mn(class_val, self.perimeter)
@@ -1459,11 +1461,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        perimeter_am : float
+        perimeter_am : numeric
         """
 
         return self._metric_am(class_val, self.perimeter)
@@ -1478,11 +1480,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        perimeter_md : float
+        perimeter_md : numeric
         """
 
         return self._metric_md(class_val, self.perimeter)
@@ -1497,11 +1499,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        perimeter_ra : float
+        perimeter_ra : numeric
         """
 
         return self._metric_ra(class_val, self.perimeter)
@@ -1516,11 +1518,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        perimeter_sd : float
+        perimeter_sd : numeric
         """
 
         return self._metric_sd(class_val, self.perimeter)
@@ -1535,14 +1537,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         percent : bool, default True
             whether the index should be expressed as proportion or converted
-            to percentage
+            to percentage.
 
         Returns
         -------
-        perimeter_cv : float
+        perimeter_cv : numeric
         """
 
         return self._metric_cv(class_val, self.perimeter, percent=percent)
@@ -1559,14 +1561,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
-        para_mn : float
+        para_mn : numeric
         """
 
         return self._metric_mn(class_val, self.perimeter_area_ratio,
@@ -1582,14 +1584,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
-        para_am : float
+        para_am : numeric
         """
 
         return self._metric_am(class_val, self.perimeter_area_ratio,
@@ -1605,14 +1607,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
-        para_md : float
+        para_md : numeric
         """
 
         return self._metric_md(class_val, self.perimeter_area_ratio,
@@ -1628,14 +1630,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
-        para_ra : float
+        para_ra : numeric
         """
 
         return self._metric_ra(class_val, self.perimeter_area_ratio,
@@ -1651,14 +1653,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
-        para_sd : float
+        para_sd : numeric
         """
 
         return self._metric_sd(class_val, self.perimeter_area_ratio,
@@ -1674,14 +1676,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         percent : bool, default True
             Whether the index should be expressed as proportion or converted
-            to percentage
+            to percentage.
 
         Returns
         -------
-        para_cv : float
+        para_cv : numeric
         """
 
         return self._metric_cv(class_val, self.perimeter_area_ratio,
@@ -1697,11 +1699,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        shape_mn : float
+        shape_mn : numeric
         """
 
         return self._metric_mn(class_val, self.shape_index)
@@ -1716,11 +1718,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        shape_am : float
+        shape_am : numeric
         """
 
         return self._metric_am(class_val, self.shape_index)
@@ -1735,11 +1737,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        shape_md : float
+        shape_md : numeric
         """
 
         return self._metric_md(class_val, self.shape_index)
@@ -1754,11 +1756,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        shape_ra : float
+        shape_ra : numeric
         """
 
         return self._metric_ra(class_val, self.shape_index)
@@ -1773,11 +1775,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        shape_sd : float
+        shape_sd : numeric
         """
 
         return self._metric_sd(class_val, self.shape_index)
@@ -1792,14 +1794,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         percent : bool, default True
            Whether the index should be expressed as proportion or converted
-            to percentage
+            to percentage.
 
         Returns
         -------
-        shape_cv : float
+        shape_cv : numeric
         """
 
         return self._metric_cv(class_val, self.shape_index, percent=percent)
@@ -1818,7 +1820,7 @@ class Landscape:
 
         Returns
         -------
-        frac_mn : float
+        frac_mn : numeric
         """
 
         return self._metric_mn(class_val, self.fractal_dimension)
@@ -1833,11 +1835,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        frac_am : float
+        frac_am : numeric
         """
 
         return self._metric_am(class_val, self.fractal_dimension)
@@ -1852,11 +1854,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        frac_md : float
+        frac_md : numeric
         """
 
         return self._metric_md(class_val, self.fractal_dimension)
@@ -1871,11 +1873,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        frac_ra : float
+        frac_ra : numeric
         """
 
         return self._metric_ra(class_val, self.fractal_dimension)
@@ -1890,11 +1892,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        frac_sd : float
+        frac_sd : numeric
         """
 
         return self._metric_sd(class_val, self.fractal_dimension)
@@ -1909,14 +1911,14 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         percent : bool, default True
             Whether the index should be expressed as proportion or converted
-            to percentage
+            to percentage.
 
         Returns
         -------
-        frac_cv : float
+        frac_cv : numeric
         """
 
         return self._metric_cv(class_val, self.fractal_dimension,
@@ -1924,18 +1926,18 @@ class Landscape:
 
     def continguity_index_mn(self, class_val=None):
         """
-        See also the documentation of `Landscape.contiguity_index`
+        See also the documentation of `Landscape.contiguity_index`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        contig_mn : float
+        contig_mn : numeric
         """
 
         # TODO
@@ -1943,18 +1945,18 @@ class Landscape:
 
     def continguity_index_am(self, class_val=None):
         """
-        See also the documentation of `Landscape.contiguity_index`
+        See also the documentation of `Landscape.contiguity_index`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        contig_am : float
+        contig_am : numeric
         """
 
         # TODO
@@ -1962,18 +1964,18 @@ class Landscape:
 
     def continguity_index_md(self, class_val=None):
         """
-        See also the documentation of `Landscape.contiguity_index`
+        See also the documentation of `Landscape.contiguity_index`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        contig_md : float
+        contig_md : numeric
         """
 
         # TODO
@@ -1981,18 +1983,18 @@ class Landscape:
 
     def continguity_index_ra(self, class_val=None):
         """
-        See also the documentation of `Landscape.contiguity_index`
+        See also the documentation of `Landscape.contiguity_index`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        contig_ra : float
+        contig_ra : numeric
         """
 
         # TODO
@@ -2000,18 +2002,18 @@ class Landscape:
 
     def continguity_index_sd(self, class_val=None):
         """
-        See also the documentation of `Landscape.contiguity_index`
+        See also the documentation of `Landscape.contiguity_index`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        contig_sd : float
+        contig_sd : numeric
         """
 
         # TODO
@@ -2019,18 +2021,18 @@ class Landscape:
 
     def continguity_index_cv(self, class_val=None):
         """
-        See also the documentation of `Landscape.contiguity_index`
+        See also the documentation of `Landscape.contiguity_index`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        contig_cv : float
+        contig_cv : numeric
         """
 
         # TODO
@@ -2040,18 +2042,18 @@ class Landscape:
 
     def proximity_mn(self, class_val=None):
         """
-        See also the documentation of `Landscape.proximity`
+        See also the documentation of `Landscape.proximity`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        prox_mn : float
+        prox_mn : numeric
         """
 
         # TODO
@@ -2059,18 +2061,18 @@ class Landscape:
 
     def proximity_am(self, class_val=None):
         """
-        See also the documentation of `Landscape.proximity`
+        See also the documentation of `Landscape.proximity`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        prox_am : float
+        prox_am : numeric
         """
 
         # TODO
@@ -2078,18 +2080,18 @@ class Landscape:
 
     def proximity_md(self, class_val=None):
         """
-        See also the documentation of `Landscape.proximity`
+        See also the documentation of `Landscape.proximity`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        prox_md : float
+        prox_md : numeric
         """
 
         # TODO
@@ -2097,18 +2099,18 @@ class Landscape:
 
     def proximity_ra(self, class_val=None):
         """
-        See also the documentation of `Landscape.proximity`
+        See also the documentation of `Landscape.proximity`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        prox_ra : float
+        prox_ra : numeric
         """
 
         # TODO
@@ -2116,18 +2118,18 @@ class Landscape:
 
     def proximity_sd(self, class_val=None):
         """
-        See also the documentation of `Landscape.proximity`
+        See also the documentation of `Landscape.proximity`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        prox_sd : float
+        prox_sd : numeric
         """
 
         # TODO
@@ -2135,14 +2137,14 @@ class Landscape:
 
     def proximity_cv(self, class_val=None):
         """
-        See also the documentation of `Landscape.proximity`
+        See also the documentation of `Landscape.proximity`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
@@ -2154,110 +2156,110 @@ class Landscape:
 
     def euclidean_nearest_neighbor_mn(self, class_val=None):
         """
-        See also the documentation of `Landscape.euclidean_nearest_neighbor`
+        See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        enn_mn : float
+        enn_mn : numeric
         """
         return self._metric_mn(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_am(self, class_val=None):
         """
-        See also the documentation of `Landscape.euclidean_nearest_neighbor`
+        See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        enn_am : float
+        enn_am : numeric
         """
 
         return self._metric_am(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_md(self, class_val=None):
         """
-        See also the documentation of `Landscape.euclidean_nearest_neighbor`
+        See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        enn_md : float
+        enn_md : numeric
         """
 
         return self._metric_md(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_ra(self, class_val=None):
         """
-        See also the documentation of `Landscape.euclidean_nearest_neighbor`
+        See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        enn_ra : float
+        enn_ra : numeric
         """
 
         return self._metric_ra(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_sd(self, class_val=None):
         """
-        See also the documentation of `Landscape.euclidean_nearest_neighbor`
+        See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        enn_sd : float
+        enn_sd : numeric
         """
 
         return self._metric_sd(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_cv(self, class_val=None, percent=True):
         """
-        See also the documentation of `Landscape.euclidean_nearest_neighbor`
+        See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
         Parameters
         ----------
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         percent : bool, default True
             Whether the index should be expressed as proportion or converted
-            to percentage
+            to percentage.
 
         Returns
         -------
-        enn_cv : float
+        enn_cv : numeric
         """
 
         return self._metric_cv(class_val, self.euclidean_nearest_neighbor,
@@ -2286,11 +2288,11 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
 
         Returns
         -------
-        LSI : float
+        LSI : numeric
             LSI >=1 ; LSI equals 1 when the entire landscape consists of a
             single patch of the corresponding class, and increases without
             limit as the patches of such class become more disaggregated.
@@ -2324,15 +2326,15 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         percent : bool, default True
             Whether the index should be expressed as proportion or converted
-            to percentage
+            to percentage.
 
 
         Returns
         -------
-        iji : float
+        iji : numeric
             0 < iji <= 100 ; iji approaches 0 when the corresponding class is
             adjacent to only 1 other class and the number of classes increases,
             iji approaches its maximum when the corersponding class is equally
@@ -2366,17 +2368,17 @@ class Landscape:
         class_val : int, optional
             If provided, the metric will be computed at the level of the
             corresponding class, otherwise it will be computed at the
-            landscape level
+            landscape level.
         hectares : bool, default True
             Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric)
+            to yield more legible values for the metric).
 
         Returns
         -------
-        mesh : float
+        mesh : numeric
             cell_area / A <= MESH <= A ; MESH approaches its minimum when
             there is a single corresponding patch of one pixel, and approaches
-            its maximum when the landscape consists of a single patch
+            its maximum when the landscape consists of a single patch.
         """
         mesh = np.sum(self._get_patch_area_ser(class_val)**2) / \
             self.landscape_area
@@ -2409,11 +2411,11 @@ class Landscape:
         ----------
         percent : bool, default True
             Whether the index should be expressed as proportion or converted
-            to percentage
+            to percentage.
 
         Returns
         -------
-        CONTAG : float
+        CONTAG : numeric
             0 < CONTAG <= 100 ; CONTAG approaches 0 when the classes are
             maximally disaggregated (i.e., every cell is a patch of a
             different class) and interspersed (i.e., equal proportions of all
@@ -2466,7 +2468,7 @@ class Landscape:
 
         Returns
         -------
-        SHDI : float
+        SHDI : numeric
             SHDI >= 0 ; SHDI approaches 0 when the entire landscape consists
             of a single patch, and increases as the number of classes
             increases and/or the proportional distribution of area among
@@ -2494,7 +2496,7 @@ class Landscape:
 
     def compute_patch_metrics_df(self, metrics=None, metrics_kws=None):
         """
-        Computes the patch-level metrics
+        Computes the patch-level metrics.
 
         Parameters
         ----------
@@ -2513,7 +2515,7 @@ class Landscape:
         -------
         df : pandas.DataFrame
             Dataframe with the values computed for each patch (index) and
-            metric (columns)
+            metric (columns).
         """
 
         if metrics is None:
@@ -2556,7 +2558,7 @@ class Landscape:
     def compute_class_metrics_df(self, metrics=None, classes=None,
                                  metrics_kws=None):
         """
-        Computes the class-level metrics
+        Computes the class-level metrics.
 
         Parameters
         ----------
@@ -2566,7 +2568,7 @@ class Landscape:
             be computed.
         classes : list-like, optional
             A list-like of ints or strings with the class values that should be
-            considered in the context of this analysis case
+            considered in the context of this analysis case.
         metrics_kws : dict, optional
             Dictionary mapping the keyword arguments (values) that should be
             passed to each metric method (key), e.g., to exclude the boundary
@@ -2579,7 +2581,7 @@ class Landscape:
         -------
         df : pandas.DataFrame
             Dataframe with the values computed for each class (index) and
-            metric (columns)
+            metric (columns).
         """
 
         if metrics is None:
@@ -2637,7 +2639,7 @@ class Landscape:
 
     def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
         """
-        Computes the landscape-level metrics
+        Computes the landscape-level metrics.
 
         Parameters
         ----------
@@ -2657,7 +2659,7 @@ class Landscape:
         -------
         df : pandas.DataFrame
             Dataframe with the values computed at the landscape level (one row
-            only) for each metric (columns)
+            only) for each metric (columns).
         """
 
         if metrics is None:
@@ -2690,27 +2692,27 @@ class Landscape:
                        legend_kws=None, **show_kws):
         """
         Plots the landscape with a categorical legend by means of
-        `rasterio.plot.show`
+        `rasterio.plot.show`.
 
         Parameters
         -------
         cmap : str or `~matplotlib.colors.Colormap`, optional
-            A Colormap instance
+            A Colormap instance.
         ax : axis object, optional
-            Plot in given axis; if None creates a new figure
+            Plot in given axis; if None creates a new figure.
         legend : bool, optional
-            If ``True``, display the legend
+            If ``True``, display the legend.
         figsize : tuple of two numeric types, optional
-            Size of the figure to create. Ignored if axis `ax` is provided
+            Size of the figure to create. Ignored if axis `ax` is provided.
         legend_kws : optional
-            Keyword arguments to be passed to `matplotlib.axes.Axes.legend`
+            Keyword arguments to be passed to `matplotlib.axes.Axes.legend`.
         **show_kws : optional
-            Keyword arguments to be passed to `rasterio.plot.show`
+            Keyword arguments to be passed to `rasterio.plot.show`.
 
         Returns
         -------
         ax : matplotlib.axes.Axes
-            Returns the `Axes` object with the plot drawn onto it
+            Returns the `Axes` object with the plot drawn onto it.
         """
 
         if cmap is None:
