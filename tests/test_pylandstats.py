@@ -469,7 +469,7 @@ class TestMultiLandscape(unittest.TestCase):
                 # frames
                 self.assertTrue(fillna_df[metric].equals(nofillna_df[metric]))
 
-    def test_multilandscape_metric_kws(self):
+    def test_multilandscape_metrics_kws(self):
         # Instantiate two multilandscape analyses, one with FRAGSTATS'
         # defaults and the other with keyword arguments specifying the total
         # area in meters and including the boundary in the computation of the
