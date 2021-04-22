@@ -118,6 +118,10 @@ class TestLandscape(unittest.TestCase):
 
     def test_metric_dataframes(self):
         ls = self.ls
+        patch_metrics = set(pls.Landscape.PATCH_METRICS)
+        class_metrics = set(pls.Landscape.CLASS_METRICS)
+        landscape_metrics = set(pls.Landscape.LANDSCAPE_METRICS)
+
         patch_df = ls.compute_patch_metrics_df()
         self.assertTrue(
             np.all(
@@ -130,7 +134,8 @@ class TestLandscape(unittest.TestCase):
             ls.compute_patch_metrics_df(metrics=['foo'])
             self.assertIn('is not among', str(cm.exception))
         with self.assertRaises(ValueError) as cm:
-            ls.compute_patch_metrics_df(metrics=['proportion_of_landscape'])
+            for metric in class_metrics.union(landscape_metrics):
+                ls.compute_patch_metrics_df(metrics=[metric])
             self.assertIn('cannot be computed', str(cm.exception))
 
         class_df = ls.compute_class_metrics_df()
@@ -143,10 +148,9 @@ class TestLandscape(unittest.TestCase):
             ls.compute_class_metrics_df(metrics=['foo'])
             self.assertIn('is not among', str(cm.exception))
         with self.assertRaises(ValueError) as cm:
-            ls.compute_class_metrics_df(metrics=['area'])
-            self.assertIn('cannot be computed', str(cm.exception))
-        with self.assertRaises(ValueError) as cm:
-            ls.compute_class_metrics_df(metrics=['contagion'])
+            for metric in patch_metrics.union(
+                    landscape_metrics.difference(class_metrics)):
+                ls.compute_class_metrics_df(metrics=[metric])
             self.assertIn('cannot be computed', str(cm.exception))
 
         landscape_df = ls.compute_landscape_metrics_df()
@@ -161,11 +165,9 @@ class TestLandscape(unittest.TestCase):
             ls.compute_landscape_metrics_df(metrics=['foo'])
             self.assertIn('is not among', str(cm.exception))
         with self.assertRaises(ValueError) as cm:
-            ls.compute_landscape_metrics_df(metrics=['area'])
-            self.assertIn('cannot be computed', str(cm.exception))
-        with self.assertRaises(ValueError) as cm:
-            ls.compute_landscape_metrics_df(
-                metrics=['proportion_of_landscape'])
+            for metric in patch_metrics.union(
+                    class_metrics.difference(landscape_metrics)):
+                ls.compute_landscape_metrics_df(metrics=[metric])
             self.assertIn('cannot be computed', str(cm.exception))
 
     def test_landscape_metrics_value_ranges(self):

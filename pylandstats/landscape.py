@@ -188,7 +188,7 @@ class Landscape:
         'effective_mesh_size',
     ] + DISTR_METRICS
 
-    LANDSCAPE_METRICS = ([
+    LANDSCAPE_METRICS = [
         'total_area',
         'number_of_patches',
         'patch_density',
@@ -197,7 +197,7 @@ class Landscape:
         'edge_density',
         'landscape_shape_index',
         'effective_mesh_size',
-    ] + DISTR_METRICS + ['contagion', 'shannon_diversity_index'])
+    ] + DISTR_METRICS + ['contagion', 'shannon_diversity_index']
 
     # compute methods
 
