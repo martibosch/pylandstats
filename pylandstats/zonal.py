@@ -246,8 +246,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             attribute_values = [i for i in range(len(masks_arr))]
 
         # now call the parent's init
-        super(ZonalAnalysis, self).__init__(landscapes, attribute_name,
-                                            attribute_values)
+        super().__init__(landscapes, attribute_name, attribute_values)
 
     def compute_zonal_statistics_arr(self, metric, class_val=None,
                                      metric_kws=None, dst_filepath=None,
@@ -475,20 +474,20 @@ class BufferAnalysis(ZonalAnalysis):
 
         # now we can call the parent's init with the landscape and the
         # constructed buffer_masks_arr
-        super(BufferAnalysis, self).__init__(
-            landscape, masks=buffer_masks_arr, landscape_crs=landscape_crs,
-            landscape_transform=landscape_transform,
-            attribute_name='buffer_dists', attribute_values=buffer_dists,
-            neighborhood_rule=neighborhood_rule)
+        super().__init__(landscape, masks=buffer_masks_arr,
+                         landscape_crs=landscape_crs,
+                         landscape_transform=landscape_transform,
+                         attribute_name='buffer_dists',
+                         attribute_values=buffer_dists,
+                         neighborhood_rule=neighborhood_rule)
 
     # override docs
     def compute_class_metrics_df(self, metrics=None, classes=None,
                                  metrics_kws=None, fillna=None):
-        return super(BufferAnalysis,
-                     self).compute_class_metrics_df(metrics=metrics,
-                                                    classes=classes,
-                                                    metrics_kws=metrics_kws,
-                                                    fillna=fillna)
+        return super().compute_class_metrics_df(metrics=metrics,
+                                                classes=classes,
+                                                metrics_kws=metrics_kws,
+                                                fillna=fillna)
 
     compute_class_metrics_df.__doc__ = \
         multilandscape._compute_class_metrics_df_doc.format(
@@ -496,8 +495,8 @@ class BufferAnalysis(ZonalAnalysis):
             index_return='class, buffer distance (multi-index)')
 
     def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
-        return super(BufferAnalysis, self).compute_landscape_metrics_df(
-            metrics=metrics, metrics_kws=metrics_kws)
+        return super().compute_landscape_metrics_df(metrics=metrics,
+                                                    metrics_kws=metrics_kws)
 
     compute_landscape_metrics_df.__doc__ = \
         multilandscape._compute_landscape_metrics_df_doc.format(

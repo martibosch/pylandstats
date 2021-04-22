@@ -45,19 +45,16 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
         # this method
         _ = landscape_kws.pop('neighborhood_rule', None)
         # call the parent's init
-        super(SpatioTemporalAnalysis,
-              self).__init__(landscapes, 'dates', dates,
-                             neighborhood_rule=neighborhood_rule,
-                             **landscape_kws)
+        super().__init__(landscapes, 'dates', dates,
+                         neighborhood_rule=neighborhood_rule, **landscape_kws)
 
     # override docs
     def compute_class_metrics_df(self, metrics=None, classes=None,
                                  metrics_kws=None, fillna=None):
-        return super(SpatioTemporalAnalysis,
-                     self).compute_class_metrics_df(metrics=metrics,
-                                                    classes=classes,
-                                                    metrics_kws=metrics_kws,
-                                                    fillna=fillna)
+        return super().compute_class_metrics_df(metrics=metrics,
+                                                classes=classes,
+                                                metrics_kws=metrics_kws,
+                                                fillna=fillna)
 
     compute_class_metrics_df.__doc__ = \
         multilandscape._compute_class_metrics_df_doc.format(
@@ -65,9 +62,8 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
             index_return='class, date (multi-index)')
 
     def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
-        return super(SpatioTemporalAnalysis,
-                     self).compute_landscape_metrics_df(
-                         metrics=metrics, metrics_kws=metrics_kws)
+        return super().compute_landscape_metrics_df(metrics=metrics,
+                                                    metrics_kws=metrics_kws)
 
     compute_landscape_metrics_df.__doc__ = \
         multilandscape._compute_landscape_metrics_df_doc.format(
@@ -121,9 +117,8 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             file-like objects or paths, the default value set in
             `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
-        super(SpatioTemporalBufferAnalysis,
-              self).__init__(landscapes, dates=dates,
-                             neighborhood_rule=neighborhood_rule)
+        super().__init__(landscapes, dates=dates,
+                         neighborhood_rule=neighborhood_rule)
         ba = zonal.BufferAnalysis(landscapes[0], base_mask=base_mask,
                                   buffer_dists=buffer_dists,
                                   buffer_rings=buffer_rings,
