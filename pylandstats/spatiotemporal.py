@@ -242,9 +242,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         landscape_metrics_df.index.names = 'buffer_dist', 'dates'
         landscape_metrics_df.columns.name = 'metric'
 
-        self._landscape_metrics_df = landscape_metrics_df
-
-        return self._landscape_metrics_df
+        return landscape_metrics_df
 
     compute_landscape_metrics_df.__doc__ = \
         multilandscape._compute_landscape_metrics_df_doc.format(
