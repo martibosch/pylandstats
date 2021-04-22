@@ -34,9 +34,10 @@ class TestLandscape(unittest.TestCase):
     def setUp(self):
         ls_arr = np.load('tests/input_data/ls250_06.npy', allow_pickle=True)
         self.ls = pls.Landscape(ls_arr, res=(250, 250))
+        self.landscape_fp = 'tests/input_data/ls250_06.tif'
 
     def test_io(self):
-        ls = pls.Landscape('tests/input_data/ls250_06.tif')
+        ls = pls.Landscape(self.landscape_fp)
         # resolutions are not exactly 250, they are between [249, 251], so we
         # need to use a large delta
         self.assertAlmostEqual(ls.cell_width, 250, delta=1)
@@ -68,21 +69,19 @@ class TestLandscape(unittest.TestCase):
         # test that providing a value different than 8 or 4 raises a
         # `ValueError`
         with self.assertRaises(ValueError) as cm:
-            pls.Landscape('tests/input_data/ls250_06.tif',
-                          neighborhood_rule='2')
+            pls.Landscape(self.landscape_fp, neighborhood_rule='2')
             self.assertIn('is not among', str(cm.exception))
         # test that we can provide the argument as int as long as it is 8 or 4
         for neighborhood_rule in (8, 4):
             self.assertEqual(
                 pls.Landscape(
-                    'tests/input_data/ls250_06.tif',
+                    self.landscape_fp,
                     neighborhood_rule=neighborhood_rule).neighborhood_rule,
                 str(neighborhood_rule))
         # test that there is at least the same number of patches with the Moore
         # neighborhood than with Von Neumann's
-        ls_moore = pls.Landscape('tests/input_data/ls250_06.tif',
-                                 neighborhood_rule='8')
-        ls_von_neumann = pls.Landscape('tests/input_data/ls250_06.tif',
+        ls_moore = pls.Landscape(self.landscape_fp, neighborhood_rule='8')
+        ls_von_neumann = pls.Landscape(self.landscape_fp,
                                        neighborhood_rule='4')
         self.assertLessEqual(ls_moore.number_of_patches(),
                              ls_von_neumann.number_of_patches())
@@ -325,7 +324,7 @@ class TestLandscape(unittest.TestCase):
 
         # now do the same test for a landscape with affine transform (e.g.,
         # instantiated from a raster file)
-        ls = pls.Landscape('tests/input_data/ls250_06.tif')
+        ls = pls.Landscape(self.landscape_fp)
         ax = ls.plot_landscape()
         self.assertIsInstance(ax, plt.Axes)
         # and further test that the plot bounds correspond to the transform's
