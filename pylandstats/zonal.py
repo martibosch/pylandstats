@@ -375,12 +375,7 @@ class BufferAnalysis(ZonalAnalysis):
         # first check that we meet the package dependencies
         if not geo_imports:
             raise ImportError(
-                "The `BufferAnalysis` class requires the geopandas package. "
-                "For better performance, we strongly suggest that you install "
-                "its cythonized version via conda-forge as in:\nconda install "
-                "-c conda-forge/label/dev geopandas\n See "
-                "https://github.com/geopandas/geopandas for more information "
-                "about installing geopandas")
+                "The `BufferAnalysis` class requires the 'geopandas' package.")
 
         # get `buffer_masks_arr` from a base geometry and a list of buffer
         # distances
