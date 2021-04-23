@@ -2524,31 +2524,28 @@ class Landscape:
         if metrics_kws is None:
             metrics_kws = {}
 
-        try:
-            # # in order to avoid adding a duplicate 'class_val' column for
-            # # each metric, we drop the 'class_val' column of each metric
-            # # DataFrame except for the first
-            # metric = metrics[0]
-            # metrics_dfs = [getattr(self, metric)()]
-            # for metric in metrics[1:]:
-
-            metrics_dfs = [self._patch_class_ser]
-            for metric in metrics:
-                if metric in metrics_kws:
-                    metric_kws = metrics_kws[metric]
-                else:
-                    metric_kws = {}
-
-                metrics_dfs.append(
-                    getattr(self,
-                            metric)(**metric_kws).drop('class_val', axis=1))
-
-        except AttributeError:
-            raise ValueError("{metric} is not among {Landscape.PATCH_METRICS}")
-        except TypeError:
-            raise ValueError(
-                "{metric} cannot be computed at the patch level".format(
-                    metric=metric))
+        metrics_dfs = [self._patch_class_ser]
+        for metric in metrics:
+            if metric in metrics_kws:
+                metric_kws = metrics_kws[metric]
+            else:
+                metric_kws = {}
+            try:
+                metric_val = getattr(self, metric)(**metric_kws)
+            except AttributeError as getattr_e:
+                raise ValueError(
+                    "{metric} is not among {Landscape.PATCH_METRICS}"
+                ) from getattr_e
+            except TypeError as metric_args_e:
+                raise ValueError(
+                    "{metric} cannot be computed at the patch level".format(
+                        metric=metric)) from metric_args_e
+            try:
+                metrics_dfs.append(metric_val.drop('class_val', axis=1))
+            except AttributeError as drop_e:
+                raise ValueError(
+                    "{metric} cannot be computed at the patch level".format(
+                        metric=metric)) from drop_e
 
         df = pd.concat(metrics_dfs, axis=1)  # [['class_val'] + patch_metrics]
         df.index.name = 'patch_id'
@@ -2624,13 +2621,13 @@ class Landscape:
                         name=metric,
                     ))
 
-        except AttributeError:
+        except AttributeError as getattr_e:
             raise ValueError("{metric} is not among {metrics}".format(
-                metric=metric, metrics=Landscape.CLASS_METRICS))
-        except TypeError:
+                metric=metric, metrics=Landscape.CLASS_METRICS)) from getattr_e
+        except TypeError as metric_args_e:
             raise ValueError(
                 "{metric} cannot be computed at the class level".format(
-                    metric=metric))
+                    metric=metric)) from metric_args_e
 
         df = pd.concat(metrics_sers, axis=1)
         df.index.name = 'class_val'
