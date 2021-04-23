@@ -32,11 +32,18 @@ class TestImports(unittest.TestCase):
 
 class TestLandscape(unittest.TestCase):
     def setUp(self):
-        ls_arr = np.load('tests/input_data/ls250_06.npy', allow_pickle=True)
-        self.ls = pls.Landscape(ls_arr, res=(250, 250))
+        self.ls_arr = np.load('tests/input_data/ls250_06.npy',
+                              allow_pickle=True)
+        self.ls = pls.Landscape(self.ls_arr, res=(250, 250))
         self.landscape_fp = 'tests/input_data/ls250_06.tif'
 
     def test_io(self):
+        # test that if we provide a ndarray, we also need to provide the
+        # resolution
+        with self.assertRaises(ValueError) as cm:
+            ls = pls.Landscape(self.ls_arr)
+            self.assertIn('must be provided', str(cm.exception))
+
         ls = pls.Landscape(self.landscape_fp)
         # resolutions are not exactly 250, they are between [249, 251], so we
         # need to use a large delta
@@ -965,6 +972,20 @@ class TestZonaAlnalysis(unittest.TestCase):
         zga = pls.ZonalGridAnalysis(self.landscape_fp,
                                     zone_pixel_width=zone_pixel_width,
                                     zone_pixel_height=zone_pixel_height)
+
+        # test that init must provide one arg for each dimension (i.e,
+        # `num_zone_cols`/`zone_pixel_width` and
+        # `num_zone_rows`/`zone_pixel_height`
+        for kws in [{}, {
+                'zone_pixel_height': zone_pixel_height,
+                'num_zone_rows': num_zone_rows
+        }, {
+                'zone_pixel_width': zone_pixel_width,
+                'num_zone_cols': num_zone_cols
+        }]:
+            with self.assertRaises(ValueError) as cm:
+                zga = pls.ZonalGridAnalysis(self.landscape_fp, **kws)
+                self.assertIn('must be provided', str(cm.exception))
 
         # test the `neighborhood_rule` argument
         neighborhood_rule = '4'
