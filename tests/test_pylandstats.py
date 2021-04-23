@@ -881,14 +881,17 @@ class TestZonaAlnalysis(unittest.TestCase):
         # transform information, even when providing the `base_mask` arguments
         # properly
         for base_mask in [self.geom, naive_gser, gser]:
+            # missing landscape CRS and transform
             self.assertRaises(ValueError, pls.BufferAnalysis, self.landscape,
                               base_mask, self.buffer_dists,
                               {'base_mask_crs': geom_crs})
+            # missing landscape transform
             self.assertRaises(ValueError, pls.BufferAnalysis, self.landscape,
                               base_mask, self.buffer_dists, {
                                   'base_mask_crs': geom_crs,
                                   'landscape_crs': self.landscape_crs
                               })
+            # missing landscape CRS
             self.assertRaises(
                 ValueError, pls.BufferAnalysis, self.landscape, base_mask,
                 self.buffer_dists, {
@@ -904,7 +907,10 @@ class TestZonaAlnalysis(unittest.TestCase):
         # 4. a landscape filepath, geopandas GeoSeries with crs set and a crs (
         #    which will override the crs of the GeoSeries)
         # 5. any of the above but changing the landscape filepath for a
-        #    Landscape instance with its crs and transform
+        #    Landscape instance with a non-None `tranform` attribute its crs as
+        #    argument
+        # 6. any of the above but changing the landscape filepath for a
+        #    Landscape instance with its crs and transform as argument
         for ba in [
                 pls.BufferAnalysis(self.landscape_fp, self.geom,
                                    self.buffer_dists, base_mask_crs=geom_crs),
@@ -913,6 +919,9 @@ class TestZonaAlnalysis(unittest.TestCase):
                 pls.BufferAnalysis(self.landscape_fp, gser, self.buffer_dists),
                 pls.BufferAnalysis(self.landscape_fp, gser, self.buffer_dists,
                                    base_mask_crs=geom_crs),
+                pls.BufferAnalysis(pls.Landscape(self.landscape_fp), gser,
+                                   self.buffer_dists, base_mask_crs=geom_crs,
+                                   landscape_crs=self.landscape_crs),
                 pls.BufferAnalysis(
                     self.landscape, gser, self.buffer_dists,
                     base_mask_crs=geom_crs, landscape_crs=self.landscape_crs,

@@ -407,9 +407,13 @@ class BufferAnalysis(ZonalAnalysis):
                     "If passing `Landscape` instances (instead of paths to "
                     "raster datasets), `landscape_crs` must be provided")
             if landscape_transform is None:
-                raise ValueError(
-                    "If passing `Landscape` instances (instead of paths to "
-                    "raster datasets), `landscape_transform` must be provided")
+                if landscape.transform is None:
+                    raise ValueError(
+                        "If passing `Landscape` instances (instead of paths to"
+                        " raster datasets), either they have a non-None "
+                        "`transform` attribute, either `landscape_transform` "
+                        "must be provided")
+                landscape_transform = landscape.transform
             landscape_shape = landscape.landscape_arr.shape
             # note that we DO NOT have to get `neighborhood_rule` from
             # `landscape` since this will be done when calling
