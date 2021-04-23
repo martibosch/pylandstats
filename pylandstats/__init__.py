@@ -2,4 +2,4 @@ from .landscape import *
 from .spatiotemporal import *
 from .zonal import *
 
-__version__ = '2.2.1'
+__version__ = '2.3.0'
