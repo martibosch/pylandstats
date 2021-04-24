@@ -1,5 +1,20 @@
 # Change log
 
+## 2.3.0 (23/04/2021)
+
+* improved exception caching in compute metric data frames methods
+* init `BufferAnalysis` with `Landscape` with non-None `transform`
+* test required init args in `Landscape` and `ZonalGridAnalysis`
+* test `ValueError` in data frames with patch/class/landscape-only metrics
+* several corrections in docstrings/comments/error msgs
+* fix: removed `SpatioTemporalBufferAnalysis._landscape_metrics_df` (dropped this kind of caching in v2.0.0)
+* using python3 `super` with no arguments
+* added `neighborhood_rule` argument (to choose 4/8-cell adjacencies)
+* fixed legend in `plot_landscape` and added `legend_kws` arg
+* fixed multilandscape plot with one landscape, e.g., 1-zone analysis
+* fixed values of zone_arr (to id zones) to avoid nodata=0 confusion
+* default nodata (when providing numpy arrays) from settings module
+
 ## 2.2.1 (12/11/2020)
 
 * `ZonalAnalysis.attribute_name` from `masks` when providing geoseries
