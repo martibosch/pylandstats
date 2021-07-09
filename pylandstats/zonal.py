@@ -14,18 +14,27 @@ try:
     import geopandas as gpd
     from shapely import geometry
     from shapely.geometry import base as geometry_base
+
     geo_imports = True
 except ImportError:
     geo_imports = False
 
-__all__ = ['ZonalAnalysis', 'BufferAnalysis', 'ZonalGridAnalysis']
+__all__ = ["ZonalAnalysis", "BufferAnalysis", "ZonalGridAnalysis"]
 
 
 class ZonalAnalysis(multilandscape.MultiLandscape):
-    def __init__(self, landscape, masks_arr=None, landscape_crs=None,
-                 landscape_transform=None, attribute_name=None,
-                 attribute_values=None, masks=None, masks_index_col=None,
-                 neighborhood_rule=None):
+    def __init__(
+        self,
+        landscape,
+        masks_arr=None,
+        landscape_crs=None,
+        landscape_transform=None,
+        attribute_name=None,
+        attribute_values=None,
+        masks=None,
+        masks_index_col=None,
+        neighborhood_rule=None,
+    ):
         """
         Parameters
         ----------
@@ -99,7 +108,8 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         if masks_arr is not None:
             msg = (
                 "The `masks_arr` parameter is deprecated and will be removed "
-                "in a future version. Use the `masks` parameter instead")
+                "in a future version. Use the `masks` parameter instead"
+            )
             warnings.warn(msg, FutureWarning)
         if masks is not None:
             if not geo_imports:
@@ -112,7 +122,8 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                         "If `masks` is not a list-like of numpy arrays or a "
                         "numpy array, it must be a `geopandas.GeoDataFrame` or"
                         " a vector-based spatial data file, which requires the"
-                        " geopandas package.")
+                        " geopandas package."
+                    )
 
                 # rename the variable to `masks_arr` so that it is properly
                 # used below
@@ -157,7 +168,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                     # first of all, let us transform our geometries into the
                     # CRS of the landscape
                     try:
-                        masks_gser = masks['geometry'].to_crs(landscape_crs)
+                        masks_gser = masks["geometry"].to_crs(landscape_crs)
                     except AttributeError as e:
                         # geopandas uses pyproj's `is_exact_same` method,
                         # which might return `False` for equivalent CRSs and
@@ -166,7 +177,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                         # using the basic equality test for the CRSs and avoid
                         # reprojecting:
                         if masks.crs == landscape_crs:
-                            masks_gser = masks['geometry']
+                            masks_gser = masks["geometry"]
                         else:
                             raise e
 
@@ -178,27 +189,28 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                     # starting at 1 to map each zone
                     zone_arr = features.rasterize(
                         shapes=(
-                            (geom, val)
-                            for val, geom in enumerate(masks_gser, start=1)),
-                        out_shape=landscape_arr.shape, fill=0,
-                        transform=landscape.transform)
+                            (geom, val) for val, geom in enumerate(masks_gser, start=1)
+                        ),
+                        out_shape=landscape_arr.shape,
+                        fill=0,
+                        transform=landscape.transform,
+                    )
                     # we now filter so that only the zone geometries that
                     # intersect the data region of our landscape are considered
                     # and also replace the zeros of `zone_arr` with the
                     # landscape nodata value
                     zone_arr = np.where(
                         (landscape_arr != landscape.nodata) & (zone_arr != 0),
-                        zone_arr, landscape.nodata)
+                        zone_arr,
+                        landscape.nodata,
+                    )
                     # we now get all the non-nodata values (i.e., index keys of
                     # the GeoDataFrame) that intersect the data region of our
                     # landscape
-                    zone_values = np.setdiff1d(np.unique(zone_arr),
-                                               [landscape.nodata])
+                    zone_values = np.setdiff1d(np.unique(zone_arr), [landscape.nodata])
                     # we now transform `zone_arr` into a list of boolean masks
                     # that delineate the extent of each zone
-                    masks_arr = [
-                        zone_arr == mask_id for mask_id in zone_values
-                    ]
+                    masks_arr = [zone_arr == mask_id for mask_id in zone_values]
 
                     if masks_index_col is not None:
                         # to index the data frames of landscape metrics with
@@ -207,23 +219,26 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                         # `attribute_name` and `attribute_values` variables,
                         # which will be set as instance attributes below
                         attribute_name = masks_index_col
-                        attribute_values = masks[masks_index_col].iloc[
-                            zone_values - 1]
+                        attribute_values = masks[masks_index_col].iloc[zone_values - 1]
 
         # we generate the landscapes of each zone here
         landscapes = [
             pls_landscape.Landscape(
                 np.where(mask_arr, landscape_arr, landscape.nodata).astype(
-                    landscape.landscape_arr.dtype),
+                    landscape.landscape_arr.dtype
+                ),
                 res=(landscape.cell_width, landscape.cell_height),
-                nodata=landscape.nodata, transform=landscape.transform,
-                neighborhood_rule=neighborhood_rule) for mask_arr in masks_arr
+                nodata=landscape.nodata,
+                transform=landscape.transform,
+                neighborhood_rule=neighborhood_rule,
+            )
+            for mask_arr in masks_arr
         ]
 
         # store `landscape_meta`/`masks_arr` as instance attributes so that we
         # can compute zonal statistics
         self.landscape_meta = dict(
-            driver='GTiff',
+            driver="GTiff",
             width=width,
             height=height,
             count=1,
@@ -238,7 +253,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         # `transect_dist` for `TransectAnalysis`, but for any other custom use
         # of `ZonalAnalysis`, the user might provide (or not) a custom name
         if attribute_name is None:
-            attribute_name = 'attribute_values'
+            attribute_name = "attribute_values"
 
         # If the values for the distinguishing attribute are not provided, a
         # basic enumeration will be automatically generated
@@ -248,9 +263,14 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         # now call the parent's init
         super().__init__(landscapes, attribute_name, attribute_values)
 
-    def compute_zonal_statistics_arr(self, metric, class_val=None,
-                                     metric_kws=None, dst_filepath=None,
-                                     custom_meta=None):
+    def compute_zonal_statistics_arr(
+        self,
+        metric,
+        class_val=None,
+        metric_kws=None,
+        dst_filepath=None,
+        custom_meta=None,
+    ):
         """
         Compute the zonal statistics of a metric over an array with the form
         of the landscape.
@@ -290,26 +310,30 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             metrics_kws = {metric: metric_kws}
         if class_val is None:
             zonal_metrics_df = self.compute_landscape_metrics_df(
-                metrics=[metric], metrics_kws=metrics_kws)
+                metrics=[metric], metrics_kws=metrics_kws
+            )
             metric_ser = zonal_metrics_df[metric]
         else:
             zonal_metrics_df = self.compute_class_metrics_df(
-                metrics=[metric], classes=[class_val], metrics_kws=metrics_kws)
+                metrics=[metric], classes=[class_val], metrics_kws=metrics_kws
+            )
             metric_ser = zonal_metrics_df.loc[class_val, metric]
         # ensure that we have numeric types (not strings)
         metric_ser = pd.to_numeric(metric_ser)
 
         # reconstruct the zonal statistics array
         zonal_statistics_arr = np.full(
-            (self.landscape_meta['height'], self.landscape_meta['width']),
-            np.nan, dtype=metric_ser.dtype)
+            (self.landscape_meta["height"], self.landscape_meta["width"]),
+            np.nan,
+            dtype=metric_ser.dtype,
+        )
         if self.filter_landscape_nodata:
-            for metric_val, landscape, mask_arr in zip(metric_ser,
-                                                       self.landscapes,
-                                                       self.masks_arr):
+            for metric_val, landscape, mask_arr in zip(
+                metric_ser, self.landscapes, self.masks_arr
+            ):
                 zonal_statistics_arr[
-                    (landscape.landscape_arr != landscape.nodata)
-                    & mask_arr] = metric_val
+                    (landscape.landscape_arr != landscape.nodata) & mask_arr
+                ] = metric_val
         else:
             for metric_val, mask_arr in zip(metric_ser, self.masks_arr):
                 zonal_statistics_arr[mask_arr] = metric_val
@@ -321,19 +345,28 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             if custom_meta is None:
                 dst_meta.update(nodata=np.nan)
             else:
-                if 'nodata' in custom_meta:
-                    zonal_statistics_arr[np.isnan(
-                        zonal_statistics_arr)] = custom_meta['nodata']
+                if "nodata" in custom_meta:
+                    zonal_statistics_arr[np.isnan(zonal_statistics_arr)] = custom_meta[
+                        "nodata"
+                    ]
                 dst_meta.update(**custom_meta)
-            with rio.open(dst_filepath, 'w', **dst_meta) as dst:
+            with rio.open(dst_filepath, "w", **dst_meta) as dst:
                 dst.write(zonal_statistics_arr, 1)
         return zonal_statistics_arr
 
 
 class BufferAnalysis(ZonalAnalysis):
-    def __init__(self, landscape, base_mask, buffer_dists, buffer_rings=False,
-                 base_mask_crs=None, landscape_crs=None,
-                 landscape_transform=None, neighborhood_rule=None):
+    def __init__(
+        self,
+        landscape,
+        base_mask,
+        buffer_dists,
+        buffer_rings=False,
+        base_mask_crs=None,
+        landscape_crs=None,
+        landscape_transform=None,
+        neighborhood_rule=None,
+    ):
         """
         Parameters
         ----------
@@ -375,7 +408,8 @@ class BufferAnalysis(ZonalAnalysis):
         # first check that we meet the package dependencies
         if not geo_imports:
             raise ImportError(
-                "The `BufferAnalysis` class requires the 'geopandas' package.")
+                "The `BufferAnalysis` class requires the 'geopandas' package."
+            )
 
         # get `buffer_masks_arr` from a base geometry and a list of buffer
         # distances
@@ -384,7 +418,8 @@ class BufferAnalysis(ZonalAnalysis):
             if base_mask_crs is None:
                 raise ValueError(
                     "If `base_mask` is a shapely geometry, `base_mask_crs` "
-                    "must be provided")
+                    "must be provided"
+                )
             # BufferSpatioTemporalAnalysis.get_buffer_masks_gser(
             base_mask_gser = gpd.GeoSeries(base_mask, crs=base_mask_crs)
         else:
@@ -393,7 +428,8 @@ class BufferAnalysis(ZonalAnalysis):
                 if base_mask_crs is None:
                     raise ValueError(
                         "If `base_mask` is a naive geopandas GeoSeries (with "
-                        "no crs set), `base_mask_crs` must be provided")
+                        "no crs set), `base_mask_crs` must be provided"
+                    )
 
                 base_mask_gser = base_mask.copy()  # avoid alias/ref problems
                 base_mask_gser.crs = base_mask_crs
@@ -405,14 +441,16 @@ class BufferAnalysis(ZonalAnalysis):
             if landscape_crs is None:
                 raise ValueError(
                     "If passing `Landscape` instances (instead of paths to "
-                    "raster datasets), `landscape_crs` must be provided")
+                    "raster datasets), `landscape_crs` must be provided"
+                )
             if landscape_transform is None:
                 if landscape.transform is None:
                     raise ValueError(
                         "If passing `Landscape` instances (instead of paths to"
                         " raster datasets), either they have a non-None "
                         "`transform` attribute, either `landscape_transform` "
-                        "must be provided")
+                        "must be provided"
+                    )
                 landscape_transform = landscape.transform
             landscape_shape = landscape.landscape_arr.shape
             # note that we DO NOT have to get `neighborhood_rule` from
@@ -426,10 +464,10 @@ class BufferAnalysis(ZonalAnalysis):
 
         # 3. buffer around base mask
         avg_longitude = base_mask_gser.to_crs(
-            '+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs'
+            "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
         ).unary_union.centroid.x
         # trick from OSMnx to be able to buffer in meters
-        utm_zone = int(np.floor((avg_longitude + 180) / 6.) + 1)
+        utm_zone = int(np.floor((avg_longitude + 180) / 6.0) + 1)
         # utm_crs = {
         #     'datum': 'WGS84',
         #     'ellps': 'WGS84',
@@ -437,77 +475,108 @@ class BufferAnalysis(ZonalAnalysis):
         #     'zone': utm_zone,
         #     'units': 'm'
         # }
-        utm_crs = f'+proj=utm +zone={utm_zone} +ellps=WGS84 +datum=WGS84 ' \
-            '+units=m +no_defs'
+        utm_crs = (
+            f"+proj=utm +zone={utm_zone} +ellps=WGS84 +datum=WGS84 " "+units=m +no_defs"
+        )
         base_mask_geom = base_mask_gser.to_crs(utm_crs).iloc[0]
         if buffer_rings:
             if not isinstance(base_mask_geom, geometry.Point):
                 raise ValueError(
-                    "Buffer rings can only work when `base_mask_geom` is a "
-                    "`Point`")
+                    "Buffer rings can only work when `base_mask_geom` is a " "`Point`"
+                )
             _buffer_dists = np.concatenate([[0], buffer_dists])
             buffer_dists = list(
-                map(lambda d: '{}-{}'.format(d[0], d[1]),
-                    zip(_buffer_dists[:-1], _buffer_dists[1:])))
-            masks_gser = gpd.GeoSeries([
-                base_mask_geom.buffer(_buffer_dists[i + 1]) -
-                base_mask_geom.buffer(_buffer_dists[i])
-                for i in range(len(_buffer_dists) - 1)
-            ], index=buffer_dists, crs=utm_crs).to_crs(landscape_crs)
+                map(
+                    lambda d: "{}-{}".format(d[0], d[1]),
+                    zip(_buffer_dists[:-1], _buffer_dists[1:]),
+                )
+            )
+            masks_gser = gpd.GeoSeries(
+                [
+                    base_mask_geom.buffer(_buffer_dists[i + 1])
+                    - base_mask_geom.buffer(_buffer_dists[i])
+                    for i in range(len(_buffer_dists) - 1)
+                ],
+                index=buffer_dists,
+                crs=utm_crs,
+            ).to_crs(landscape_crs)
         else:
-            masks_gser = gpd.GeoSeries([
-                base_mask_geom.buffer(buffer_dist)
-                for buffer_dist in buffer_dists
-            ], index=buffer_dists, crs=utm_crs).to_crs(landscape_crs)
+            masks_gser = gpd.GeoSeries(
+                [base_mask_geom.buffer(buffer_dist) for buffer_dist in buffer_dists],
+                index=buffer_dists,
+                crs=utm_crs,
+            ).to_crs(landscape_crs)
 
         # 4. rasterize each mask
         num_rows, num_cols = landscape_shape
-        buffer_masks_arr = np.zeros((len(buffer_dists), num_rows, num_cols),
-                                    dtype=np.uint8)
+        buffer_masks_arr = np.zeros(
+            (len(buffer_dists), num_rows, num_cols), dtype=np.uint8
+        )
         for i in range(len(masks_gser)):
             buffer_masks_arr[i] = features.rasterize(
-                [masks_gser.iloc[i]], out_shape=landscape_shape,
-                transform=landscape_transform, dtype=np.uint8)
+                [masks_gser.iloc[i]],
+                out_shape=landscape_shape,
+                transform=landscape_transform,
+                dtype=np.uint8,
+            )
 
         buffer_masks_arr = buffer_masks_arr.astype(bool)
 
         # now we can call the parent's init with the landscape and the
         # constructed buffer_masks_arr
-        super().__init__(landscape, masks=buffer_masks_arr,
-                         landscape_crs=landscape_crs,
-                         landscape_transform=landscape_transform,
-                         attribute_name='buffer_dists',
-                         attribute_values=buffer_dists,
-                         neighborhood_rule=neighborhood_rule)
+        super().__init__(
+            landscape,
+            masks=buffer_masks_arr,
+            landscape_crs=landscape_crs,
+            landscape_transform=landscape_transform,
+            attribute_name="buffer_dists",
+            attribute_values=buffer_dists,
+            neighborhood_rule=neighborhood_rule,
+        )
 
     # override docs
-    def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws=None, fillna=None):
-        return super().compute_class_metrics_df(metrics=metrics,
-                                                classes=classes,
-                                                metrics_kws=metrics_kws,
-                                                fillna=fillna)
+    def compute_class_metrics_df(
+        self, metrics=None, classes=None, metrics_kws=None, fillna=None
+    ):
+        return super().compute_class_metrics_df(
+            metrics=metrics,
+            classes=classes,
+            metrics_kws=metrics_kws,
+            fillna=fillna,
+        )
 
-    compute_class_metrics_df.__doc__ = \
+    compute_class_metrics_df.__doc__ = (
         multilandscape._compute_class_metrics_df_doc.format(
-            index_descr='multi-indexed by the class and buffer distance',
-            index_return='class, buffer distance (multi-index)')
+            index_descr="multi-indexed by the class and buffer distance",
+            index_return="class, buffer distance (multi-index)",
+        )
+    )
 
     def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
-        return super().compute_landscape_metrics_df(metrics=metrics,
-                                                    metrics_kws=metrics_kws)
+        return super().compute_landscape_metrics_df(
+            metrics=metrics, metrics_kws=metrics_kws
+        )
 
-    compute_landscape_metrics_df.__doc__ = \
+    compute_landscape_metrics_df.__doc__ = (
         multilandscape._compute_landscape_metrics_df_doc.format(
-            index_descr='indexed by the buffer distance',
-            index_return='buffer distance (index)')
+            index_descr="indexed by the buffer distance",
+            index_return="buffer distance (index)",
+        )
+    )
 
 
 class ZonalGridAnalysis(ZonalAnalysis):
-    def __init__(self, landscape, num_zone_rows=None, num_zone_cols=None,
-                 zone_pixel_width=None, zone_pixel_height=None,
-                 landscape_crs=None, landscape_transform=None,
-                 neighborhood_rule=None):
+    def __init__(
+        self,
+        landscape,
+        num_zone_rows=None,
+        num_zone_cols=None,
+        zone_pixel_width=None,
+        zone_pixel_height=None,
+        landscape_crs=None,
+        landscape_transform=None,
+        neighborhood_rule=None,
+    ):
         """
         Parameters
         ----------
@@ -562,14 +631,14 @@ class ZonalGridAnalysis(ZonalAnalysis):
         if zone_pixel_height is None:
             if num_zone_rows is None:
                 raise ValueError(
-                    "Either `num_zone_rows` or `zone_pixel_height` must be "
-                    "provided")
+                    "Either `num_zone_rows` or `zone_pixel_height` must be " "provided"
+                )
             zone_pixel_height = height // num_zone_rows
         if zone_pixel_width is None:
             if num_zone_cols is None:
                 raise ValueError(
-                    "Either `num_zone_cols` or `zone_pixel_width` must be "
-                    "provided")
+                    "Either `num_zone_cols` or `zone_pixel_width` must be " "provided"
+                )
             zone_pixel_width = width // num_zone_cols
 
         if num_zone_rows is None:
@@ -582,12 +651,12 @@ class ZonalGridAnalysis(ZonalAnalysis):
         if landscape.transform is not None:
             landscape_transform = landscape.transform
         self.landscape_meta = dict(
-            driver='GTiff',
+            driver="GTiff",
             width=num_zone_cols,
             height=num_zone_rows,
             count=1,
-            transform=landscape_transform *
-            landscape_transform.scale(zone_pixel_width, zone_pixel_height),
+            transform=landscape_transform
+            * landscape_transform.scale(zone_pixel_width, zone_pixel_height),
             crs=landscape_crs,
         )
 
@@ -600,16 +669,17 @@ class ZonalGridAnalysis(ZonalAnalysis):
             landscape_arr,
             # shape=tuple(arr_shape // zone_shape) + tuple(zone_shape),
             shape=(num_zone_rows, num_zone_cols) + tuple(zone_shape),
-            strides=tuple(landscape_arr.strides * zone_shape) +
-            landscape_arr.strides)
+            strides=tuple(landscape_arr.strides * zone_shape) + landscape_arr.strides,
+        )
         # the reshape could probably be done directly in the `as_strided` call
         # tuple(landscape_arrs.shape[0] * landscape_arrs.shape[1])
-        landscape_arrs = landscape_arrs.reshape((num_zone_cols *
-                                                 num_zone_rows, ) +
-                                                tuple(zone_shape))
+        landscape_arrs = landscape_arrs.reshape(
+            (num_zone_cols * num_zone_rows,) + tuple(zone_shape)
+        )
         # identify zones as their (row, col) position
-        zone_ids = np.array([(row, col) for row in range(num_zone_rows)
-                             for col in range(num_zone_cols)])
+        zone_ids = np.array(
+            [(row, col) for row in range(num_zone_rows) for col in range(num_zone_cols)]
+        )
 
         # check which zones actually contain only nans
         # nan_zones = np.full(len(masks), False)
@@ -618,17 +688,21 @@ class ZonalGridAnalysis(ZonalAnalysis):
         #         nan_zones[i] = True
         # save this as instance attribute since we will need it to reconstruct
         # the zonal statistics raster
-        self.data_zones = np.array([
-            np.any(landscape_arr != landscape.nodata)
-            for landscape_arr in landscape_arrs
-        ])
+        self.data_zones = np.array(
+            [
+                np.any(landscape_arr != landscape.nodata)
+                for landscape_arr in landscape_arrs
+            ]
+        )
 
         # We only need to consider zones that actually contain non-nan pixels
         landscapes = [
             pls_landscape.Landscape(
                 landscape_arr,
                 res=(landscape.cell_width, landscape.cell_height),
-                nodata=landscape.nodata, neighborhood_rule=neighborhood_rule)
+                nodata=landscape.nodata,
+                neighborhood_rule=neighborhood_rule,
+            )
             for landscape_arr in landscape_arrs[self.data_zones]
         ]
         zone_ids = list(map(tuple, zone_ids[self.data_zones]))
@@ -655,8 +729,9 @@ class ZonalGridAnalysis(ZonalAnalysis):
         masks = []
         for zone_rowcol in zone_ids:
             mask_arr = np.full(
-                (self.landscape_meta['height'], self.landscape_meta['width']),
-                False)
+                (self.landscape_meta["height"], self.landscape_meta["width"]),
+                False,
+            )
             mask_arr[zone_rowcol] = True
             masks.append(mask_arr)
         self.masks_arr = np.array(masks)
@@ -676,7 +751,7 @@ class ZonalGridAnalysis(ZonalAnalysis):
         # ACHTUNG: since we have built the landscapes here, we bypass the
         # parent's init (i.e., `ZonalAnalysis`), and call the grandparent's
         # init instead
-        super(ZonalAnalysis, self).__init__(landscapes, 'zones', zone_ids)
+        super(ZonalAnalysis, self).__init__(landscapes, "zones", zone_ids)
 
     def plot_landscapes(self, cmap=None, ax=None, figsize=None, **show_kws):
         """
@@ -700,14 +775,14 @@ class ZonalGridAnalysis(ZonalAnalysis):
         """
 
         if cmap is None:
-            cmap = plt.rcParams['image.cmap']
+            cmap = plt.rcParams["image.cmap"]
 
         if isinstance(cmap, str):
             cmap = plt.get_cmap(cmap)
 
         if ax is None:
             fig, ax = plt.subplots(figsize=figsize)
-            ax.set_aspect('equal')
+            ax.set_aspect("equal")
 
         if show_kws is None:
             show_kws = {}
@@ -716,8 +791,11 @@ class ZonalGridAnalysis(ZonalAnalysis):
         zone_arr[self.data_zones] = np.random.random(np.sum(self.data_zones))
 
         ax.imshow(
-            zone_arr.reshape(self.landscape_meta['height'],
-                             self.landscape_meta['width']), cmap=cmap,
-            **show_kws)
+            zone_arr.reshape(
+                self.landscape_meta["height"], self.landscape_meta["width"]
+            ),
+            cmap=cmap,
+            **show_kws,
+        )
 
         return ax

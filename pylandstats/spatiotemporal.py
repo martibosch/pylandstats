@@ -7,12 +7,11 @@ import pandas as pd
 from . import landscape as pls_landscape
 from . import multilandscape, zonal
 
-__all__ = ['SpatioTemporalAnalysis', 'SpatioTemporalBufferAnalysis']
+__all__ = ["SpatioTemporalAnalysis", "SpatioTemporalBufferAnalysis"]
 
 
 class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
-    def __init__(self, landscapes, dates=None, neighborhood_rule=None,
-                 **landscape_kws):
+    def __init__(self, landscapes, dates=None, neighborhood_rule=None, **landscape_kws):
         """
         Parameters
         ----------
@@ -38,36 +37,49 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
         """
 
         if dates is None:
-            dates = ['t{}'.format(i) for i in range(len(landscapes))]
+            dates = ["t{}".format(i) for i in range(len(landscapes))]
 
         # pop the `neighborhood_rule` from `landscape_kws` (this is merely done
         # so that the `neighborhood_rule` argument is explicitly documented in
         # this method
-        _ = landscape_kws.pop('neighborhood_rule', None)
+        _ = landscape_kws.pop("neighborhood_rule", None)
         # call the parent's init
-        super().__init__(landscapes, 'dates', dates,
-                         neighborhood_rule=neighborhood_rule, **landscape_kws)
+        super().__init__(
+            landscapes,
+            "dates",
+            dates,
+            neighborhood_rule=neighborhood_rule,
+            **landscape_kws
+        )
 
     # override docs
-    def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws=None, fillna=None):
-        return super().compute_class_metrics_df(metrics=metrics,
-                                                classes=classes,
-                                                metrics_kws=metrics_kws,
-                                                fillna=fillna)
+    def compute_class_metrics_df(
+        self, metrics=None, classes=None, metrics_kws=None, fillna=None
+    ):
+        return super().compute_class_metrics_df(
+            metrics=metrics,
+            classes=classes,
+            metrics_kws=metrics_kws,
+            fillna=fillna,
+        )
 
-    compute_class_metrics_df.__doc__ = \
+    compute_class_metrics_df.__doc__ = (
         multilandscape._compute_class_metrics_df_doc.format(
-            index_descr='multi-indexed by the class and date',
-            index_return='class, date (multi-index)')
+            index_descr="multi-indexed by the class and date",
+            index_return="class, date (multi-index)",
+        )
+    )
 
     def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
-        return super().compute_landscape_metrics_df(metrics=metrics,
-                                                    metrics_kws=metrics_kws)
+        return super().compute_landscape_metrics_df(
+            metrics=metrics, metrics_kws=metrics_kws
+        )
 
-    compute_landscape_metrics_df.__doc__ = \
+    compute_landscape_metrics_df.__doc__ = (
         multilandscape._compute_landscape_metrics_df_doc.format(
-            index_descr='indexed by the date', index_return='date (index)')
+            index_descr="indexed by the date", index_return="date (index)"
+        )
+    )
 
     # def plot_patch_metric(metric):
     #     # TODO: sns distplot?
@@ -76,9 +88,18 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
 
 
 class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
-    def __init__(self, landscapes, base_mask, buffer_dists, buffer_rings=False,
-                 base_mask_crs=None, landscape_crs=None,
-                 landscape_transform=None, dates=None, neighborhood_rule=None):
+    def __init__(
+        self,
+        landscapes,
+        base_mask,
+        buffer_dists,
+        buffer_rings=False,
+        base_mask_crs=None,
+        landscape_crs=None,
+        landscape_transform=None,
+        dates=None,
+        neighborhood_rule=None,
+    ):
         """
         Parameters
         ----------
@@ -117,14 +138,16 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             file-like objects or paths, the default value set in
             `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
-        super().__init__(landscapes, dates=dates,
-                         neighborhood_rule=neighborhood_rule)
-        ba = zonal.BufferAnalysis(landscapes[0], base_mask=base_mask,
-                                  buffer_dists=buffer_dists,
-                                  buffer_rings=buffer_rings,
-                                  base_mask_crs=base_mask_crs,
-                                  landscape_crs=landscape_crs,
-                                  landscape_transform=landscape_transform)
+        super().__init__(landscapes, dates=dates, neighborhood_rule=neighborhood_rule)
+        ba = zonal.BufferAnalysis(
+            landscapes[0],
+            base_mask=base_mask,
+            buffer_dists=buffer_dists,
+            buffer_rings=buffer_rings,
+            base_mask_crs=base_mask_crs,
+            landscape_crs=landscape_crs,
+            landscape_transform=landscape_transform,
+        )
         # while `BufferAnalysis.__init__` will set the `buffer_dists`
         # attribute to the instantiated object (stored in the variable `ba`),
         # it will not set it to the current `SpatioTemporalBufferAnalysis`,
@@ -135,16 +158,24 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         self.stas = []
         for buffer_dist, mask_arr in zip(ba.buffer_dists, ba.masks_arr):
             self.stas.append(
-                SpatioTemporalAnalysis([
-                    pls_landscape.Landscape(
-                        np.where(mask_arr, landscape.landscape_arr,
-                                 landscape.nodata).astype(
-                                     landscape.landscape_arr.dtype),
-                        res=(landscape.cell_width, landscape.cell_height),
-                        nodata=landscape.nodata, transform=landscape.transform,
-                        neighborhood_rule=landscape.neighborhood_rule)
-                    for landscape in self.landscapes
-                ], dates=dates))
+                SpatioTemporalAnalysis(
+                    [
+                        pls_landscape.Landscape(
+                            np.where(
+                                mask_arr,
+                                landscape.landscape_arr,
+                                landscape.nodata,
+                            ).astype(landscape.landscape_arr.dtype),
+                            res=(landscape.cell_width, landscape.cell_height),
+                            nodata=landscape.nodata,
+                            transform=landscape.transform,
+                            neighborhood_rule=landscape.neighborhood_rule,
+                        )
+                        for landscape in self.landscapes
+                    ],
+                    dates=dates,
+                )
+            )
 
         # the `self.present_classes` attribute will have been set by this
         # instance father's init (namely the `super` in the first line of this
@@ -153,7 +184,8 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         # classes found at the spatio-temporal analysis instance of each
         # `buffer_dist`
         self.present_classes = functools.reduce(
-            np.union1d, tuple(sta.present_classes for sta in self.stas))
+            np.union1d, tuple(sta.present_classes for sta in self.stas)
+        )
 
         # the dates will be the same for all the `SpatioTemporalAnalysis`
         # instances stored in `self.stas`. We will just take them from the
@@ -166,8 +198,9 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         # with the `dates` argument
         self.dates = self.stas[0].dates
 
-    def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws=None, fillna=None):
+    def compute_class_metrics_df(
+        self, metrics=None, classes=None, metrics_kws=None, fillna=None
+    ):
         if classes is None:
             classes = self.present_classes
 
@@ -188,18 +221,22 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         # `buffer_dists`, we have to iterate as in (see below):
         # `for class_val, date in class_metrics_df.loc[buffer_dist].index`
         class_metrics_df = pd.DataFrame(
-            index=pd.MultiIndex.from_product(
-                [self.buffer_dists, classes, self.dates]), columns=columns)
-        class_metrics_df.index.names = 'buffer_dist', 'class_val', 'dates'
-        class_metrics_df.columns.name = 'metric'
+            index=pd.MultiIndex.from_product([self.buffer_dists, classes, self.dates]),
+            columns=columns,
+        )
+        class_metrics_df.index.names = "buffer_dist", "class_val", "dates"
+        class_metrics_df.columns.name = "metric"
 
         for buffer_dist, sta in zip(self.buffer_dists, self.stas):
             # get the class metrics data frame for the
             # `SpatioTemporalAnalysis` instance that corresponds to this
             # `buffer_dist`
-            df = sta.compute_class_metrics_df(metrics=metrics, classes=classes,
-                                              metrics_kws=metrics_kws,
-                                              fillna=fillna)
+            df = sta.compute_class_metrics_df(
+                metrics=metrics,
+                classes=classes,
+                metrics_kws=metrics_kws,
+                fillna=fillna,
+            )
             # put the metrics data frame of the `SpatioTemporalAnalysis`
             # of this `buffer_dist` into the global metrics data frame of
             # the `SpatioTemporalBufferAnalysis`
@@ -208,8 +245,9 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
                 # `buffer_dist`) again (we have already used it in the
                 # iterator above) to avoid `SettingWithCopyWarning`
                 try:
-                    class_metrics_df.loc[buffer_dist, class_val,
-                                         date] = df.loc[class_val, date]
+                    class_metrics_df.loc[buffer_dist, class_val, date] = df.loc[
+                        class_val, date
+                    ]
                 except KeyError:
                     # this means that `class_val` is not in `df`,
                     # therefore we do nothing and the corresponding row of
@@ -218,19 +256,21 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
 
         return class_metrics_df
 
-    compute_class_metrics_df.__doc__ = \
+    compute_class_metrics_df.__doc__ = (
         multilandscape._compute_class_metrics_df_doc.format(
-            index_descr='multi-indexed by the buffer distance, class and date',
-            index_return='buffer distance, class, distance (multi-index)')
+            index_descr="multi-indexed by the buffer distance, class and date",
+            index_return="buffer distance, class, distance (multi-index)",
+        )
+    )
 
     def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
         # we will create a dict where each key is a `buffer_dist`, and its
         # value is the corresponding metrics data frame of the
         # `SpatioTemporalAnalysis` instance
         df_dict = {
-            buffer_dist:
-            sta.compute_landscape_metrics_df(metrics=metrics,
-                                             metrics_kws=metrics_kws)
+            buffer_dist: sta.compute_landscape_metrics_df(
+                metrics=metrics, metrics_kws=metrics_kws
+            )
             for buffer_dist, sta in zip(self.buffer_dists, self.stas)
         }
 
@@ -239,19 +279,30 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         # `keys` argument of `pd.concat`)
         landscape_metrics_df = pd.concat(df_dict.values(), keys=df_dict.keys())
         # now we set the name of each index and column level
-        landscape_metrics_df.index.names = 'buffer_dist', 'dates'
-        landscape_metrics_df.columns.name = 'metric'
+        landscape_metrics_df.index.names = "buffer_dist", "dates"
+        landscape_metrics_df.columns.name = "metric"
 
         return landscape_metrics_df
 
-    compute_landscape_metrics_df.__doc__ = \
+    compute_landscape_metrics_df.__doc__ = (
         multilandscape._compute_landscape_metrics_df_doc.format(
-            index_descr='multi-indexed by the buffer distance and date',
-            index_return='buffer distance, date (multi-index)')
+            index_descr="multi-indexed by the buffer distance and date",
+            index_return="buffer distance, date (multi-index)",
+        )
+    )
 
-    def plot_metric(self, metric, class_val=None, ax=None, metric_legend=True,
-                    metric_label=None, buffer_dist_legend=True, fmt='--o',
-                    plot_kws=None, subplots_kws=None):
+    def plot_metric(
+        self,
+        metric,
+        class_val=None,
+        ax=None,
+        metric_legend=True,
+        metric_label=None,
+        buffer_dist_legend=True,
+        fmt="--o",
+        plot_kws=None,
+        subplots_kws=None,
+    ):
         """
         Parameters
         ----------
@@ -297,29 +348,45 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         if plot_kws is None:
             plot_kws = {}
 
-        if 'label' not in plot_kws:
+        if "label" not in plot_kws:
             # avoid alias/refrence issues
             _plot_kws = plot_kws.copy()
             for buffer_dist, sta in zip(self.buffer_dists, self.stas):
-                _plot_kws['label'] = buffer_dist
-                ax = sta.plot_metric(metric, class_val=class_val, ax=ax,
-                                     metric_legend=metric_legend,
-                                     metric_label=metric_label, fmt=fmt,
-                                     plot_kws=_plot_kws)
+                _plot_kws["label"] = buffer_dist
+                ax = sta.plot_metric(
+                    metric,
+                    class_val=class_val,
+                    ax=ax,
+                    metric_legend=metric_legend,
+                    metric_label=metric_label,
+                    fmt=fmt,
+                    plot_kws=_plot_kws,
+                )
         else:
             for sta in self.stas:
-                ax = sta.plot_metric(metric, class_val=class_val, ax=ax,
-                                     metric_legend=metric_legend,
-                                     metric_label=metric_label, fmt=fmt,
-                                     plot_kws=plot_kws)
+                ax = sta.plot_metric(
+                    metric,
+                    class_val=class_val,
+                    ax=ax,
+                    metric_legend=metric_legend,
+                    metric_label=metric_label,
+                    fmt=fmt,
+                    plot_kws=plot_kws,
+                )
 
         if buffer_dist_legend:
             ax.legend()
 
         return ax
 
-    def plot_landscapes(self, cmap=None, legend=True, subplots_kws=None,
-                        show_kws=None, subplots_adjust_kws=None):
+    def plot_landscapes(
+        self,
+        cmap=None,
+        legend=True,
+        subplots_kws=None,
+        show_kws=None,
+        subplots_adjust_kws=None,
+    ):
         """
         Plots each landscape snapshot in a dedicated matplotlib axis by means
         of the `Landscape.plot_landscape` method of each instance.
@@ -353,22 +420,26 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             _subplots_kws = {}
         else:
             _subplots_kws = subplots_kws.copy()
-        figsize = _subplots_kws.pop('figsize', None)
+        figsize = _subplots_kws.pop("figsize", None)
         if figsize is None:
-            figwidth, figheight = plt.rcParams['figure.figsize']
-            figsize = (figwidth * len(self.buffer_dists),
-                       figheight * len(dates))
+            figwidth, figheight = plt.rcParams["figure.figsize"]
+            figsize = (
+                figwidth * len(self.buffer_dists),
+                figheight * len(dates),
+            )
 
-        fig, axes = plt.subplots(len(self.buffer_dists), len(dates),
-                                 figsize=figsize, **_subplots_kws)
+        fig, axes = plt.subplots(
+            len(self.buffer_dists), len(dates), figsize=figsize, **_subplots_kws
+        )
 
         if show_kws is None:
             show_kws = {}
         flat_axes = axes.flat
         for buffer_dist, sta in zip(self.buffer_dists, self.stas):
             for date, landscape in zip(sta.dates, sta.landscapes):
-                ax = landscape.plot_landscape(cmap=cmap, ax=next(flat_axes),
-                                              legend=legend, **show_kws)
+                ax = landscape.plot_landscape(
+                    cmap=cmap, ax=next(flat_axes), legend=legend, **show_kws
+                )
 
         # labels in first row and column only
         for date, ax in zip(dates, axes[0]):

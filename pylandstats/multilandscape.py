@@ -67,8 +67,7 @@ df : pandas.DataFrame
 @six.add_metaclass(abc.ABCMeta)
 class MultiLandscape:
     @abc.abstractmethod
-    def __init__(self, landscapes, attribute_name, attribute_values,
-                 **landscape_kws):
+    def __init__(self, landscapes, attribute_name, attribute_values, **landscape_kws):
         """
         Parameters
         ----------
@@ -97,7 +96,9 @@ class MultiLandscape:
         if len(self.landscapes) != len(attribute_values):
             raise ValueError(
                 "The lengths of `landscapes` and `{}` must coincide".format(
-                    attribute_name))
+                    attribute_name
+                )
+            )
 
         # set a `attribute_name` attribute with the value `attribute_values`,
         # so that children classes can access it (e.g., for
@@ -108,12 +109,13 @@ class MultiLandscape:
         # also set a `attribute_name` attribute so that the methods of this
         # class know how to access such attribute, i.e., as in
         # `getattr(self, self.attribute_name)`
-        setattr(self, 'attribute_name', attribute_name)
+        setattr(self, "attribute_name", attribute_name)
 
         # get the all classes present in the provided landscapes
         self.present_classes = functools.reduce(
             np.union1d,
-            tuple(landscape.classes for landscape in self.landscapes))
+            tuple(landscape.classes for landscape in self.landscapes),
+        )
 
     # fillna for metrics in class metrics dataframes. Since some classes might
     # not apprear in some of the landscapes (e.g., zones or temporal snapshots
@@ -125,21 +127,27 @@ class MultiLandscape:
     METRIC_FILLNA_DICT = {
         metric: 0
         for metric in [
-            patch_metric + '_' + suffix
-            for patch_metric in ['area', 'perimeter']
-            for suffix in ['mn', 'am', 'md', 'ra', 'sd']
-        ] + [
-            'total_area', 'proportion_of_landscape', 'number_of_patches',
-            'patch_density', 'largest_patch_index', 'total_edge',
-            'edge_density'
+            patch_metric + "_" + suffix
+            for patch_metric in ["area", "perimeter"]
+            for suffix in ["mn", "am", "md", "ra", "sd"]
+        ]
+        + [
+            "total_area",
+            "proportion_of_landscape",
+            "number_of_patches",
+            "patch_density",
+            "largest_patch_index",
+            "total_edge",
+            "edge_density",
         ]
     }
 
     def __len__(self):
         return len(self.landscapes)
 
-    def compute_class_metrics_df(self, metrics=None, classes=None,
-                                 metrics_kws=None, fillna=None):
+    def compute_class_metrics_df(
+        self, metrics=None, classes=None, metrics_kws=None, fillna=None
+    ):
         attribute_values = getattr(self, self.attribute_name)
 
         # get the columns to init the data frame
@@ -171,35 +179,37 @@ class MultiLandscape:
         # TODO: one-level index if only one class?
         class_metrics_df = pd.DataFrame(
             index=pd.MultiIndex.from_product([classes, attribute_values]),
-            columns=columns)
+            columns=columns,
+        )
 
-        class_metrics_df.index.names = 'class_val', self.attribute_name
-        class_metrics_df.columns.name = 'metric'
+        class_metrics_df.index.names = "class_val", self.attribute_name
+        class_metrics_df.columns.name = "metric"
 
-        for attribute_value, landscape in zip(attribute_values,
-                                              self.landscapes):
+        for attribute_value, landscape in zip(attribute_values, self.landscapes):
             # get the class metrics DataFrame for the landscape that
             # corresponds to this attribute value
-            df = landscape.compute_class_metrics_df(metrics=metrics,
-                                                    metrics_kws=metrics_kws)
+            df = landscape.compute_class_metrics_df(
+                metrics=metrics, metrics_kws=metrics_kws
+            )
             # filter so we only check the classes considered in this
             # `MultiLandscape` instance
             df = df.loc[df.index.intersection(classes)]
             # put every row of the filtered DataFrame of this particular
             # attribute value
             for class_val, row in df.iterrows():
-                class_metrics_df.loc[(class_val, attribute_value),
-                                     columns] = row
+                class_metrics_df.loc[(class_val, attribute_value), columns] = row
 
         class_metrics_df = class_metrics_df.apply(pd.to_numeric)
         if fillna:
             class_metrics_df = class_metrics_df.fillna(
-                MultiLandscape.METRIC_FILLNA_DICT)
+                MultiLandscape.METRIC_FILLNA_DICT
+            )
         return class_metrics_df
 
     compute_class_metrics_df.__doc__ = _compute_class_metrics_df_doc.format(
-        index_descr='multi-indexed by the class and attribute value',
-        index_return='class, attribute value (multi-index)')
+        index_descr="multi-indexed by the class and attribute value",
+        index_return="class, attribute value (multi-index)",
+    )
 
     def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
         attribute_values = getattr(self, self.attribute_name)
@@ -220,25 +230,36 @@ class MultiLandscape:
             index = attribute_values
         landscape_metrics_df = pd.DataFrame(index=index, columns=columns)
         landscape_metrics_df.index.name = self.attribute_name
-        landscape_metrics_df.columns.name = 'metric'
+        landscape_metrics_df.columns.name = "metric"
 
-        for attribute_value, landscape in zip(attribute_values,
-                                              self.landscapes):
-            landscape_metrics_df.loc[attribute_value, columns] = \
-                landscape.compute_landscape_metrics_df(
-                    metrics,
-                    metrics_kws=metrics_kws).iloc[0]
+        for attribute_value, landscape in zip(attribute_values, self.landscapes):
+            landscape_metrics_df.loc[
+                attribute_value, columns
+            ] = landscape.compute_landscape_metrics_df(
+                metrics, metrics_kws=metrics_kws
+            ).iloc[
+                0
+            ]
 
         return landscape_metrics_df.apply(pd.to_numeric)
 
-    compute_landscape_metrics_df.__doc__ = \
-        _compute_landscape_metrics_df_doc.format(
-            index_descr='indexed by the attribute value',
-            index_return='attribute value (index)')
+    compute_landscape_metrics_df.__doc__ = _compute_landscape_metrics_df_doc.format(
+        index_descr="indexed by the attribute value",
+        index_return="attribute value (index)",
+    )
 
-    def plot_metric(self, metric, class_val=None, ax=None, metric_legend=True,
-                    metric_label=None, fmt='--o', plot_kws=None,
-                    subplots_kws=None, metric_kws=None):
+    def plot_metric(
+        self,
+        metric,
+        class_val=None,
+        ax=None,
+        metric_legend=True,
+        metric_label=None,
+        fmt="--o",
+        plot_kws=None,
+        subplots_kws=None,
+        metric_kws=None,
+    ):
         """
         Parameters
         ----------
@@ -289,28 +310,37 @@ class MultiLandscape:
                     for landscape in self.landscapes
                 ]
             except AttributeError:
-                raise ValueError("{metric} is not among {metrics}".format(
-                    metric=metric,
-                    metrics=pls_landscape.Landscape.CLASS_METRICS))
+                raise ValueError(
+                    "{metric} is not among {metrics}".format(
+                        metric=metric,
+                        metrics=pls_landscape.Landscape.CLASS_METRICS,
+                    )
+                )
             except TypeError:
                 raise ValueError(
-                    "{metric} cannot be computed at the landscape level".
-                    format(metric=metric))
+                    "{metric} cannot be computed at the landscape level".format(
+                        metric=metric
+                    )
+                )
         else:
             try:
                 metric_values = [
-                    getattr(landscape, metric)(class_val=class_val,
-                                               **metric_kws)
+                    getattr(landscape, metric)(class_val=class_val, **metric_kws)
                     for landscape in self.landscapes
                 ]
             except AttributeError:
-                raise ValueError("{metric} is not among {metrics}".format(
-                    metric=metric,
-                    metrics=pls_landscape.Landscape.LANDSCAPE_METRICS))
+                raise ValueError(
+                    "{metric} is not among {metrics}".format(
+                        metric=metric,
+                        metrics=pls_landscape.Landscape.LANDSCAPE_METRICS,
+                    )
+                )
             except TypeError:
                 raise ValueError(
                     "{metric} cannot be computed at the class level".format(
-                        metric=metric))
+                        metric=metric
+                    )
+                )
 
         if ax is None:
             if subplots_kws is None:
@@ -336,8 +366,14 @@ class MultiLandscape:
 
         return ax
 
-    def plot_landscapes(self, cmap=None, legend=True, subplots_kws=None,
-                        show_kws=None, subplots_adjust_kws=None):
+    def plot_landscapes(
+        self,
+        cmap=None,
+        legend=True,
+        subplots_kws=None,
+        show_kws=None,
+        subplots_adjust_kws=None,
+    ):
         """
         Plots each landscape snapshot in a dedicated matplotlib axis by means
         of the `Landscape.plot_landscape` method of each instance.
@@ -369,21 +405,22 @@ class MultiLandscape:
             _subplots_kws = {}
         else:
             _subplots_kws = subplots_kws.copy()
-        figsize = _subplots_kws.pop('figsize', None)
+        figsize = _subplots_kws.pop("figsize", None)
         if figsize is None:
-            figwidth, figheight = plt.rcParams['figure.figsize']
+            figwidth, figheight = plt.rcParams["figure.figsize"]
             figsize = (figwidth * len(attribute_values), figheight)
 
-        fig, axes = plt.subplots(1, len(attribute_values), figsize=figsize,
-                                 **_subplots_kws)
+        fig, axes = plt.subplots(
+            1, len(attribute_values), figsize=figsize, **_subplots_kws
+        )
         if len(axes) == 1:  # len(attribute_values) == 1
             axes = [axes]
         if show_kws is None:
             show_kws = {}
-        for attribute_value, landscape, ax in zip(attribute_values,
-                                                  self.landscapes, axes):
-            ax = landscape.plot_landscape(cmap=cmap, ax=ax, legend=legend,
-                                          **show_kws)
+        for attribute_value, landscape, ax in zip(
+            attribute_values, self.landscapes, axes
+        ):
+            ax = landscape.plot_landscape(cmap=cmap, ax=ax, legend=legend, **show_kws)
             ax.set_title(attribute_value)
 
         # adjust spacing between axes

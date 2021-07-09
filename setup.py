@@ -6,6 +6,7 @@ from io import open  # compatible encoding parameter
 from pathlib import Path
 
 from setuptools import find_packages, setup
+
 # pythran imports must go AFTER setuptools imports
 # See: https://github.com/pypa/setuptools/issues/309 and https://bit.ly/300HKtK
 from transonic.dist import init_transonic_extensions, make_backend_files
@@ -13,7 +14,7 @@ from transonic.dist import init_transonic_extensions, make_backend_files
 if sys.version_info[:2] < (3, 6):
     raise RuntimeError("Python version >= 3.6 required.")
 
-__version__ = '2.3.0'
+__version__ = "2.3.0"
 
 classifiers = [
     "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
@@ -54,11 +55,11 @@ make_backend_files([here / path for path in paths], backend=backend)
 if platform.system() == "Linux":
     compile_args = ("-O3", "-DUSE_XSIMD")
 else:
-    compile_args = ("-O3", )
+    compile_args = ("-O3",)
 
-extensions = init_transonic_extensions("pylandstats",
-                                       compile_args=compile_args,
-                                       backend=backend)
+extensions = init_transonic_extensions(
+    "pylandstats", compile_args=compile_args, backend=backend
+)
 
 setup(
     name="pylandstats",
