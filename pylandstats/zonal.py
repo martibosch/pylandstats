@@ -1,3 +1,4 @@
+"""Zonal analysis."""
 import warnings
 
 import matplotlib.pyplot as plt
@@ -23,6 +24,8 @@ __all__ = ["ZonalAnalysis", "BufferAnalysis", "ZonalGridAnalysis"]
 
 
 class ZonalAnalysis(multilandscape.MultiLandscape):
+    """Zonal analysis."""
+
     def __init__(
         self,
         landscape,
@@ -36,62 +39,56 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         neighborhood_rule=None,
     ):
         """
+        Initialize the zonal analysis.
+
         Parameters
         ----------
         landscape : `Landscape` or str, file-like object or pathlib.Path object
-            A `Landscape` object or string/file-like object/pathlib.Path object
-            that will be passed as the `landscape` argument of
-            `Landscape.__init__`.
+            A `Landscape` object or string/file-like object/pathlib.Path object that
+            will be passed as the `landscape` argument of `Landscape.__init__`.
         masks_arr : list-like or numpy.ndarray, optional
-            A list-like of numpy arrays of shape (width, height), i.e., of the
-            same shape as the landscape raster image. Each array will serve to
-            mask the base landscape and define a region of study for which the
-            metrics will be computed separately. The same information can also
-            be provided as a single array of shape (num_masks, width, height).
-            Ignored if `masks` is provided.
+            A list-like of numpy arrays of shape (width, height), i.e., of the same
+            shape as the landscape raster image. Each array will serve to mask the
+            base landscape and define a region of study for which the metrics will be
+            computed separately. The same information can also be provided as a single
+            array of shape (num_masks, width, height). Ignored if `masks` is provided.
         landscape_crs : str, dict or pyproj.CRS, optional
-            The coordinate reference system of the landscapes. Used to dump
-            rasters in the `compute_zonal_statistics_arr` method. Ignored if
-            the passed-in `landscape` is a path to a raster dataset that
-            already contains such information.
+            The coordinate reference system of the landscapes. Used to dump rasters in
+            the `compute_zonal_statistics_arr` method. Ignored if the passed-in
+            `landscape` is a path to a raster dataset that already contains such
+            information.
         landscape_transform : affine.Affine
-            Transformation from pixel coordinates to coordinate reference
-            system. Used to dump rasters in the `compute_zonal_statistics_arr`
-            method. Ignored if the passed-in `landscape` is a path to a raster
-            dataset that already contains such information.
+            Transformation from pixel coordinates to coordinate reference system. Used
+            to dump rasters in the `compute_zonal_statistics_arr` method. Ignored if
+            the passed-in `landscape` is a path to a raster dataset that already
+            contains such information.
         attribute_name : str, optional
             Name of the attribute that will distinguish each landscape.
         attribute_values : str, optional
             Values of the attribute that correspond to each of the landscapes.
-        masks : list-like, numpy.ndarray, geopandas.GeoSeries, \
-                geopandas.GeoDataFrame, str, file-like object or pathlib.Path \
-                object, optional
+        masks : list-like, numpy.ndarray, geopandas.GeoSeries, geopandas.GeoDataFrame, \
+                str, file-like object or pathlib.Path object, optional
             This can either be:
 
-            * A list-like of numpy arrays of shape (width, height), i.e., of
-              the same shape as the landscape raster image. Each array will
-              serve to mask the base landscape and define a region of study
-              for which the metrics will be computed separately. The same
-              information can also be provided as a single array of shape
-              (num_masks, width, height).
+            * A list-like of numpy arrays of shape (width, height), i.e., of the same
+              shape as the landscape raster image. Each array will serve to mask the
+              base landscape and define a region of study for which the metrics will be
+              computed separately. The same information can also be provided as a single
+              array of shape (num_masks, width, height).
             * A geopandas geo-series or geo-data frame.
-            * A filename or URL, a file-like object opened in binary ('rb')
-              mode, or a Path object that will be passed to
-              `geopandas.read_file`.
+            * A filename or URL, a file-like object opened in binary ('rb') mode, or a
+              Path object that will be passed to `geopandas.read_file`.
         masks_index_col : str, optional
-            Column of the `masks` geo-data frame that will be used as
-            attribute values, i.e., index of the metrics data frames. Ignored
-            if `masks` is not a geo-data frame or a geo-data frame file, e.g.,
-            a shapefile.
+            Column of the `masks` geo-data frame that will be used as attribute values,
+            i.e., index of the metrics data frames. Ignored if `masks` is not a geo-data
+            frame or a geo-data frame file, e.g., a shapefile.
         neighborhood_rule : {'8', '4'}, optional
             Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
-            case/Moore neighborhood) or '4' (rook's case/Von Neumann
-            neighborhood). Ignored if `landscape` is a `Landscape` instance.
-            If no value is provided and `landscape` is a file-like object or a
-            path, the default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE`
-            will be taken.
+            case/Moore neighborhood) or '4' (rook's case/Von Neumann neighborhood).
+            Ignored if `landscape` is a `Landscape` instance. If no value is provided
+            and `landscape` is a file-like object or a path, the default value set in
+            `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
-
         # read input data/metadata
         if not isinstance(landscape, pls_landscape.Landscape):
             with rio.open(landscape) as src:
@@ -272,27 +269,26 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         custom_meta=None,
     ):
         """
-        Compute the zonal statistics of a metric over an array with the form
-        of the landscape.
+        Compute the zonal statistics of a metric over a landscape raster.
 
         Parameters
         ----------
         metric : str
-            A string indicating the name of the metric for which the zonal
-            statistics will be computed.
+            A string indicating the name of the metric for which the zonal statistics
+            will be computed.
         class_val : int, optional
-            If provided, the zonal statistics will be computed for the metric
-            computed at the level of the corresponding class, otherwise they
-            will be computed at the landscape level.
+            If provided, the zonal statistics will be computed for the metric computed
+            at the level of the corresponding class, otherwise they will be computed at
+            the landscape level.
         metric_kws : dict, optional
-            Keyword arguments to be passed to the method that computes the
-            metric (specified in the `metric` argument) for each landscape.
+            Keyword arguments to be passed to the method that computes the metric
+            (specified in the `metric` argument) for each landscape.
         dst_filepath : str, file-like object or pathlib.Path object, optional
-            Path to dump the zonal statistics raster. If not provided, no
-            raster will be dumped.
+            Path to dump the zonal statistics raster. If not provided, no raster will be
+            dumped.
         custom_meta : dict, optional
-            Custom meta data for the output raster, consistent with the
-            rasterio library.
+            Custom meta data for the output raster, consistent with the rasterio
+            library.
 
         Returns
         -------
@@ -356,6 +352,8 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
 
 
 class BufferAnalysis(ZonalAnalysis):
+    """Buffer analysis around a feature of interest."""
+
     def __init__(
         self,
         landscape,
@@ -368,43 +366,40 @@ class BufferAnalysis(ZonalAnalysis):
         neighborhood_rule=None,
     ):
         """
+        Initialize the buffer analysis.
+
         Parameters
         ----------
         landscape : `Landscape` or str, file-like object or pathlib.Path object
-            A `Landscape` object or of string/file-like object/pathlib.Path
-            object that will be passed as the `landscape` argument of
-            `Landscape.__init__`
+            A `Landscape` object or of string/file-like object/pathlib.Path object that
+            will be passed as the `landscape` argument of `Landscape.__init__`
         base_mask : shapely geometry or geopandas.GeoSeries
             Geometry that will serve as a base mask to buffer around.
         buffer_dists : list-like
             Buffer distances.
         buffer_rings : bool, default False
-            If `False`, each buffer zone will consist of the whole region that
-            lies within the respective buffer distance around the base mask.
-            If `True`, buffer zones will take the form of rings around the
-            base mask.
+            If `False`, each buffer zone will consist of the whole region that lies
+            within the respective buffer distance around the base mask. If `True`,
+            buffer zones will take the form of rings around the base mask.
         base_mask_crs : str, dict or pyproj.CRS, optional
-            The coordinate reference system of the base mask. Required if the
-            base mask is a shapely geometry or a geopandas GeoSeries without
-            the `crs` attribute set.
+            The coordinate reference system of the base mask. Required if the base mask
+            is a shapely geometry or a geopandas GeoSeries without the `crs` attribute
+            set.
         landscape_crs : str, dict or pyproj.CRS, optional
-            The coordinate reference system of the landscapes. Required if the
-            passed-in landscapes are `Landscape` instances, ignored if they are
-            paths to raster datasets that already contain such information.
+            The coordinate reference system of the landscapes. Required if the passed-in
+            landscapes are `Landscape` instances, ignored if they are paths to raster
+            datasets that already contain such information.
         landscape_transform : affine.Affine
-            Transformation from pixel coordinates to coordinate reference
-            system. Required if the passed-in landscapes are `Landscape`
-            instances, ignored if they are paths to raster datasets that
-            already contain such information.
+            Transformation from pixel coordinates to coordinate reference system.
+            Required if the passed-in landscapes are `Landscape` instances, ignored if
+            they are paths to raster datasets that already contain such information.
         neighborhood_rule : {'8', '4'}, optional
             Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
-            case/Moore neighborhood) or '4' (rook's case/Von Neumann
-            neighborhood). Ignored if `landscape` is a `Landscape` instance.
-            If no value is provided and `landscape` is a file-like object or a
-            path, the default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE`
-            will be taken.
+            case/Moore neighborhood) or '4' (rook's case/Von Neumann neighborhood).
+            Ignored if `landscape` is a `Landscape` instance. If no value is provided
+            and `landscape` is a file-like object or a path, the default value set in
+            `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
-
         # first check that we meet the package dependencies
         if not geo_imports:
             raise ImportError(
@@ -535,7 +530,7 @@ class BufferAnalysis(ZonalAnalysis):
         )
 
     # override docs
-    def compute_class_metrics_df(
+    def compute_class_metrics_df(  # noqa: D102
         self, metrics=None, classes=None, metrics_kws=None, fillna=None
     ):
         return super().compute_class_metrics_df(
@@ -552,7 +547,9 @@ class BufferAnalysis(ZonalAnalysis):
         )
     )
 
-    def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
+    def compute_landscape_metrics_df(  # noqa: D102
+        self, metrics=None, metrics_kws=None
+    ):
         return super().compute_landscape_metrics_df(
             metrics=metrics, metrics_kws=metrics_kws
         )
@@ -566,6 +563,8 @@ class BufferAnalysis(ZonalAnalysis):
 
 
 class ZonalGridAnalysis(ZonalAnalysis):
+    """Zonal analysis over a grid."""
+
     def __init__(
         self,
         landscape,
@@ -578,44 +577,41 @@ class ZonalGridAnalysis(ZonalAnalysis):
         neighborhood_rule=None,
     ):
         """
+        Initialize the zonal grid analysis.
+
         Parameters
         ----------
         landscape : `Landscape` or str, file-like object or pathlib.Path object
-            A `Landscape` object or of string/file-like object/pathlib.Path
-            object that will be passed as the `landscape` argument of
-            `Landscape.__init__`.
+            A `Landscape` object or of string/file-like object/pathlib.Path object that
+            will be passed as the `landscape` argument of `Landscape.__init__`.
         num_zone_rows, num_zone_cols : int, optional
-            The number of zone rows/columns into which the landscape will be
-            separated. If the landscape dimensions and the desired zones do
-            not divide evenly, the zones will be defined for the maximum
-            subset (starting from the top, left corner) for which there is an
-            even division. If not provided, then `num_pixel_width`/
-            `num_pixel_height` must be provided.
+            The number of zone rows/columns into which the landscape will be separated.
+            If the landscape dimensions and the desired zones do not divide evenly, the
+            zones will be defined for the maximum subset (starting from the top, left
+            corner) for which there is an even division. If not provided, then
+            `num_pixel_width`/`num_pixel_height` must be provided.
         num_pixel_width, num_pixel_height : int, optional
-            The width/height of each zone (in pixels). If the landscape
-            dimensions and the desired zones do not divide evenly, the zones
-            will be defined for the maximum subset (starting from the top,
-            left corner) for which there is an even division. If not provided,
-            then `num_zone_rows`/`num_zone_cols` must be provided.
+            The width/height of each zone (in pixels). If the landscape dimensions and
+            the desired zones do not divide evenly, the zones will be defined for the
+            maximum subset (starting from the top, left corner) for which there is an
+            even division. If not provided, then `num_zone_rows`/`num_zone_cols` must be
+            provided.
         landscape_crs : str, dict or pyproj.CRS, optional
-            The coordinate reference system of the landscapes. Required to
-            reconstruct the zonal statistics rasters if the passed-in
-            landscapes are `Landscape` instances, ignored if they are paths to
-            raster datasets that already contain such information.
+            The coordinate reference system of the landscapes. Required to reconstruct
+            the zonal statistics rasters if the passed-in landscapes are `Landscape`
+            instances, ignored if they are paths to raster datasets that already contain
+            such information.
         landscape_transform : affine.Affine
-            Transformation from pixel coordinates to coordinate reference
-            system. Required if the passed-in landscapes are `Landscape`
-            instances, ignored if they are paths to raster datasets that
-            already contain such information.
+            Transformation from pixel coordinates to coordinate reference system.
+            Required if the passed-in landscapes are `Landscape` instances, ignored if
+            they are paths to raster datasets that already contain such information.
         neighborhood_rule : {'8', '4'}, optional
             Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
-            case/Moore neighborhood) or '4' (rook's case/Von Neumann
-            neighborhood). If no value is provided, the value will be taken
-            from `landscape` if it is an instance of `Landscape`, otherwise the
-            default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE` will be
-            taken.
+            case/Moore neighborhood) or '4' (rook's case/Von Neumann neighborhood). If
+            no value is provided, the value will be taken from `landscape` if it is an
+            instance of `Landscape`, otherwise the default value set in
+            `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
-
         if not isinstance(landscape, pls_landscape.Landscape):
             with rio.open(landscape) as src:
                 landscape_crs = src.crs
@@ -755,10 +751,10 @@ class ZonalGridAnalysis(ZonalAnalysis):
 
     def plot_landscapes(self, cmap=None, ax=None, figsize=None, **show_kws):
         """
-        Plots the spatial distribution of the landscape zones.
+        Plot the spatial distribution of the landscape zones.
 
         Parameters
-        -------
+        ----------
         cmap : str or `~matplotlib.colors.Colormap`, optional
             A Colormap instance.
         ax : axis object, optional
@@ -773,7 +769,6 @@ class ZonalGridAnalysis(ZonalAnalysis):
         ax : matplotlib.axes.Axes
             Returns the `Axes` object with the plot drawn onto it.
         """
-
         if cmap is None:
             cmap = plt.rcParams["image.cmap"]
 

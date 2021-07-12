@@ -1,3 +1,4 @@
+"""pylandstats init."""
 from .landscape import *
 from .spatiotemporal import *
 from .zonal import *

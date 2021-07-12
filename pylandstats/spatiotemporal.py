@@ -1,3 +1,4 @@
+"""Spatio-temporal analysis."""
 import functools
 
 import matplotlib.pyplot as plt
@@ -11,31 +12,32 @@ __all__ = ["SpatioTemporalAnalysis", "SpatioTemporalBufferAnalysis"]
 
 
 class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
+    """Spatio-temporal analysis."""
+
     def __init__(self, landscapes, dates=None, neighborhood_rule=None, **landscape_kws):
         """
+        Initialize the spatio-temporal analysis.
+
         Parameters
         ----------
         landscapes : list-like
-            A list-like of `Landscape` instances or of
-            strings/file-like/pathlib.Path objects so that each is passed as
-            the `landscape` argument of `Landscape.__init__`.
+            A list-like of `Landscape` instances or of strings/file-like/pathlib.Path
+            objects so that each is passed as the `landscape` argument of
+            `Landscape.__init__`.
         dates : list-like, optional
-            A list-like of ints or strings that label the date of each
-            snapshot of `landscapes` (for DataFrame indices and plot labels).
+            A list-like of ints or strings that label the date of each snapshot of
+            `landscapes` (for DataFrame indices and plot labels).
         neighborhood_rule : {'8', '4'}, optional
             Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
-            case/Moore neighborhood) or '4' (rook's case/Von Neumann
-            neighborhood). Ignored if the passed-in landscapes are `Landscape`
-            instances. If no value is provided and the passed-in landscapes are
-            file-like objects or paths, the default value set in
-            `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
+            case/Moore neighborhood) or '4' (rook's case/Von Neumann neighborhood).
+            Ignored if the passed-in landscapes are `Landscape` instances. If no value
+            is provided and the passed-in landscapes are file-like objects or paths, the
+            default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         landscape_kws : dict, optional
             Other keyword arguments to be passed to the instantiation of
-            `pylandstats.Landscape` for each element of `landscapes`. Ignored
-            if the elements of `landscapes` are already instances of
-            `pylandstats.Landcape`.
+           `pylandstats.Landscape` for each element of `landscapes`. Ignored if the
+            elements of `landscapes` are already instances of `pylandstats.Landcape`.
         """
-
         if dates is None:
             dates = ["t{}".format(i) for i in range(len(landscapes))]
 
@@ -53,7 +55,7 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
         )
 
     # override docs
-    def compute_class_metrics_df(
+    def compute_class_metrics_df(  # noqa: D102
         self, metrics=None, classes=None, metrics_kws=None, fillna=None
     ):
         return super().compute_class_metrics_df(
@@ -70,7 +72,9 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
         )
     )
 
-    def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
+    def compute_landscape_metrics_df(  # noqa: D102
+        self, metrics=None, metrics_kws=None
+    ):
         return super().compute_landscape_metrics_df(
             metrics=metrics, metrics_kws=metrics_kws
         )
@@ -88,6 +92,8 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
 
 
 class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
+    """Spatio-temporal buffer analysis around a feature of interest."""
+
     def __init__(
         self,
         landscapes,
@@ -101,42 +107,41 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         neighborhood_rule=None,
     ):
         """
+        Initialize the spatio-temporal buffer analysis.
+
         Parameters
         ----------
         landscapes : list-like
-            A list-like of `Landscape` instances or of
-            strings/file-like/pathlib.Path objects so that each is passed as
-            the `landscape` argument of `Landscape.__init__`.
+            A list-like of `Landscape` instances or of strings/file-like/pathlib.Path
+            objects so that each is passed as the `landscape` argument of
+            `Landscape.__init__`.
         base_mask : shapely geometry or geopandas.GeoSeries
             Geometry that will serve as a base mask to buffer around.
         buffer_rings : bool, default False
-            If `False`, each buffer zone will consist of the whole region that
-            lies within the respective buffer distance around the base mask.
-            If `True`, buffer zones will take the form of rings around the
-            base mask.
+            If `False`, each buffer zone will consist of the whole region that lies
+            within the respective buffer distance around the base mask. If `True`,
+            buffer zones will take the form of rings around the base mask.
         base_mask_crs : str, dict or pyproj.CRS, optional
-            The coordinate reference system of the base mask. Required if the
-            base mask is a shapely geometry or a geopandas GeoSeries without
-            the `crs` attribute set.
+            The coordinate reference system of the base mask. Required if the base mask
+            is a shapely geometry or a geopandas GeoSeries without the `crs` attribute
+            set.
         landscape_crs : str, dict or pyproj.CRS, optional
-            The coordinate reference system of the landscapes. Required if the
-            passed-in landscapes are `Landscape` instances, ignored if they are
-            paths to raster datasets that already contain such information.
+            The coordinate reference system of the landscapes. Required if the passed-in
+            landscapes are `Landscape` instances, ignored if they are paths to raster
+            datasets that already contain such information.
         landscape_transform : affine.Affine
-            Transformation from pixel coordinates to coordinate reference
-            system. Required if the passed-in landscapes are `Landscape`
-            instances, ignored if they are paths to raster datasets that
-            already contain such information.
+            Transformation from pixel coordinates to coordinate reference system.
+            Required if the passed-in landscapes are `Landscape` instances, ignored if
+            they are paths to raster datasets that already contain such information.
         dates : list-like, optional
-            A list-like of ints or strings that label the date of each
-            snapshot of `landscapes` (for DataFrame indices and plot labels).
+            A list-like of ints or strings that label the date of each snapshot of
+            `landscapes` (for DataFrame indices and plot labels).
         neighborhood_rule : {'8', '4'}, optional
             Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
-            case/Moore neighborhood) or '4' (rook's case/Von Neumann
-            neighborhood). Ignored if the passed-in landscapes are `Landscape`
-            instances. If no value is provided and the passed-in landscapes are
-            file-like objects or paths, the default value set in
-            `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
+            case/Moore neighborhood) or '4' (rook's case/Von Neumann neighborhood).
+            Ignored if the passed-in landscapes are `Landscape` instances. If no value
+            is provided and the passed-in landscapes are file-like objects or paths, the
+            default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
         super().__init__(landscapes, dates=dates, neighborhood_rule=neighborhood_rule)
         ba = zonal.BufferAnalysis(
@@ -198,7 +203,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         # with the `dates` argument
         self.dates = self.stas[0].dates
 
-    def compute_class_metrics_df(
+    def compute_class_metrics_df(  # noqa: D102
         self, metrics=None, classes=None, metrics_kws=None, fillna=None
     ):
         if classes is None:
@@ -263,7 +268,9 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         )
     )
 
-    def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
+    def compute_landscape_metrics_df(  # noqa: D102
+        self, metrics=None, metrics_kws=None
+    ):
         # we will create a dict where each key is a `buffer_dist`, and its
         # value is the corresponding metrics data frame of the
         # `SpatioTemporalAnalysis` instance
@@ -304,33 +311,34 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         subplots_kws=None,
     ):
         """
+        Plot the time series of the metric accross the buffer zones.
+
         Parameters
         ----------
         metric : str
             A string indicating the name of the metric to plot.
         class_val : int, optional
-            If provided, the metric will be plotted at the level of the
-            corresponding class, otherwise it will be plotted at the landscape
-            level.
+            If provided, the metric will be plotted at the level of the corresponding
+            class, otherwise it will be plotted at the landscape level.
         ax : axis object, optional
             Plot in given axis; if None creates a new figure.
         metric_legend : bool, default True
-            Whether the metric label should be displayed within the plot (as
-            label of the y-axis).
+            Whether the metric label should be displayed within the plot (as label of
+            the y-axis).
         metric_label : str, optional
-            Label of the y-axis to be displayed if `metric_legend` is `True`.
-            If the provided value is `None`, the label will be taken from the
-            `settings` module.
+            Label of the y-axis to be displayed if `metric_legend` is `True`. If the
+            provided value is `None`, the label will be taken from the `settings`
+            module.
         buffer_dist_legend : bool, default True
-            Whether a legend linking each plotted line to a buffer distance
-            should be displayed within the plot.
+            Whether a legend linking each plotted line to a buffer distance should be
+            displayed within the plot.
         fmt : str, default '--o'
             A format string for `matplotlib.pyplot.plot`.
         plot_kws : dict, default None
             Keyword arguments to be passed to `matplotlib.pyplot.plot`.
         subplots_kws : dict, default None
-            Keyword arguments to be passed to `matplotlib.pyplot.subplots`
-            only if no axis is given (through the `ax` argument).
+            Keyword arguments to be passed to `matplotlib.pyplot.subplots` only if no
+            axis is given (through the `ax` argument).
 
         Returns
         -------
@@ -339,7 +347,6 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         """
         # TODO: refactor this method so that it uses `class_metrics_df` and
         # `landscape_metrics_df` properties?
-
         if ax is None:
             if subplots_kws is None:
                 subplots_kws = {}
@@ -388,11 +395,10 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         subplots_adjust_kws=None,
     ):
         """
-        Plots each landscape snapshot in a dedicated matplotlib axis by means
-        of the `Landscape.plot_landscape` method of each instance.
+        Plot each landscape snapshot in a dedicated matplotlib axis.
 
         Parameters
-        -------
+        ----------
         cmap : str or `~matplotlib.colors.Colormap`, optional
             A Colormap instance.
         legend : bool, optional
@@ -402,15 +408,13 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         show_kws : dict, default None
             Keyword arguments to be passed to `rasterio.plot.show`.
         subplots_adjust_kws : dict, default None
-            Keyword arguments to be passed to
-            `matplotlib.pyplot.subplots_adjust`.
+            Keyword arguments to be passed to `matplotlib.pyplot.subplots_adjust`.
 
         Returns
         -------
         fig : matplotlib.figure.Figure
             The figure with its corresponding plots drawn into its axes.
         """
-
         # the number of rows is the number of dates, which will be the same
         # for all the `SpatioTemporalAnalysis` instances of `self.stas`
         dates = self.stas[0].dates

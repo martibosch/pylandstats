@@ -1,3 +1,4 @@
+"""pylandstats settings."""
 from os import environ
 
 try:

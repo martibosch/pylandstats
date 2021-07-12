@@ -1,3 +1,4 @@
+"""Multi-landscape analysis."""
 import abc
 import functools
 
@@ -10,34 +11,32 @@ from . import landscape as pls_landscape
 from . import settings
 
 _compute_class_metrics_df_doc = """
-Computes the data frame of class-level metrics, which is {index_descr}.
+Compute the data frame of class-level metrics, which is {index_descr}.
 
 Parameters
 ----------
 metrics : list-like, optional
-    A list-like of strings with the names of the metrics that should be
-    computed in the context of this analysis case.
+    A list-like of strings with the names of the metrics that should be computed in the
+    context of this analysis case.
 classes : list-like, optional
-    A list-like of ints or strings with the class values that should be
-    considered in the context of this analysis case.
+    A list-like of ints or strings with the class values that should be considered in
+    the context of this analysis case.
 metrics_kws : dict, optional
-    Dictionary mapping the keyword arguments (values) that should be passed to
-    each metric method (key), e.g., to exclude the boundary from the
-    computation of `total_edge`, metric_kws should map the string 'total_edge'
-    (method name) to {{'count_boundary': False}}. The default empty dictionary
-    will compute each metric according to FRAGSTATS defaults.
+    Dictionary mapping the keyword arguments (values) that should be passed to each
+    metric method (key), e.g., to exclude the boundary from the computation of
+    `total_edge`, metric_kws should map the string 'total_edge' (method name) to
+    {{'count_boundary': False}}. The default empty dictionary will compute each metric
+    according to FRAGSTATS defaults.
 fillna : bool, optional
-    Whether `NaN` values representing landscapes with no occurrences of
-    patches of the provided class should be replaced by zero when appropriate,
-    e.g., area and edge metrics (no ocurrences mean zero area/edge). If the
-    provided value is `None` (default), the value will be taken from
-    `settings.CLASS_METRICS_DF_FILLNA`.
+    Whether `NaN` values representing landscapes with no occurrences of patches of the
+    provided class should be replaced by zero when appropriate, e.g., area and edge
+    metrics (no ocurrences mean zero area/edge). If the provided value is `None`
+    (default), the value will be taken from `settings.CLASS_METRICS_DF_FILLNA`.
 
 Returns
 -------
 df : pandas.DataFrame
-    Dataframe with the values computed for each {index_return} and metric
-    (columns).
+    Dataframe with the values computed for each {index_return} and metric (columns).
 """
 
 _compute_landscape_metrics_df_doc = """
@@ -46,44 +45,46 @@ Computes the data frame of landscape-level metrics, which is {index_descr}.
 Parameters
 ----------
 metrics : list-like, optional
-    A list-like of strings with the names of the metrics that should be
-    computed. If None, all the implemented landscape-level metrics will be
-    computed.
+    A list-like of strings with the names of the metrics that should be computed. If
+    `None`, all the implemented landscape-level metrics will be computed.
 metrics_kws : dict, optional
-    Dictionary mapping the keyword arguments (values) that should be passed to
-    each metric method (key), e.g., to exclude the boundary from the
-    computation of `total_edge`, metric_kws should map the string 'total_edge'
-    (method name) to {{'count_boundary': False}}. The default empty dictionary
-    will compute each metric according to FRAGSTATS defaults.
+    Dictionary mapping the keyword arguments (values) that should be passed to each
+    metric method (key), e.g., to exclude the boundary from the computation of
+    `total_edge`, metric_kws should map the string 'total_edge' (method name) to
+    {{'count_boundary': False}}. The default empty dictionary will compute each metric
+    according to FRAGSTATS defaults.
 
 Returns
 -------
 df : pandas.DataFrame
-    Dataframe with the values computed at the landscape level for each
-    {index_return} and metric (columns).
+    Dataframe with the values computed at the landscape level for each {index_return}
+    and metric (columns).
 """
 
 
 @six.add_metaclass(abc.ABCMeta)
 class MultiLandscape:
+    """Multi-landscape base abstract class."""
+
     @abc.abstractmethod
     def __init__(self, landscapes, attribute_name, attribute_values, **landscape_kws):
         """
+        Initialize the multi-landscape instance.
+
         Parameters
         ----------
         landscapes : list-like
-            A list-like of `Landscape` instances or of
-            strings/file-like/pathlib.Path objects so that each is passed as
-            the `landscape` argument of `Landscape.__init__`.
+            A list-like of `Landscape` instances or of strings/file-like/pathlib.Path
+            objects so that each is passed as the `landscape` argument of
+            `Landscape.__init__`.
         attribute_name : str
             Name of the attribute that will distinguish each landscape.
         attribute_values : list-like
             Values of the attribute that are characteristic to each landscape.
         landscape_kws : dict, optional
             Keyword arguments to be passed to the instantiation of
-            `pylandstats.Landscape` for each element of `landscapes`. Ignored
-            if the elements of `landscapes` are already instances of
-            `pylandstats.Landcape`.
+            `pylandstats.Landscape` for each element of `landscapes`. Ignored if the
+            elements of `landscapes` are already instances of `pylandstats.Landcape`.
         """
         if isinstance(landscapes[0], pls_landscape.Landscape):
             self.landscapes = landscapes
@@ -142,10 +143,10 @@ class MultiLandscape:
         ]
     }
 
-    def __len__(self):
+    def __len__(self):  # noqa: D105
         return len(self.landscapes)
 
-    def compute_class_metrics_df(
+    def compute_class_metrics_df(  # noqa: D102
         self, metrics=None, classes=None, metrics_kws=None, fillna=None
     ):
         attribute_values = getattr(self, self.attribute_name)
@@ -211,7 +212,9 @@ class MultiLandscape:
         index_return="class, attribute value (multi-index)",
     )
 
-    def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
+    def compute_landscape_metrics_df(  # noqa: D102
+        self, metrics=None, metrics_kws=None
+    ):
         attribute_values = getattr(self, self.attribute_name)
 
         # get the columns to init the data frame
@@ -261,40 +264,40 @@ class MultiLandscape:
         metric_kws=None,
     ):
         """
+        Plot the metric.
+
         Parameters
         ----------
         metric : str
             A string indicating the name of the metric to plot.
         class_val : int, optional
-            If provided, the metric will be plotted at the level of the
-            corresponding class, otherwise it will be plotted at the landscape
-            level.
+            If provided, the metric will be plotted at the level of the corresponding
+            class, otherwise it will be plotted at the landscape level.
         ax : axis object, optional
             Plot in given axis; if None creates a new figure.
         metric_legend : bool, default True
-            Whether the metric label should be displayed within the plot (as
-            label of the y-axis).
+            Whether the metric label should be displayed within the plot (as label of
+            the y-axis).
         metric_label : str, optional
-            Label of the y-axis to be displayed if `metric_legend` is `True`.
-            If the provided value is `None`, the label will be taken from the
-            `settings` module.
+            Label of the y-axis to be displayed if `metric_legend` is `True`. If the
+            provided value is `None`, the label will be taken from the `settings`
+            module.
         fmt : str, default '--o'
             A format string for `matplotlib.pyplot.plot`.
         plot_kws : dict, default None
             Keyword arguments to be passed to `matplotlib.pyplot.plot`.
         subplots_kws : dict, default None
-            Keyword arguments to be passed to `matplotlib.pyplot.plot.subplots`
-            only if no axis is given (through the `ax` argument).
+            Keyword arguments to be passed to `matplotlib.pyplot.plot.subplots` only if
+            no axis is given (through the `ax` argument).
         metric_kws : dict, default None
-            Keyword arguments to be passed to the method that computes the
-            metric (specified in the `metric` argument) for each landscape.
+            Keyword arguments to be passed to the method that computes the metric
+            (specified in the `metric` argument) for each landscape.
 
         Returns
         -------
         ax : matplotlib.axes.Axes
             Returns the `Axes` object with the plot drawn onto it.
         """
-
         # TODO: metric_legend parameter acepting a set of str values
         # indicating, e.g., whether the metric label should appear as legend
         # or as yaxis label
@@ -375,11 +378,12 @@ class MultiLandscape:
         subplots_adjust_kws=None,
     ):
         """
-        Plots each landscape snapshot in a dedicated matplotlib axis by means
-        of the `Landscape.plot_landscape` method of each instance.
+        Plot each landscape snapshot in a dedicated matplotlib axis.
+
+        Uses the `Landscape.plot_landscape` method of each instance.
 
         Parameters
-        -------
+        ----------
         cmap : str or `~matplotlib.colors.Colormap`, optional
             A Colormap instance.
         legend : bool, optional
@@ -389,15 +393,13 @@ class MultiLandscape:
         show_kws : dict, default None
             Keyword arguments to be passed to `rasterio.plot.show`.
         subplots_adjust_kws : dict, default None
-            Keyword arguments to be passed to
-            `matplotlib.pyplot.subplots_adjust`.
+            Keyword arguments to be passed to `matplotlib.pyplot.subplots_adjust`.
 
         Returns
         -------
         fig : matplotlib.figure.Figure
             The figure with its corresponding plots drawn into its axes.
         """
-
         attribute_values = getattr(self, self.attribute_name)
 
         # avoid alias/refrence issues

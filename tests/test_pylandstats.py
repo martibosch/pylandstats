@@ -1,3 +1,5 @@
+"""pylandstats tests."""
+
 import os
 import shutil
 import unittest

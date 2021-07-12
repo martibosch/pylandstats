@@ -1,3 +1,4 @@
+"""pylandstats setup script."""
 # coding=utf-8
 
 import platform

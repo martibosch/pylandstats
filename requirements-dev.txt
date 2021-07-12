@@ -4,7 +4,9 @@ coverage
 coveralls
 isort
 flake8
+flake8-docstrings
 m2r2
+pydocstyle
 pytest
 sphinx<3.3.0
 tox-travis

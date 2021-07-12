@@ -1,3 +1,4 @@
+"""Landscape analysis."""
 from __future__ import division
 
 import functools
@@ -52,11 +53,11 @@ def compute_adjacency_arr(padded_arr: "uint32[:,:]", num_classes: "int"):
     )
     num_cols_pixel = padded_arr.shape[1]
     flat_arr = padded_arr.ravel()
-    # steps_to_neighbours as argument to distinguish between vertical/
+    # steps_to_neighbors as argument to distinguish between vertical/
     # horizontal adjacencies
-    # steps_to_neighbours = [1, num_cols, -1, -num_cols]
-    horizontal_neighbours = [1, -1]
-    vertical_neighbours = [num_cols_pixel, -num_cols_pixel]
+    # steps_to_neighbors = [1, num_cols, -1, -num_cols]
+    horizontal_neighbors = [1, -1]
+    vertical_neighbors = [num_cols_pixel, -num_cols_pixel]
     start = num_cols_pixel + 1
     end = len(flat_arr) - start
     for i in range(start, end):
@@ -69,15 +70,15 @@ def compute_adjacency_arr(padded_arr: "uint32[:,:]", num_classes: "int"):
         # adjacency_arr[0, class_i, class_right] += 1
         # adjacency_arr[1, class_i, class_above] += 1
         # adjacency_arr[1, class_i, class_below] += 1
-        for neighbour in horizontal_neighbours:
-            # adjacency_arr[0, class_i, flat_arr[i + neighbour]] += 1
+        for neighbor in horizontal_neighbors:
+            # adjacency_arr[0, class_i, flat_arr[i + neighbor]] += 1
             horizontal_adjacency_arr[
-                class_i + num_cols_adjacency * flat_arr[i + neighbour]
+                class_i + num_cols_adjacency * flat_arr[i + neighbor]
             ] += 1
-        for neighbour in vertical_neighbours:
-            # adjacency_arr[1, class_i, flat_arr[i + neighbour]] += 1
+        for neighbor in vertical_neighbors:
+            # adjacency_arr[1, class_i, flat_arr[i + neighbor]] += 1
             vertical_adjacency_arr[
-                class_i + num_cols_adjacency * flat_arr[i + neighbour]
+                class_i + num_cols_adjacency * flat_arr[i + neighbor]
             ] += 1
 
     return np.stack((horizontal_adjacency_arr, vertical_adjacency_arr)).reshape(
@@ -86,9 +87,7 @@ def compute_adjacency_arr(padded_arr: "uint32[:,:]", num_classes: "int"):
 
 
 class Landscape:
-    """Class representing a raster landscape upon which the landscape metrics
-    will be computed.
-    """
+    """Raster landscape upon which landscape metrics are computed."""
 
     def __init__(
         self,
@@ -100,33 +99,33 @@ class Landscape:
         **kwargs,
     ):
         """
+        Initialize the landscape instance.
+
         Parameters
         ----------
-        landscape : numpy.ndarray or str, file-like object or pathlib.Path \
-                object
-            A landscape array with pixel values corresponding to a set of land
-            use/land cover classes, or a filename or URL, a file-like object
-            opened in binary ('rb') mode, or a Path object. If not a
-            `numpy.ndarray`, `landscape` will be passed to `rasterio.open`.
+        landscape : numpy.ndarray or str, file-like object or pathlib.Path object
+            A landscape array with pixel values corresponding to a set of land use/land
+            cover classes, or a filename or URL, a file-like object opened in binary
+            ('rb') mode, or a Path object. If not a `numpy.ndarray`, `landscape` will be
+            passed to `rasterio.open`.
         res : tuple, optional
             The (x, y) resolution of the dataset. Required if `landscape` is a
             `numpy.ndarray`.
         nodata : int, optional
-            Value to be assigned to pixels with no data. If no value is
-            provided, the default value set in
-            `settings.DEFAULT_LANDSCAPE_NODATA` will be taken.
+            Value to be assigned to pixels with no data. If no value is provided, the
+            default value set in `settings.DEFAULT_LANDSCAPE_NODATA` will be taken.
         transform : affine.Affine, optional
-            Transformation from pixel coordinates to coordinate reference
-            system. If `landscape` is a path to a raster dataset, this argument
-            will be ignored and extracted from the raster's metadata instead.
+            Transformation from pixel coordinates to coordinate reference system. If
+            `landscape` is a path to a raster dataset, this argument will be ignored and
+            extracted from the raster's metadata instead.
         neighborhood_rule : {'8', '4'}, optional
             Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
-            case/Moore neighborhood) or '4' (rook's case/Von Neumann
-            neighborhood). If no value is provided, the default value set in
+            case/Moore neighborhood) or '4' (rook's case/Von Neumann neighborhood). If
+            no value is provided, the default value set in
             `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         **kwargs : optional
-            Keyword arguments to be passed to `rasterio.open`. Ignored if
-            `landscape` is an `numpy.ndarray`.
+            Keyword arguments to be passed to `rasterio.open`. Ignored if `landscape` is
+            a `numpy.ndarray`.
         """
         if isinstance(landscape, np.ndarray):
             landscape_arr = np.copy(landscape)
@@ -219,8 +218,20 @@ class Landscape:
     )
 
     # compute methods
-
     def class_label(self, class_val):
+        """
+        Generate an array with labeled patches of the class.
+
+        Parameters
+        ----------
+        class_val : int
+            Class for which the patches should be labeled.
+
+        Returns
+        -------
+        label_arr : numpy.ndarray
+            An integer raster where each patch has a unique label.
+        """
         return ndimage.label(
             self.landscape_arr == class_val,
             NEIGHBORHOOD_KERNEL_DICT[self.neighborhood_rule],
@@ -229,6 +240,19 @@ class Landscape:
     # compute methods to obtain a scalar from an array
 
     def compute_arr_perimeter(self, arr):
+        """
+        Compute the total perimeter of patches a categorical raster.
+
+        Parameters
+        ----------
+        arr : numpy.ndarray
+            The input raster.
+
+        Returns
+        -------
+        perimeter : numeric
+            The total patch perimeter.
+        """
         return (
             np.sum(arr[1:, :] != arr[:-1, :]) * self.cell_width
             + np.sum(arr[:, 1:] != arr[:, :-1]) * self.cell_height
@@ -237,11 +261,37 @@ class Landscape:
     # compute methods to obtain patchwise scalars
 
     def compute_patch_areas(self, label_arr):
+        """
+        Compute the area of each patch in a labeled patch array.
+
+        Parameters
+        ----------
+        label_arr : numpy.ndarray
+            Array with unique integer labels for each patch.
+
+        Returns
+        -------
+        patch_areas : numpy.ndarray
+            One-dimensional array with the area of each patch.
+        """
         # we could use `ndimage.find_objects`, but since we do not need to
         # preserve the feature shapes, `np.bincount` is much faster
         return np.bincount(label_arr.ravel())[1:] * self.cell_area
 
     def compute_patch_perimeters(self, label_arr):
+        """
+        Compute the perimeter of each patch in a labeled patch array.
+
+        Parameters
+        ----------
+        label_arr : numpy.ndarray
+            Array with unique integer labels for each patch.
+
+        Returns
+        -------
+        patch_perimeters : numpy.ndarray
+            One-dimensional array with the perimeter of each patch.
+        """
         # NOTE: performance comparison of `patch_perimeters` as np.array of
         # fixed size with `patch_perimeters[i] = ...` within the loop is
         # slower and less Pythonic but can lead to better performances if
@@ -272,8 +322,20 @@ class Landscape:
         return patch_perimeters
 
     def compute_patch_euclidean_nearest_neighbor(self, label_arr):
-        # label_arr, num_patches = self.class_label(class_val)
+        """
+        Compute the ENN distance of each patch in a labeled patch array.
 
+        Parameters
+        ----------
+        label_arr : numpy.ndarray
+            Array with unique integer labels for each patch.
+
+        Returns
+        -------
+        enn : numpy.ndarray
+            One-dimensional array with the ENN distance of each patch.
+        """
+        # label_arr, num_patches = self.class_label(class_val)
         if np.max(label_arr) < 2:  # num_patches < 2
             return np.array([np.nan])
         else:
@@ -357,7 +419,22 @@ class Landscape:
 
     # compute metrics from area and perimeter series
 
-    def compute_shape_index(self, area_ser, perimeter_ser):
+    def compute_shape_index(self, patch_areas, patch_perimeters):
+        """
+        Compute the area of each patch in a labeled patch array.
+
+        Parameters
+        ----------
+        patch_areas : list-like
+            One-dimensional array with the area of each patch.
+        patch_perimeters : list-like
+            One-dimensional array with the perimeter of each patch.
+
+        Returns
+        -------
+        shape_indices : numpy.ndarray
+            One-dimensional array with the shape index of each patch.
+        """
         # scalar version of this method
         # if self.cell_width != self.cell_height:
         #     # this is rare and not even supported in FRAGSTATS. We could
@@ -379,25 +456,23 @@ class Landscape:
         #         min_p = 4 * n + 2
         #     else:  # elif area_cells > n * (n + 1):
         #         min_p = 4 * n + 4
-
         #     return perimeter_cells / min_p
-
         if np.isclose(self.cell_width, self.cell_height, rtol=CELLLENGTH_RTOL):
-            area_cells_ser = area_ser / self.cell_area
+            patch_area_cells = patch_areas / self.cell_area
             # we could also divide by `self.cell_height`
-            perimeter_cells_ser = perimeter_ser / self.cell_width
-            n = np.floor(np.sqrt(area_cells_ser))
-            m = area_cells_ser - n ** 2
-            min_p = np.ones(len(area_cells_ser))
+            patch_perimeter_cells = patch_perimeters / self.cell_width
+            n = np.floor(np.sqrt(patch_area_cells))
+            m = patch_area_cells - n ** 2
+            min_p = np.ones(len(patch_area_cells))
             min_p = np.where(np.isclose(m, 0), 4 * n, min_p)
             min_p = np.where(
-                (n ** 2 < area_cells_ser) & (area_cells_ser <= n * (n + 1)),
+                (n ** 2 < patch_area_cells) & (patch_area_cells <= n * (n + 1)),
                 4 * n + 2,
                 min_p,
             )
-            min_p = np.where(area_cells_ser > n * (n + 1), 4 * n + 4, min_p)
+            min_p = np.where(patch_area_cells > n * (n + 1), 4 * n + 4, min_p)
 
-            return perimeter_cells_ser / min_p
+            return patch_perimeter_cells / min_p
         else:
             # this is rare and not even supported in FRAGSTATS. We could
             # calculate the perimeter in terms of cell counts in a
@@ -405,7 +480,7 @@ class Landscape:
             # but I believe it is not worth the effort. So we will just
             # return the base formula without adjusting for the square
             # standard
-            return 0.25 * perimeter_ser / np.sqrt(area_ser)
+            return 0.25 * patch_perimeters / np.sqrt(patch_areas)
 
     # properties
 
@@ -422,6 +497,7 @@ class Landscape:
 
     @property
     def landscape_area(self):
+        """Landscape area."""
         try:
             return self._landscape_area
         except AttributeError:
@@ -677,8 +753,8 @@ class Landscape:
     # area and edge metrics
 
     def area(self, class_val=None, hectares=True):
-        """
-        The area of each patch of the landscape.
+        r"""
+        Area of each patch of the landscape.
 
         .. math::
            AREA = a_{i,j} \\quad [hec] \\; or \\; [m]
@@ -686,20 +762,17 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed for the corresponding
-            class only, otherwise it will be computed for all the classes of
-            the landscape.
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
         hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
 
         Returns
         -------
-        AREA : pandas.Series if `class_val` is provided, pandas.DataFrame \
-                otherwise
+        AREA : pandas.Series if `class_val` is provided, pandas.DataFrame otherwise
             AREA > 0, without limit.
         """
-
         # class_ser = self._patch_class_ser
         # area_ser = self._patch_area_ser.copy()
         area_ser = self._get_patch_area_ser(class_val)
@@ -718,8 +791,8 @@ class Landscape:
             return area_ser
 
     def perimeter(self, class_val=None):
-        """
-        The perimeter of each patch of the landscape.
+        r"""
+        Perimeter of each patch of the landscape.
 
         .. math::
            PERIM = p_{i,j} \\quad [m]
@@ -727,17 +800,14 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed for the corresponding
-            class only, otherwise it will be computed for all the classes of
-            the landscape.
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
 
         Returns
         -------
-        PERIM : pandas.Series if `class_val` is provided, pandas.DataFrame \
-                otherwise
+        PERIM : pandas.Series if `class_val` is provided, pandas.DataFrame otherwise
             PERIM > 0, without limit.
         """
-
         # class_ser = self._patch_class_ser
         # perimeter_ser = self._patch_perimeter_ser
         perimeter_ser = self._get_patch_perimeter_ser(class_val)
@@ -755,11 +825,11 @@ class Landscape:
     # shape
 
     def perimeter_area_ratio(self, class_val=None, hectares=True):
-        """
-        The ratio between the perimeter and area of each patch of the
-        landscape. Measures shape complexity, however it varies with the size
-        of the patch, e.g, for the same shape, larger patches will have a
-        smaller perimeter-area ratio.
+        r"""
+        Ratio between the perimeter and area of each patch of the landscape.
+
+        Measures shape complexity, however it varies with the size of the patch, e.g,
+        for the same shape, larger patches will have a smaller perimeter-area ratio.
 
         .. math::
            PARA = \\frac{p_{i,j}}{a_{i,j}} \\quad [m/hec] \\; or \\; [m/m^2]
@@ -767,20 +837,17 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed for the corresponding
-            class only, otherwise it will be computed for all the classes of
-            the landscape.
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
         hectares : bool, default True
-            Whether the area should be converted to hectares (tends to yield
-            more legible values for the metric).
+            Whether the area should be converted to hectares (tends to yield more
+            legible values for the metric).
 
         Returns
         -------
-        PARA : pandas.Series if `class_val` is provided, pandas.DataFrame \
-                otherwise
+        PARA : pandas.Series if `class_val` is provided, pandas.DataFrame otherwise
             PARA > 0, without limit.
         """
-
         # class_ser = self._patch_class_ser
         # area_ser = self._patch_area_ser.copy()
         area_ser = self._get_patch_area_ser(class_val)
@@ -810,10 +877,11 @@ class Landscape:
             return perimeter_area_ratio_ser
 
     def shape_index(self, class_val=None):
-        """
-        A measure of shape complexity, similar to the perimeter-area ratio,
-        but correcting for its size problem by adjusting for a standard square
-        shape.
+        r"""
+        Measure of shape complexity.
+
+        Similar to the perimeter-area ratio, but correcting for its size problem by
+        adjusting for a standard square shape.
 
         .. math::
            SHAPE = \\frac{.25 \\; p_{i,j}}{\\sqrt{a_{i,j}}}
@@ -821,19 +889,15 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed for the corresponding
-            class only, otherwise it will be computed for all the classes of
-            the landscape.
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
 
         Returns
         -------
-        SHAPE : pandas.Series if `class_val` is provided, pandas.DataFrame \
-                otherwise
-            SHAPE >= 1, without limit ; SHAPE equals 1 when the patch
-            is maximally compact, and increases without limit as patch shape
-            becomes more irregular.
+        SHAPE : pandas.Series if `class_val` is provided, pandas.DataFrame otherwise
+            SHAPE >= 1, without limit ; SHAPE equals 1 when the patch is maximally
+            compact, and increases without limit as patch shape becomes more irregular.
         """
-
         area_ser = self._get_patch_area_ser(class_val)
         perimeter_ser = self._get_patch_perimeter_ser(class_val)
 
@@ -853,9 +917,8 @@ class Landscape:
             return shape_index_ser
 
     def fractal_dimension(self, class_val=None):
-        """
-        A measure of shape complexity appropriate across a wide range of patch
-        sizes.
+        r"""
+        Measure of shape complexity appropriate across a wide range of patch sizes.
 
         .. math::
            FRAC = \\frac{2 \\; ln (.25 \\; p_{i,j})}{ln (a_{i,j})}
@@ -863,19 +926,16 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed for the corresponding
-            class only, otherwise it will be computed for all the classes of
-            the landscape.
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
 
         Returns
         -------
-        FRAC : pandas.Series if `class_val` is provided, pandas.DataFrame \
-                otherwise
-            1 <= FRAC <=2 ; for a two-dimensional patch, FRAC approaches 1 for
-            very simple shapes such as squares, and approaches 2 for complex
-            plane-filling shapes.
+        FRAC : pandas.Series if `class_val` is provided, pandas.DataFrame otherwise
+            1 <= FRAC <=2 ; for a two-dimensional patch, FRAC approaches 1 for very
+            simple shapes such as squares, and approaches 2 for complex plane-filling
+            shapes.
         """
-
         area_ser = self._get_patch_area_ser(class_val)
         perimeter_ser = self._get_patch_perimeter_ser(class_val)
 
@@ -897,29 +957,30 @@ class Landscape:
 
     def continguity_index(self, class_val=None):
         """
+        Contiguity index.
+
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed for the corresponding
-            class only, otherwise it will be computed for all the classes of
-            the landscape.
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
 
         Returns
         -------
-        contig : numeric
-            0 <= contig <= 1 ; contig equals 0 for a one-pixel patch and
-            increases to a limit of 1 as patch contiguity increases.
+        CONTIG : numeric
+            0 <= CONTIG <= 1 ; contig equals 0 for a one-pixel patch and increases to a
+            limit of 1 as patch contiguity increases.
         """
-
         # TODO
         raise NotImplementedError
 
     # aggregation metrics (formerly isolation, proximity)
 
     def euclidean_nearest_neighbor(self, class_val=None):
-        """
-        Distance to the nearest neighboring patch of the same class based on
-        the shortest edge-to-edge distance.
+        r"""
+        Distance to the nearest neighboring patch of the same class.
+
+        Based on the shortest edge-to-edge Euclidean distance.
 
         .. math::
            ENN = h_{i,j} \\quad [m]
@@ -927,17 +988,15 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed for the corresponding
-            class only, otherwise it will be computed for all the classes of
-            the landscape.
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
 
         Returns
         -------
         ENN : numeric
-            ENN > 0, without limit ; ENN approaches 0 as the distance to the
-            nearest neighbors decreases.
+            ENN > 0, without limit ; ENN approaches 0 as the distance to the nearest
+            neighbors decreases.
         """
-
         euclidean_nearest_neighbor_ser = self._get_patch_euclidean_nearest_neighbor_ser(
             class_val
         )
@@ -971,24 +1030,24 @@ class Landscape:
 
     def proximity(self, search_radius, class_val=None):
         """
+        Proximity.
+
         Parameters
         ----------
         search_radius : numeric
-            Search radius defining the neighborhood at which the metric will
-            be computed for each patch.
+            Search radius defining the neighborhood at which the metric will be computed
+            for each patch.
         class_val : int, optional
-            If provided, the metric will be computed for the corresponding
-            class only, otherwise it will be computed for all the classes of
-            the landscape.
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
 
         Returns
         -------
-        prox : numeric
-            prox >= 0 ; prox equals 0 if a patch has no neighbors, and
-            increases as the neighborhood is occupied by patches of the same
-            type and those patches become more contiguous (or less fragmented).
+        PROX : numeric
+            PROX >= 0 ; prox equals 0 if a patch has no neighbors, and increases as the
+            neighborhood is occupied by patches of the same type and those patches
+            become more contiguous (or less fragmented).
         """
-
         # TODO
         raise NotImplementedError
 
@@ -998,9 +1057,10 @@ class Landscape:
     # area, density, edge
 
     def total_area(self, class_val=None, hectares=True):
-        """
-        Total area. If `class_val` is provided, the metric is computed at the
-        class level as in:
+        r"""
+        Total area.
+
+        If `class_val` is provided, the metric is computed at the class level as in:
 
         .. math::
            TA_i = \\sum_{j=1}^{n_i} a_{i,j} \\quad [hec] \\; or \\; [m] \\quad
@@ -1014,18 +1074,16 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         hectares : bool, default True
-            Whether the area should be converted to hectares (tends to yield
-            more legible values for the metric).
+            Whether the area should be converted to hectares (tends to yield more
+            legible values for the metric).
 
         Returns
         -------
         TA : numeric
         """
-
         if class_val is None:
             total_area = self.landscape_area
         else:
@@ -1038,9 +1096,10 @@ class Landscape:
         return total_area
 
     def proportion_of_landscape(self, class_val, percent=True):
-        """
-        Measures the proportional abundance of a particular class within the
-        landscape. It is computed at the class level as in:
+        r"""
+        Proportional abundance of a particular class within the landscape.
+
+        Computed at the class level as in:
 
         .. math::
            PLAND = \\frac{1}{A} \\sum_j^{n_i} a_{i,j}
@@ -1050,18 +1109,17 @@ class Landscape:
         class_val : int
             Class for which the metric should be computed.
         percent : bool, default True
-            Whether the index should be expressed as proportion or converted
-            to percentage. If True, this method returns FRAGSTATS' percentage
-            of landscape (PLAND).
+            Whether the index should be expressed as proportion or converted to
+            percentage. If True, this method returns FRAGSTATS' percentage of landscape
+            (PLAND).
 
         Returns
         -------
         PLAND : numeric
             0 < PLAND <= 100 ; PLAND approaches 0 when the occurrence of the
-            corresponding class becomes increasingly rare, and approaches 100
-            when the entire landscape consists of a single patch of such class.
+            corresponding class becomes increasingly rare, and approaches 100 when the
+            entire landscape consists of a single patch of such class.
         """
-
         numerator = np.sum(self._get_patch_area_ser(class_val))
 
         if percent:
@@ -1070,9 +1128,10 @@ class Landscape:
         return numerator / self.landscape_area
 
     def number_of_patches(self, class_val=None):
-        """
-        Number of patches. If `class_val` is provided, the metric is computed
-        at the class level as in:
+        r"""
+        Number of patches.
+
+        If `class_val` is provided, the metric is computed at the class level as in:
 
         .. math::
            NP_i = n_i \\quad (class \\; i)
@@ -1085,9 +1144,8 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
@@ -1102,11 +1160,12 @@ class Landscape:
         return num_patches
 
     def patch_density(self, class_val=None, percent=True, hectares=True):
-        """
-        Density of class patches, which is arguably more useful than the
-        number of patches since it facilitates comparison among landscapes of
-        different sizes. If `class_val` is provided, the metric is computed at
-        the class level as in:
+        r"""
+        Density of class patches.
+
+        Arguably more useful than the number of patches since it facilitates comparison
+        among landscapes of different sizes. If `class_val` is provided, the metric is
+        computed at the class level as in:
 
         .. math::
            PD_i = \\frac{n_i}{A} \\quad [1/hec] \\; or \\; [1/m^2] \\quad
@@ -1121,23 +1180,21 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         percent : bool, default True
-            Whether the index should be expressed as proportion or converted
-            to percentage.
+            Whether the index should be expressed as proportion or converted to
+            percentage.
         hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
 
         Returns
         -------
         PD : numeric
-            PD > 0, constrained by cell size ; maximum PD is attained when
-            every cell is a separate patch.
+            PD > 0, constrained by cell size ; maximum PD is attained when every cell is
+            a separate patch.
         """
-
         # TODO: DRY and use `self.number_of_patches` as in:
         # `numerator = self.number_of_patches(class_val)`
         # or avoid reusing metric's methods?
@@ -1154,10 +1211,10 @@ class Landscape:
         return numerator / self.landscape_area
 
     def largest_patch_index(self, class_val=None, percent=True):
-        """
-        The proportion of total landscape comprised by the largest patch. If
-        `class_val` is provided, the metric is computed at the class level as
-        in:
+        r"""
+        Proportion of total landscape comprised by the largest patch.
+
+        If `class_val` is provided, the metric is computed at the class level as in:
 
         .. math::
            LPI_i = \\frac{1}{A} \\max_{j=1}^{n_i} a_{i,j} \\quad (class \\; i)
@@ -1170,22 +1227,20 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         percent : bool, default True
-            Whether the index should be expressed as proportion or converted
-            to percentage.
+            Whether the index should be expressed as proportion or converted to
+            percentage.
 
         Returns
         -------
         LPI : numeric
-            0 < LPI <= 100 (or 0 < LPI <= 1 if percent argument is False) ;
-            LPI approaches 0 when the largest patch of the corresponding class
-            is increasingly small, and approaches its maximum value when such
-            largest patch comprises the totality of the landscape.
+            0 < LPI <= 100 (or 0 < LPI <= 1 if percent argument is False); LPI
+            approaches 0 when the largest patch of the corresponding class is
+            increasingly small, and approaches its maximum value when such largest patch
+            comprises the totality of the landscape.
         """
-
         area_ser = self._get_patch_area_ser(class_val)
 
         numerator = np.max(area_ser)
@@ -1196,9 +1251,10 @@ class Landscape:
         return numerator / self.landscape_area
 
     def total_edge(self, class_val=None, count_boundary=False):
-        """
-        Measure of the total edge length. If `class_val` is provided, the
-        metric is computed at the class level as in:
+        r"""
+        Total edge length.
+
+        If `class_val` is provided, the metric is computed at the class level as in:
 
         .. math::
            TE_i = \\sum_{k=1}^{m} e_{i,k} \\quad [m] \\quad (class \\; i)
@@ -1211,20 +1267,18 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         count_boundary : bool, default False
-            Whether the boundary of the landscape should be included in the
-            total edge length.
+            Whether the boundary of the landscape should be included in the total edge
+            length.
 
         Returns
         -------
         TE : numeric
-            TE >= 0 ; TE equals 0 when the entire landscape and its border
-            consist of the corresponding class.
+            TE >= 0 ; TE equals 0 when the entire landscape and its border consist of
+            the corresponding class.
         """
-
         if class_val is None:
             if count_boundary:
                 total_edge = self.compute_arr_perimeter(
@@ -1295,10 +1349,11 @@ class Landscape:
         return total_edge
 
     def edge_density(self, class_val=None, count_boundary=False, hectares=True):
-        """
-        Measure of edge length per area unit, which facilitates comparison
-        among landscapes of different sizes. If `class_val` is provided, the
-        metric is computed at the class level as in:
+        r"""
+        Edge length per area unit.
+
+        Facilitates comparison among landscapes of different sizes. If `class_val` is
+        provided, the metric is computed at the class level as in:
 
         .. math::
            ED_i = \\frac{1}{A} \\sum_{k=1}^{m} e_{i,k} \\quad [m/hec] \\; or
@@ -1313,22 +1368,20 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         count_boundary : bool, default False
             Whether the boundary of the landscape should be considered.
         hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
 
         Returns
         -------
         ED : numeric
-            ED >= 0, without limit ; ED equals 0 when the entire landscape and
-            its border consist of the corresponding patch class.
+            ED >= 0, without limit ; ED equals 0 when the entire landscape and its
+            border consist of the corresponding patch class.
         """
-
         # TODO: we make an exception here of the "not reusing other metric's
         # methods within metric's methods" policy, since `total_edge` is a bit
         # puzzling to compute
@@ -1341,518 +1394,493 @@ class Landscape:
 
     def area_mn(self, class_val=None, hectares=True):
         """
-        Mean of the patch area distribution. See also the documentation of
-        `area`.
+        Mean of the patch area distribution. See also the documentation of `area`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
 
         Returns
         -------
-        area_mn : numeric
+        AREA_MN : numeric
         """
-
         return self._metric_mn(class_val, self.area, {"hectares": hectares})
 
     def area_am(self, class_val=None, hectares=True):
         """
-        Area-weighted mean of the patch area distribution. See also the
-        documentation of `area`.
+        Area-weighted mean of the patch area distribution.
+
+        See also the documentation of `area`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
 
         Returns
         -------
-        area_am : numeric
+        AREA_AM : numeric
         """
-
         return self._metric_am(class_val, self.area, {"hectares": hectares})
 
     def area_md(self, class_val=None, hectares=True):
         """
-        Median of the patch area distribution. See also the documentation of
-        `area`.
+        Median of the patch area distribution.
+
+        See also the documentation of `area`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
 
         Returns
         -------
-        area_md : numeric
+        AREA_MD : numeric
         """
-
         return self._metric_md(class_val, self.area, {"hectares": hectares})
 
     def area_ra(self, class_val=None, hectares=True):
         """
-        Range of the patch area distribution. See also the documentation of
-        `area`.
+        Range of the patch area distribution.
+
+        See also the documentation of `area`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
 
         Returns
         -------
-        area_ra : numeric
+        AREA_RA : numeric
         """
-
         return self._metric_ra(class_val, self.area, {"hectares": hectares})
 
     def area_sd(self, class_val=None, hectares=True):
         """
-        Standard deviation of the patch area distribution. See also the
-        documentation of `area`.
+        Standard deviation of the patch area distribution.
+
+        See also the documentation of `area`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
 
         Returns
         -------
-        area_sd : numeric
+        AREA_SD : numeric
         """
-
         return self._metric_sd(class_val, self.area, {"hectares": hectares})
 
     def area_cv(self, class_val=None, percent=True):
         """
-        Coefficient of variation of the patch area distribution. See also the
-        documentation of `area`.
+        Coefficient of variation of the patch area distribution.
+
+        See also the documentation of `area`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         percent : bool, default True
-            whether the index should be expressed as proportion or converted
-            to percentage.
+            Whether the index should be expressed as proportion or converted to
+            percentage.
 
         Returns
         -------
-        area_cv : numeric
+        AREA_CV : numeric
         """
-
         return self._metric_cv(class_val, self.area, percent=percent)
 
     def perimeter_mn(self, class_val=None):
         """
-        Mean of the patch perimeter distribution. See also the documentation of
-        `perimeter`.
+        Mean of the patch perimeter distribution.
+
+        See also the documentation of `perimeter`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        perimeter_mn : numeric
+        PERIMETER_MN : numeric
         """
-
         return self._metric_mn(class_val, self.perimeter)
 
     def perimeter_am(self, class_val=None):
         """
-        Area-weighted mean of the patch perimeter distribution. See also the
-        documentation of `perimeter`.
+        Area-weighted mean of the patch perimeter distribution.
+
+        See also the documentation of `perimeter`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        perimeter_am : numeric
+        PERIMETER_AM : numeric
         """
-
         return self._metric_am(class_val, self.perimeter)
 
     def perimeter_md(self, class_val=None):
         """
-        Median of the patch perimeter distribution. See also the documentation
-        of `perimeter`.
+        Median of the patch perimeter distribution.
+
+        See also the documentation of `perimeter`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        perimeter_md : numeric
+        PERIMETER_MD : numeric
         """
-
         return self._metric_md(class_val, self.perimeter)
 
     def perimeter_ra(self, class_val=None):
         """
-        Range of the patch perimeter distribution. See also the documentation
-        of `perimeter`.
+        Range of the patch perimeter distribution.
+
+        See also the documentation of `perimeter`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        perimeter_ra : numeric
+        PERIMETER_RA : numeric
         """
-
         return self._metric_ra(class_val, self.perimeter)
 
     def perimeter_sd(self, class_val=None):
         """
-        Standard deviation of the patch perimeter distribution. See also the
-        documentation of `perimeter`.
+        Standard deviation of the patch perimeter distribution.
+
+        See also the documentation of `perimeter`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        perimeter_sd : numeric
+        PERIMETER_SD : numeric
         """
-
         return self._metric_sd(class_val, self.perimeter)
 
     def perimeter_cv(self, class_val=None, percent=True):
         """
-        Coefficient of variation of the patch perimeter distribution. See also
-        the documentation of `perimeter`.
+        Coefficient of variation of the patch perimeter distribution.
+
+        See also the documentation of `perimeter`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
-        percent : bool, default True
-            whether the index should be expressed as proportion or converted
-            to percentage.
-
-        Returns
-        -------
-        perimeter_cv : numeric
-        """
-
-        return self._metric_cv(class_val, self.perimeter, percent=percent)
-
-    # shape
-
-    def perimeter_area_ratio_mn(self, class_val=None, hectares=True):
-        """
-        Mean of the patch perimeter-area ratio distribution. See also the
-        documentation of `perimeter_area_ratio`.
-
-        Parameters
-        ----------
-        class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
-        hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
-
-        Returns
-        -------
-        para_mn : numeric
-        """
-
-        return self._metric_mn(
-            class_val, self.perimeter_area_ratio, {"hectares": hectares}
-        )
-
-    def perimeter_area_ratio_am(self, class_val=None, hectares=True):
-        """
-        Area-weighted mean of the patch perimeter-area ratio distribution. See
-        also the documentation of `perimeter_area_ratio`.
-
-        Parameters
-        ----------
-        class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
-        hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
-
-        Returns
-        -------
-        para_am : numeric
-        """
-
-        return self._metric_am(
-            class_val, self.perimeter_area_ratio, {"hectares": hectares}
-        )
-
-    def perimeter_area_ratio_md(self, class_val=None, hectares=True):
-        """
-        Median of the patch perimeter-area ratio distribution. See also the
-        documentation of `perimeter_area_ratio`.
-
-        Parameters
-        ----------
-        class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
-        hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
-
-        Returns
-        -------
-        para_md : numeric
-        """
-
-        return self._metric_md(
-            class_val, self.perimeter_area_ratio, {"hectares": hectares}
-        )
-
-    def perimeter_area_ratio_ra(self, class_val=None, hectares=True):
-        """
-        Range of the patch perimeter-area ratio distribution. See also the
-        documentation of `perimeter_area_ratio`.
-
-        Parameters
-        ----------
-        class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
-        hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
-
-        Returns
-        -------
-        para_ra : numeric
-        """
-
-        return self._metric_ra(
-            class_val, self.perimeter_area_ratio, {"hectares": hectares}
-        )
-
-    def perimeter_area_ratio_sd(self, class_val=None, hectares=True):
-        """
-        Standard deviation of the patch perimeter-area ratio distribution. See
-        also the documentation of `perimeter_area_ratio`.
-
-        Parameters
-        ----------
-        class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
-        hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
-
-        Returns
-        -------
-        para_sd : numeric
-        """
-
-        return self._metric_sd(
-            class_val, self.perimeter_area_ratio, {"hectares": hectares}
-        )
-
-    def perimeter_area_ratio_cv(self, class_val=None, percent=True):
-        """
-        Coefficient of variation of the patch perimeter-area ratio
-        distribution. See also the documentation of `perimeter_area_ratio`.
-
-        Parameters
-        ----------
-        class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         percent : bool, default True
             Whether the index should be expressed as proportion or converted
             to percentage.
 
         Returns
         -------
-        para_cv : numeric
+        PERIMETER_CV : numeric
         """
+        return self._metric_cv(class_val, self.perimeter, percent=percent)
 
+    # shape
+
+    def perimeter_area_ratio_mn(self, class_val=None, hectares=True):
+        """
+        Mean of the patch perimeter-area ratio distribution.
+
+        See also the documentation of `perimeter_area_ratio`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+
+        Returns
+        -------
+        PARA_MN : numeric
+        """
+        return self._metric_mn(
+            class_val, self.perimeter_area_ratio, {"hectares": hectares}
+        )
+
+    def perimeter_area_ratio_am(self, class_val=None, hectares=True):
+        """
+        Area-weighted mean of the patch perimeter-area ratio distribution.
+
+        See also the documentation of `perimeter_area_ratio`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+
+        Returns
+        -------
+        PARA_AM : numeric
+        """
+        return self._metric_am(
+            class_val, self.perimeter_area_ratio, {"hectares": hectares}
+        )
+
+    def perimeter_area_ratio_md(self, class_val=None, hectares=True):
+        """
+        Median of the patch perimeter-area ratio distribution.
+
+        See also the documentation of `perimeter_area_ratio`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+
+        Returns
+        -------
+        PARA_MD : numeric
+        """
+        return self._metric_md(
+            class_val, self.perimeter_area_ratio, {"hectares": hectares}
+        )
+
+    def perimeter_area_ratio_ra(self, class_val=None, hectares=True):
+        """
+        Range of the patch perimeter-area ratio distribution.
+
+        See also the documentation of `perimeter_area_ratio`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+
+        Returns
+        -------
+        PARA_RA : numeric
+        """
+        return self._metric_ra(
+            class_val, self.perimeter_area_ratio, {"hectares": hectares}
+        )
+
+    def perimeter_area_ratio_sd(self, class_val=None, hectares=True):
+        """
+        Standard deviation of the patch perimeter-area ratio distribution.
+
+        See also the documentation of `perimeter_area_ratio`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+
+        Returns
+        -------
+        PARA_SD : numeric
+        """
+        return self._metric_sd(
+            class_val, self.perimeter_area_ratio, {"hectares": hectares}
+        )
+
+    def perimeter_area_ratio_cv(self, class_val=None, percent=True):
+        """
+        Coefficient of variation of the patch perimeter-area ratio distribution.
+
+        See also the documentation of `perimeter_area_ratio`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
+        percent : bool, default True
+            Whether the index should be expressed as proportion or converted to
+            percentage.
+
+        Returns
+        -------
+        PARA_CV : numeric
+        """
         return self._metric_cv(class_val, self.perimeter_area_ratio, percent=percent)
 
     def shape_index_mn(self, class_val=None):
         """
-        Mean of the shape index distribution. See also the documentation of
-        `shape_index`.
+        Mean of the shape index distribution.
+
+        See also the documentation of `shape_index`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        shape_mn : numeric
+        SHAPE_MN : numeric
         """
-
         return self._metric_mn(class_val, self.shape_index)
 
     def shape_index_am(self, class_val=None):
         """
-        Area-weighted mean of the shape index distribution. See also the
-        documentation of `shape_index`.
+        Area-weighted mean of the shape index distribution.
+
+        See also the documentation of `shape_index`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        shape_am : numeric
+        SHAPE_AM : numeric
         """
-
         return self._metric_am(class_val, self.shape_index)
 
     def shape_index_md(self, class_val=None):
         """
-        Median of the shape index distribution. See also the documentation of
-        `shape_index`.
+        Median of the shape index distribution.
+
+        See also the documentation of `shape_index`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        shape_md : numeric
+        SHAPE_MD : numeric
         """
-
         return self._metric_md(class_val, self.shape_index)
 
     def shape_index_ra(self, class_val=None):
         """
-        Range of the shape index distribution. See also the documentation of
-        `shape_index`.
+        Range of the shape index distribution.
+
+        See also the documentation of `shape_index`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        shape_ra : numeric
+        SHAPE_RA : numeric
         """
-
         return self._metric_ra(class_val, self.shape_index)
 
     def shape_index_sd(self, class_val=None):
         """
-        Standard deviation of the shape index distribution. See also the
-        documentation of `shape_index`.
+        Standard deviation of the shape index distribution.
+
+        See also the documentation of `shape_index`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        shape_sd : numeric
+        SHAPE_SD : numeric
         """
-
         return self._metric_sd(class_val, self.shape_index)
 
     def shape_index_cv(self, class_val=None, percent=True):
         """
-        Coefficient of variation of the shape index distribution. See also the
-        documentation of `shape_index`.
+        Coefficient of variation of the shape index distribution.
+
+        See also the documentation of `shape_index`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         percent : bool, default True
-           Whether the index should be expressed as proportion or converted
+            Whether the index should be expressed as proportion or converted
             to percentage.
 
         Returns
         -------
-        shape_cv : numeric
+        SHAPE_CV : numeric
         """
-
         return self._metric_cv(class_val, self.shape_index, percent=percent)
 
     def fractal_dimension_mn(self, class_val=None):
         """
-        Mean of the fractal dimension distribution. See also the documentation
-        of `fractal_dimension`.
+        Mean of the fractal dimension distribution.
+
+        See also the documentation of `fractal_dimension`.
 
         Parameters
         ----------
@@ -1863,220 +1891,214 @@ class Landscape:
 
         Returns
         -------
-        frac_mn : numeric
+        FRAC_MN : numeric
         """
-
         return self._metric_mn(class_val, self.fractal_dimension)
 
     def fractal_dimension_am(self, class_val=None):
         """
-        Area-weighted mean of the fractal dimension distribution. See also the
-        documentation of `fractal_dimension`.
+        Area-weighted mean of the fractal dimension distribution.
+
+        See also the documentation of `fractal_dimension`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        frac_am : numeric
+        FRAC_AM : numeric
         """
-
         return self._metric_am(class_val, self.fractal_dimension)
 
     def fractal_dimension_md(self, class_val=None):
         """
-        Median of the fractal dimension distribution. See also the
-        documentation of `fractal_dimension`.
+        Median of the fractal dimension distribution.
+
+        See also the documentation of `fractal_dimension`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        frac_md : numeric
+        FRAC_MD : numeric
         """
-
         return self._metric_md(class_val, self.fractal_dimension)
 
     def fractal_dimension_ra(self, class_val=None):
         """
-        Range of the fractal dimension distribution. See also the
-        documentation of `fractal_dimension`.
+        Range of the fractal dimension distribution.
+
+        See also the documentation of `fractal_dimension`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        frac_ra : numeric
+        FRAC_RA : numeric
         """
-
         return self._metric_ra(class_val, self.fractal_dimension)
 
     def fractal_dimension_sd(self, class_val=None):
         """
-        Standard deviation of the fractal dimension distribution. See also the
-        documentation of `fractal_dimension`.
+        Standard deviation of the fractal dimension distribution.
+
+        See also the documentation of `fractal_dimension`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        frac_sd : numeric
+        FRAC_SD : numeric
         """
-
         return self._metric_sd(class_val, self.fractal_dimension)
 
     def fractal_dimension_cv(self, class_val=None, percent=True):
         """
-        Coefficient of variation of the fractal dimension distribution. See
-        also the documentation of `fractal_dimension`.
+        Coefficient of variation of the fractal dimension distribution.
+
+        See also the documentation of `fractal_dimension`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         percent : bool, default True
-            Whether the index should be expressed as proportion or converted
-            to percentage.
+            Whether the index should be expressed as proportion or converted to
+            percentage.
 
         Returns
         -------
-        frac_cv : numeric
+        FRAC_CV : numeric
         """
-
         return self._metric_cv(class_val, self.fractal_dimension, percent=percent)
 
     def continguity_index_mn(self, class_val=None):
         """
+        Mean of the contiguity index distribution.
+
         See also the documentation of `Landscape.contiguity_index`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        contig_mn : numeric
+        CONTIG_MN : numeric
         """
-
         # TODO
         raise NotImplementedError
 
     def continguity_index_am(self, class_val=None):
         """
+        Area-weighted mean of the contiguity index distribution.
+
         See also the documentation of `Landscape.contiguity_index`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        contig_am : numeric
+        CONTIG_AM : numeric
         """
-
         # TODO
         raise NotImplementedError
 
     def continguity_index_md(self, class_val=None):
         """
+        Median of the contiguity index distribution.
+
         See also the documentation of `Landscape.contiguity_index`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        contig_md : numeric
+        CONTIG_MD : numeric
         """
-
         # TODO
         raise NotImplementedError
 
     def continguity_index_ra(self, class_val=None):
         """
+        Range of the contiguity index distribution.
+
         See also the documentation of `Landscape.contiguity_index`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        contig_ra : numeric
+        CONTIG_RA : numeric
         """
-
         # TODO
         raise NotImplementedError
 
     def continguity_index_sd(self, class_val=None):
         """
+        Standard deviation of the contiguity index distribution.
+
         See also the documentation of `Landscape.contiguity_index`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        contig_sd : numeric
+        CONTIG_SD : numeric
         """
-
         # TODO
         raise NotImplementedError
 
     def continguity_index_cv(self, class_val=None):
         """
+        Coefficient of variation of the contiguity index distribution.
+
         See also the documentation of `Landscape.contiguity_index`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        contig_cv : numeric
+        CONTIG_CV : numeric
         """
-
         # TODO
         raise NotImplementedError
 
@@ -2084,226 +2106,227 @@ class Landscape:
 
     def proximity_mn(self, class_val=None):
         """
+        Mean of the proximity index distribution.
+
         See also the documentation of `Landscape.proximity`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        prox_mn : numeric
+        PROX_MN : numeric
         """
-
         # TODO
         raise NotImplementedError
 
     def proximity_am(self, class_val=None):
         """
+        Area-weighted mean of the proximity index distribution.
+
         See also the documentation of `Landscape.proximity`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        prox_am : numeric
+        PROX_AM : numeric
         """
-
         # TODO
         raise NotImplementedError
 
     def proximity_md(self, class_val=None):
         """
+        Median of the proximity index distribution.
+
         See also the documentation of `Landscape.proximity`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        prox_md : numeric
+        PROX_MD : numeric
         """
-
         # TODO
         raise NotImplementedError
 
     def proximity_ra(self, class_val=None):
         """
+        Range of the proximity index distribution.
+
         See also the documentation of `Landscape.proximity`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        prox_ra : numeric
+        PROX_RA : numeric
         """
-
         # TODO
         raise NotImplementedError
 
     def proximity_sd(self, class_val=None):
         """
+        Standard deviation of the contiguity index distribution.
+
         See also the documentation of `Landscape.proximity`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        prox_sd : numeric
+        PROX_SD : numeric
         """
-
         # TODO
         raise NotImplementedError
 
     def proximity_cv(self, class_val=None):
         """
+        Coefficient of variation of the proximity index distribution.
+
         See also the documentation of `Landscape.proximity`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        prox_cv :
+        PROX_CV : numeric
         """
-
         # TODO
         raise NotImplementedError
 
     def euclidean_nearest_neighbor_mn(self, class_val=None):
         """
+        Mean of the Euclidean nearest neigbhor distribution.
+
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        enn_mn : numeric
+        ENN_MN : numeric
         """
         return self._metric_mn(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_am(self, class_val=None):
         """
+        Area-weighted mean of the Euclidean nearest neighbor distribution.
+
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        enn_am : numeric
+        ENN_AM : numeric
         """
-
         return self._metric_am(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_md(self, class_val=None):
         """
+        Median of the Euclidean nearest neighbor distribution.
+
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        enn_md : numeric
+        ENN_MD : numeric
         """
-
         return self._metric_md(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_ra(self, class_val=None):
         """
+        Range of the Euclidean nearest neighbor distribution.
+
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        enn_ra : numeric
+        ENN_RA : numeric
         """
-
         return self._metric_ra(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_sd(self, class_val=None):
         """
+        Standard deviation of the Euclidean nearest neighbor distribution.
+
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
-        enn_sd : numeric
+        ENN_SD : numeric
         """
-
         return self._metric_sd(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_cv(self, class_val=None, percent=True):
         """
+        Coefficient of variation of the Euclidean nearest neighbor distribution.
+
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         percent : bool, default True
-            Whether the index should be expressed as proportion or converted
-            to percentage.
+            Whether the index should be expressed as proportion or converted to
+            percentage.
 
         Returns
         -------
-        enn_cv : numeric
+        ENN_CV : numeric
         """
-
         return self._metric_cv(
             class_val, self.euclidean_nearest_neighbor, percent=percent
         )
@@ -2311,10 +2334,12 @@ class Landscape:
     # aggregation
 
     def landscape_shape_index(self, class_val=None):
-        """
-        Measure of class aggregation that provides a standardized measure of
-        edginess that adjusts for the size of the landscape. If `class_val` is
-        provided, the metric is computed at the class level as in:
+        r"""
+        Measure of class aggregation.
+
+        Provides a standardized measure of edginess that adjusts for the size of the
+        landscape. If `class_val` is provided, the metric is computed at the class level
+        as in:
 
         .. math::
            LSI_i = \\frac{.25 \\sum \\limits_{k=1}^{m} e_{i,k}}{\\sqrt{A}}
@@ -2329,18 +2354,16 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
 
         Returns
         -------
         LSI : numeric
-            LSI >=1 ; LSI equals 1 when the entire landscape consists of a
-            single patch of the corresponding class, and increases without
-            limit as the patches of such class become more disaggregated.
+            LSI >=1 ; LSI equals 1 when the entire landscape consists of a single patch
+            of the corresponding class, and increases without limit as the patches of
+            such class become more disaggregated.
         """
-
         # compute the total area
         if class_val is None:
             area = self.landscape_area
@@ -2362,38 +2385,36 @@ class Landscape:
 
     def interspersion_juxtaposition_index(self, class_val=None, percent=True):
         """
+        Interspersion and juxtaposition index.
 
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         percent : bool, default True
-            Whether the index should be expressed as proportion or converted
-            to percentage.
-
+            Whether the index should be expressed as proportion or converted to
+            percentage.
 
         Returns
         -------
-        iji : numeric
-            0 < iji <= 100 ; iji approaches 0 when the corresponding class is
-            adjacent to only 1 other class and the number of classes increases,
-            iji approaches its maximum when the corersponding class is equally
-            adjacent to all other classes. Analogously, at the landscape level,
-            iji approaches 0 when the distribution of adjacencies among classes
-            becomes increasingly uneven, and approaches its maximum when all
-            classes are equally adjacent to all other classes.
+        IJI : numeric
+            0 < IJI <= 100 ; IJI approaches 0 when the corresponding class is adjacent
+            to only 1 other class and the number of classes increases, IJI approaches
+            its maximum when the corersponding class is equally adjacent to all other
+            classes. Analogously, at the landscape level, IJI approaches 0 when the
+            distribution of adjacencies among classes becomes increasingly uneven, and
+            approaches its maximum when all classes are equally adjacent to all other
+            classes.
         """
-
         # TODO
         raise NotImplementedError
 
     def effective_mesh_size(self, class_val=None, hectares=True):
-        """
+        r"""
         Measure of aggregation based on the cumulative patch size distribution.
-        If `class_val` is provided, the metric is computed at the class level
-        as in:
+
+        If `class_val` is provided, the metric is computed at the class level as in:
 
         .. math::
            MESH_i = \\frac{1}{A} \\sum_{j=1}^{n_i} a_{i,j}^2 \\quad [m] \\quad
@@ -2408,19 +2429,18 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the metric will be computed at the level of the
-            corresponding class, otherwise it will be computed at the
-            landscape level.
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
         hectares : bool, default True
-            Whether the landscape area should be converted to hectares (tends
-            to yield more legible values for the metric).
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
 
         Returns
         -------
-        mesh : numeric
-            cell_area / A <= MESH <= A ; MESH approaches its minimum when
-            there is a single corresponding patch of one pixel, and approaches
-            its maximum when the landscape consists of a single patch.
+        MESH : numeric
+            cell_area / A <= MESH <= A ; MESH approaches its minimum when there is a
+            single corresponding patch of one pixel, and approaches its maximum when the
+            landscape consists of a single patch.
         """
         mesh = np.sum(self._get_patch_area_ser(class_val) ** 2) / self.landscape_area
 
@@ -2435,10 +2455,11 @@ class Landscape:
     # contagion, interspersion
 
     def contagion(self, percent=True):
-        """
-        Measure of aggregation that measures the probability that two random
-        adjacent cells belong to the same class. It is computed at the
-        landscape level as in:
+        r"""
+        Measure of aggregation.
+
+        Measures the probability that two adjacent cells belong to the same class. It
+        is computed at the landscape level as in:
 
         .. math::
            CONTAG = 1 + \\frac{
@@ -2451,19 +2472,17 @@ class Landscape:
         Parameters
         ----------
         percent : bool, default True
-            Whether the index should be expressed as proportion or converted
-            to percentage.
+            Whether the index should be expressed as proportion or converted to
+            percentage.
 
         Returns
         -------
         CONTAG : numeric
-            0 < CONTAG <= 100 ; CONTAG approaches 0 when the classes are
-            maximally disaggregated (i.e., every cell is a patch of a
-            different class) and interspersed (i.e., equal proportions of all
-            pairwise adjacencies), and approaches its maximum when the
-            landscape consists of a single patch.
+            0 < CONTAG <= 100 ; CONTAG approaches 0 when the classes are maximally
+            disaggregated (i.e., every cell is a patch of a different class) and
+            interspersed (i.e., equal proportions of all pairwise adjacencies), and
+            approaches its maximum when the landscape consists of a single patch.
         """
-
         if len(self.classes) < 2:
             warnings.warn(
                 "Contagion can only be computed in landscapes with more than "
@@ -2499,10 +2518,11 @@ class Landscape:
     # diversity
 
     def shannon_diversity_index(self):
-        """
-        Measure of diversity that reflects the number of classes present in
-        the landscape as well as the relative abundance of each class. It is
-        computed at the landscape level as in:
+        r"""
+        Measure of diversity.
+
+        Reflects the number of classes present in the landscape as well as the relative
+        abundance of each class. It is computed at the landscape level as in:
 
         .. math::
            SHDI = - \\sum \\limits_{i=1}^{m} \\Big( P_i \\; ln P_i \\Big)
@@ -2510,12 +2530,10 @@ class Landscape:
         Returns
         -------
         SHDI : numeric
-            SHDI >= 0 ; SHDI approaches 0 when the entire landscape consists
-            of a single patch, and increases as the number of classes
-            increases and/or the proportional distribution of area among
-            classes becomes more equitable.
+            SHDI >= 0 ; SHDI approaches 0 when the entire landscape consists of a single
+            patch, and increases as the number of classes increases and/or the
+            proportional distribution of area among classes becomes more equitable.
         """
-
         if len(self.classes) < 2:
             warnings.warn(
                 "Shannon's Diversity Index can only be computed in landscapes "
@@ -2536,28 +2554,27 @@ class Landscape:
 
     def compute_patch_metrics_df(self, metrics=None, metrics_kws=None):
         """
-        Computes the patch-level metrics.
+        Compute patch-level metrics.
 
         Parameters
         ----------
         metrics : list-like, optional
-            A list-like of strings with the names of the metrics that should
-            be computed. If None, all the implemented patch-level metrics will
-            be computed.
+            A list-like of strings with the names of the metrics that should be
+            computed. If `None`, all the implemented patch-level metrics will be
+            computed.
         metrics_kws : dict, default None
-            Dictionary mapping the keyword arguments (values) that should be
-            passed to each metric method (key), e.g., to compute `area` in
-            meters instead of hectares, metric_kws should map the string 'area'
-            (method name) to {'hectares': False}. If `None`, each metric will
-            be computed according to FRAGSTATS defaults.
+            Dictionary mapping the keyword arguments (values) that should be passed to
+            each metric method (key), e.g., to compute `area` in meters instead of
+            hectares, metric_kws should map the string 'area' (method name) to
+            {'hectares': False}. If `None`, each metric will be computed according to
+            FRAGSTATS defaults.
 
         Returns
         -------
         df : pandas.DataFrame
-            Dataframe with the values computed for each patch (index) and
-            metric (columns).
+            Dataframe with the values computed for each patch (index) and metric
+            (columns).
         """
-
         if metrics is None:
             metrics = Landscape.PATCH_METRICS
 
@@ -2598,32 +2615,30 @@ class Landscape:
 
     def compute_class_metrics_df(self, metrics=None, classes=None, metrics_kws=None):
         """
-        Computes the class-level metrics.
+        Compute class-level metrics.
 
         Parameters
         ----------
         metrics : list-like, optional
-            A list-like of strings with the names of the metrics that should
-            be computed. If None, all the implemented class-level metrics will
-            be computed.
+            A list-like of strings with the names of the metrics that should be
+            computed. If `None`, all the implemented class-level metrics will be
+            computed.
         classes : list-like, optional
             A list-like of ints or strings with the class values that should be
             considered in the context of this analysis case.
         metrics_kws : dict, optional
-            Dictionary mapping the keyword arguments (values) that should be
-            passed to each metric method (key), e.g., to exclude the boundary
-            from the computation of `total_edge`, metric_kws should map the
-            string 'total_edge' (method name) to {'count_boundary': False}.
-            If `None`, each metric will be computed according to FRAGSTATS
-            defaults.
+            Dictionary mapping the keyword arguments (values) that should be passed to
+            each metric method (key), e.g., to exclude the boundary from the computation
+            of `total_edge`, metric_kws should map the string 'total_edge' (method name)
+            to {'count_boundary': False}. If `None`, each metric will be computed
+            according to FRAGSTATS defaults.
 
         Returns
         -------
         df : pandas.DataFrame
-            Dataframe with the values computed for each class (index) and
-            metric (columns).
+            Dataframe with the values computed for each class (index) and metric
+            (columns).
         """
-
         if metrics is None:
             metrics = Landscape.CLASS_METRICS
         else:
@@ -2686,29 +2701,27 @@ class Landscape:
 
     def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
         """
-        Computes the landscape-level metrics.
+        Compute landscape-level metrics.
 
         Parameters
         ----------
         metrics : list-like, optional
-            A list-like of strings with the names of the metrics that should
-            be computed. If None, all the implemented landscape-level metrics
-            will be computed.
+            A list-like of strings with the names of the metrics that should be
+            computed. If `None`, all the implemented landscape-level metrics will be
+            computed.
         metrics_kws : dict, optional
-            Dictionary mapping the keyword arguments (values) that should be
-            passed to each metric method (key), e.g., to exclude the boundary
-            from the computation of `total_edge`, metric_kws should map the
-            string 'total_edge' (method name) to {'count_boundary': False}.
-            If `None`, each metric will be computed according to FRAGSTATS
-            defaults.
+            Dictionary mapping the keyword arguments (values) that should be passed to
+            each metric method (key), e.g., to exclude the boundary from the computation
+            of `total_edge`, metric_kws should map the string 'total_edge' (method name)
+            to {'count_boundary': False}. If `None`, each metric will be computed
+            according to FRAGSTATS defaults.
 
         Returns
         -------
         df : pandas.DataFrame
-            Dataframe with the values computed at the landscape level (one row
-            only) for each metric (columns).
+            Dataframe with the values computed at the landscape level (one row only) for
+            each metric (columns).
         """
-
         if metrics is None:
             metrics = Landscape.LANDSCAPE_METRICS
 
@@ -2750,17 +2763,18 @@ class Landscape:
         **show_kws,
     ):
         """
-        Plots the landscape with a categorical legend by means of
-        `rasterio.plot.show`.
+        Plot the landscape with a categorical legend.
+
+        Uses `rasterio.plot.show`.
 
         Parameters
-        -------
+        ----------
         cmap : str or `~matplotlib.colors.Colormap`, optional
             A Colormap instance.
         ax : axis object, optional
-            Plot in given axis; if None creates a new figure.
+            Plot in given axis; if `None` creates a new figure.
         legend : bool, optional
-            If ``True``, display the legend.
+            If `True`, display the legend.
         figsize : tuple of two numeric types, optional
             Size of the figure to create. Ignored if axis `ax` is provided.
         legend_kws : optional
@@ -2773,7 +2787,6 @@ class Landscape:
         ax : matplotlib.axes.Axes
             Returns the `Axes` object with the plot drawn onto it.
         """
-
         if cmap is None:
             cmap = plt.rcParams["image.cmap"]
 
