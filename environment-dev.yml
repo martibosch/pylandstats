@@ -19,9 +19,9 @@ dependencies:
   - coveralls
   - isort
   - flake8
-  - flake8-docstrings  
+  - flake8-docstrings
   - m2r2
+  - pre-commit
   - pydocstyle
   - pytest
-  - pre-commit
   - sphinx
