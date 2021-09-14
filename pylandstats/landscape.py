@@ -85,12 +85,6 @@ def compute_adjacency_arr(padded_arr: "uint32[:,:]", num_classes: "int"):
         (2, num_cols_adjacency, num_cols_adjacency)
     )
 
-def compute_total_adjacency_df(landscape):
-    # first `sum` to sum vertical and horizontal adjacencies (first-level index),
-    # then ` loc` to overlook the nodata row/column
-    return landscape._adjacency_df.sum(
-        level=[1]).loc[landscape.classes, landscape.classes]
-
 
 def compute_entropy(counts, base=None):
     """
@@ -118,7 +112,7 @@ def compute_entropy(counts, base=None):
     -------
     entropy: numeric
     """
-    pcounts = counts / counts.sum()
+    pcounts = (counts / counts.sum())[counts > 0]
     entropy = -np.sum(pcounts * np.log(pcounts))
     if base:
         entropy /= np.log(base)
@@ -241,6 +235,15 @@ class Landscape:
         "effective_mesh_size",
     ] + DISTR_METRICS
 
+    ENTROPY_METRICS = [
+        "entropy",
+        "shannon_diversity_index",
+        "joint_entropy",
+        "conditional_entropy",
+        "mutual_information",
+        "relative_mutual_information",
+        "contagion",
+    ]
     LANDSCAPE_METRICS = (
         [
             "total_area",
@@ -252,8 +255,8 @@ class Landscape:
             "landscape_shape_index",
             "effective_mesh_size",
         ]
+        + ENTROPY_METRICS
         + DISTR_METRICS
-        + ["contagion", "shannon_diversity_index"]
     )
 
     # compute methods
@@ -666,6 +669,19 @@ class Landscape:
             self._cached_adjacency_df = adjacency_df
 
             return self._cached_adjacency_df
+
+    def compute_total_adjacency_df(self):
+        """
+        Compute the total adjacency (vertical and horizontal) data frame.
+
+        Returns
+        -------
+        adjacency_df: pandas.DataFrame
+            Adjacency data frame with total adjacencies (vertical and horizontal).
+        """
+        # first `sum` to sum vertical and horizontal adjacencies (first-level index),
+        # then `loc` to overlook the nodata row/column
+        return self._adjacency_df.sum(level=[1]).loc[self.classes, self.classes]
 
     # small utilities to get patch areas/perimeters for a particular class only
 
@@ -1141,7 +1157,7 @@ class Landscape:
         Computed at the class level as in:
 
         .. math::
-           PLAND = \\frac{1}{A} \\sum_j^{n_i} a_{i,j}
+           PLAND_i = P_i = \\frac{1}{A} \\sum_j^{n_i} a_{i,j} \\quad (class \\; i)
 
         Parameters
         ----------
@@ -2494,132 +2510,181 @@ class Landscape:
     # landscape complexity (information theory)
     # see https://doi.org/10.1007/s10980-019-00830-x
 
-    def entropy_marginal(self, base=2):
-        """
-        Compute the marginal entropy of the landscape classes
+    # diversity (categorical)
+
+    def entropy(self, base=2):
+        r"""
+        Measure of diversity of landscape classes.
+
+        Reflects the number of classes present in the landscape as well as the relative
+        abundance of each class. It is computed at the landscape level as in:
+
+        .. math::
+           ENT = - \\sum \\limits_{i=1}^{m} \\Big( P_i \\; log_b P_i \\Big)
+
+        where `b` is the base logarithm.
 
         Parameters
-        -----------
-        base: int
-            The base of the logarithm (default 2)
+        ----------
+        base : numeric, default 2
+            The base of the logarithm.
 
         Returns
-        ---------
-        H: float
-            The marginal entropy as a measure of compositional complexity.
-            With a base of 2, this is identical to the definition of
-            Shannon's diversity
-
-        See Also
-        ---------
-        :meth:`complexity_metrics`
-        :meth:`shannon_diversity_index`
-
+        -------
+        ENT : numeric
+            0 <= ENT <= log_b(m) ; ENT approaches 0 when the entire landscape consists
+            of a single patch, and approaches its maximum value, i.e., log_b(m), as the
+            distribution of area among classes becomes more equitable.
         """
-        # TODO: alias shannon_diversity_index to this method? API change
-        adjacency_df = compute_total_adjacency_df(self)
-        counts = adjacency_df.sum()
+        if len(self.classes) < 2:
+            warnings.warn(
+                "Entropy-based metrics can only be computed in landscapes with more "
+                "than two classes of patches. Returning nan",
+                RuntimeWarning,
+            )
+            return np.nan
+
         # sum along column to get counts of each class
+        counts = self.compute_total_adjacency_df().sum()
+
         return compute_entropy(counts, base=base)
 
+    def shannon_diversity_index(self):
+        r"""
+        Measure of diversity.
 
-    def entropy_joint(self, base=2):
-        """
-        Compute the joint entropy of the landscape classes
+        Reflects the number of classes present in the landscape as well as the relative
+        abundance of each class. It is computed at the landscape level as in:
 
-        Parameters
-        -----------
-        base: int
-            The base of the logarithm (default 2)
+        .. math::
+           SHDI = - \\sum \\limits_{i=1}^{m} \\Big( P_i \\; ln P_i \\Big)
+
+        It corresponds to the entropy with a natural logarithm (base `e`).
 
         Returns
-        ---------
-        H: float
-            The joint entropy of the class adjacencies
-
-        See Also
-        ---------
-        :meth:`complexity_metrics`
-
+        -------
+        SHDI : numeric
+            0 <= SHDI < ln(m) ; SHDI approaches 0 when the entire landscape consists of
+            a single patch, and approaches its maximum value, i.e., ln(m), as the
+            distribution of area among classes becomes more equitable.
         """
-        adjacency_df = compute_total_adjacency_df(self)
-        adjacencies = adjacency_df.values.flatten()
+        # TODO: Should it return the original definition of log2?
+        # TODO: Update docstring to reflect choice
+        return self.entropy(base=np.e)
+
+    # contagion, interspersion (spatial complexity)
+
+    def joint_entropy(self, base=2):
+        r"""
+        Measure of spatial and categorical complexity of the landscape.
+
+        Measures the probability that two adjacent cells belong to the same class. It is
+        computed at the landscape level as in:
+
+        .. math::
+           JOINENT = - \\sum \\limits_{i=1}^{m} \\sum \\limits_{k=1}^{m} \\Bigg[
+             P_i \\frac{g_{i,k}}{\\sum \\limits_{k=1}^{m} g_{i,k}} \\Bigg] \\Bigg[
+             log_b \\Bigg( P_i \\frac{g_{i,k}}{\\sum \\limits_{k=1}^{m} g_{i,k}} \\Bigg)
+             \\Bigg]
+
+        where `b` is the base logarithm.
+
+        Parameters
+        ----------
+        base : numeric, default 2
+            The base of the logarithm.
+
+        Returns
+        -------
+        JOINENT : numeric
+            0 < JOINENT <= 2 log_b(m) ; JOINENT approaches 0 when the landscape consists
+            of a single patch, and approaches its maximum value when the classes are
+            maximally disaggregated (i.e., every cell is a patch of a different class)
+            and interspersed (i.e., equal proportions of all pairwise adjacencies).
+        """
+        if len(self.classes) < 2:
+            warnings.warn(
+                "Entropy-based metrics can only be computed in landscapes with more "
+                "than two classes of patches. Returning nan",
+                RuntimeWarning,
+            )
+            return np.nan
+
         # this would be the "adjacency vector"
+        adjacencies = self.compute_total_adjacency_df().values.flatten()
 
         return compute_entropy(adjacencies, base=base)
 
+    def conditional_entropy(self, base=2):
+        r"""
+        Measure of spatial complexity of the landscape.
 
-    def complexity_metrics(self, base=2):
-        """
-        Metrics for the compositional and configurational complexity of a
-        landscape, based on an information-theory framework.
-
-        The compositional complexity is measured through the marginal entropy
-        of the classes in the landscape. The configurational complexity is
-        measured through the relative mutual information, by considering the
-        conditional entropy of class adjacencies in the landscape.
-
-        These complexity metrics are  considered, in the original source, to be
-        a consistent measure across landscapes. Thus, The two complexity
-        metrics can be used to order several landscapes as measured by the
-        two complexity terms.
-
-        Briefly, the mathematical description to calculate the compositional
-        complexity `H(y)` and configurational complexity `U` is:
+        Reflects only the spatial intricacy of the landscape pattern. It is computed at
+        the landscape level as in:
 
         .. math::
+           CONDENT = - \\sum \\limits_{i=1}^{m} \\sum \\limits_{k=1}^{m} \\Bigg[
+             P_i \\frac{g_{i,k}}{\\sum \\limits_{k=1}^{m} g_{i,k}} \\Bigg] \\Bigg[
+             log_b \\Bigg( \\frac{g_{i,k}}{\\sum \\limits_{k=1}^{m} g_{i,k}} \\Bigg)
+             \\Bigg]
 
-           H(y) = - \\sum \\limits_{i=1}^{m} \\Big( P(x=c_i) \\; log_2(P(x=c_i)
-           \\Big)
-
-           H(y|x) = - \\sum \\limits_{i=1}^{m} \\sum \\limits_{j=1}^{m}
-           \\Big( P(x=c_i, y=c_j) \\; log_2(P(x=c_i, y=c_j)
-
-           U = 1 - \\frac{H(y|x)} {H(y)}
-
-        The entropy calculations must be consistent in terms of the base of
-        the logarithm used. The default is 2, as in the original source.
+        where `b` is the base logarithm.
 
         Parameters
-        -----------
-        base: int
-            The base of the logarithm (default 2)
+        ----------
+        base : numeric, default 2
+            The base of the logarithm.
 
         Returns
-        ---------
-        H: float
-            The marginal entropy as a measure of compositional complexity.
-            With a base of 2, this is identical to the definition of
-            Shannon's diversity
-        U: float
-            The relative mutual information as a measure of configurational
-            complexity
-
-        Notes
-        ------
-        The information theoretic framework for landsape complexity is
-        described in the reference:
-
-        `Information theory as a consistent framework for quantification and
-        classification of landscape patterns`
-        <https://doi.org/10.1007/s10980-019-00830-x>`_
-
-        See Also
-        ---------
-        :meth:`entropy_marginal`
-        :meth:`entropy_joint`
-
+        -------
+        CONDENT : numeric
+            0 <= CONDENT <= log_b(m)
         """
-        # TODO: DRY for computing total adjacency?
+        return self.joint_entropy(base=base) - self.entropy(base=base)
 
-        H = self.entropy_marginal(base=base)
-        J = self.entropy_joint(base=base)
-        entropy_conditional = J - H
-        mutual_info = H - entropy_conditional
-        U = mutual_info / H
-        return H, U
+    def mutual_information(self, base=2):
+        """
+        Measure of aggregation.
 
-    # contagion, interspersion
+        Reflects the difference between diversity of categories and diversity of
+        adjacencies, and thus helps distinguishing landscape patterns with the same
+        overall complexity. It is computed at the landscape level as in:
+
+        .. math::
+           MUTINF = ENT - CONDENT
+
+        Parameters
+        ----------
+        base : numeric, default 2
+            The base of the logarithm.
+
+        Returns
+        -------
+        MUTINF : numeric
+            0 <= MUTINF <= log_b(m)
+        """
+        return self.entropy(base=base) - self.conditional_entropy(base=base)
+
+    def relative_mutual_information(self):
+        """
+        Measure of aggregation.
+
+        Provides a standardized measure of mutual information that adjusts for the
+        number of classes. It is computed at the landscape level as in:
+
+        .. math::
+           RELMUTINF = MUTINF / ENT
+
+        Returns
+        -------
+        RELMUTINF : numeric
+            0 <= RELMUTINF <= 1
+        """
+        # The result of this metric should be the same regardless of the base, as long
+        # as the base is the same for the calls of both mutual information and entropy,
+        # so we add an inner variable here to ensure that
+        _base = 2
+        return self.mutual_information(base=_base) / self.entropy(base=_base)
 
     def contagion(self, percent=True):
         r"""
@@ -2645,75 +2710,18 @@ class Landscape:
         Returns
         -------
         CONTAG : numeric
-            0 < CONTAG <= 100 ; CONTAG approaches 0 when the classes are maximally
-            disaggregated (i.e., every cell is a patch of a different class) and
-            interspersed (i.e., equal proportions of all pairwise adjacencies), and
-            approaches its maximum when the landscape consists of a single patch.
+            0 < CONTAG <= 100 (or 1 if `percent` is False) ; CONTAG approaches 0 when
+            the classes are maximally disaggregated (i.e., every cell is a patch of a
+            different class) and interspersed (i.e., equal proportions of all pairwise
+            adjacencies), and approaches its maximum when the landscape consists of a
+            single patch.
         """
-        if len(self.classes) < 2:
-            warnings.warn(
-                "Contagion can only be computed in landscapes with more than "
-                "two classes of patches. Returning nan",
-                RuntimeWarning,
-            )
-            return np.nan
-
-        _contag = 0
-
-        for i in self.classes:
-            p_i = np.sum(self._get_patch_area_ser(i)) / self.landscape_area
-            g_i = self._adjacency_df.groupby(level=1, sort=False).sum()[i]
-            # print(g_i)
-            g_i_sum = np.sum(g_i)
-            # print(g_i_sum)
-            for k in self.classes:
-                q = p_i * g_i[k] / g_i_sum
-                if q > 0:  # avoid zero-logarithm
-                    _contag += q * np.log(q)
-                # else:
-                #     warnings.warn(
-                #         "No adjacencies between classes {i} and {k}.".format(
-                #             i=i, k=k) + "Ignoring nan", RuntimeWarning)
-
-        contag = 1 + _contag / (2 * np.log(len(self.classes)))
+        contag = 1 - self.joint_entropy(base=np.e) / (2 * np.log(len(self.classes)))
 
         if percent:
             contag *= 100
 
         return contag
-
-    # diversity
-
-    def shannon_diversity_index(self):
-        r"""
-        Measure of diversity.
-
-        Reflects the number of classes present in the landscape as well as the relative
-        abundance of each class. It is computed at the landscape level as in:
-
-        .. math::
-           SHDI = - \\sum \\limits_{i=1}^{m} \\Big( P_i \\; ln P_i \\Big)
-
-        Returns
-        -------
-        SHDI : numeric
-            SHDI >= 0 ; SHDI approaches 0 when the entire landscape consists of a single
-            patch, and increases as the number of classes increases and/or the
-            proportional distribution of area among classes becomes more equitable.
-        """
-        if len(self.classes) < 2:
-            warnings.warn(
-                "Shannon's Diversity Index can only be computed in landscapes "
-                "with more than two classes of patches. Returning nan",
-                RuntimeWarning,
-            )
-            return np.nan
-
-        # TODO: This should be absolute counts or area. But this is partial?
-        class_abundances = [self._get_patch_area_ser(cid) for cid in self.classes]
-        # TODO: Should it return the original definition of log2?
-        # TODO: Update docstring to reflect choice
-        return compute_entropy(class_abundances, base=2)
 
     ###########################################################################
     # compute metrics data frames

@@ -120,7 +120,7 @@ class TestLandscape(unittest.TestCase):
         # landscape-level metrics
         # some landscape-level metrics require at least two classes.
         ls = pls.Landscape(np.ones((4, 4)), res=(1, 1))
-        for method in ["contagion", "shannon_diversity_index"]:
+        for method in pls.Landscape.ENTROPY_METRICS:
             with warnings.catch_warnings(record=True) as w:
                 getattr(ls, method)()
                 self.assertGreater(len(w), 0)
@@ -177,7 +177,7 @@ class TestLandscape(unittest.TestCase):
                 ls.compute_landscape_metrics_df(metrics=[metric])
                 self.assertIn("cannot be computed", str(cm.exception))
 
-    def test_landscape_metrics_value_ranges(self):
+    def test_metrics_value_ranges(self):
         ls = self.ls
 
         # basic tests of the `Landscape` class' attributes
@@ -320,9 +320,18 @@ class TestLandscape(unittest.TestCase):
             <= ls.landscape_area,
             1,
         )
+        for method in [
+            "entropy",
+            "shannon_diversity_index",
+            "joint_entropy",
+            "conditional_entropy",
+            "mutual_information",
+        ]:
+            self.assertGreaterEqual(getattr(ls, method)(), 0)
+        self.assertTrue(0 < ls.relative_mutual_information(), 1)
         self.assertTrue(0 < ls.contagion() <= 100)
+
         # TODO: assert 0 < ls.interspersion_juxtaposition_index() <= 100
-        self.assertGreaterEqual(ls.shannon_diversity_index(), 0)
 
     def test_transonic(self):
         ls_arr = np.load("tests/input_data/ls250_06.npy", allow_pickle=True)
@@ -507,10 +516,19 @@ class TestMultiLandscape(unittest.TestCase):
         ml = self.InstantiableMultiLandscape(
             self.landscape_fps, self.attribute_name, self.attribute_values
         )
+        # entropy metrics that accept a `base` keyword argument (all entropy metrics
+        # except for Shannon's diversity index and contagion
+        entropy_metrics = [
+            "entropy",
+            "joint_entropy",
+            "conditional_entropy",
+            "mutual_information",
+        ]
         metrics_kws = {
             "total_area": {"hectares": False},
             "perimeter_area_ratio_mn": {"hectares": True},
             "total_edge": {"count_boundary": True},
+            **{entropy_metric: {"base": 10} for entropy_metric in entropy_metrics},
         }
 
         class_metrics_df = ml.compute_class_metrics_df()
@@ -519,10 +537,10 @@ class TestMultiLandscape(unittest.TestCase):
         landscape_metrics_kws_df = ml.compute_landscape_metrics_df(
             metrics_kws=metrics_kws
         )
-        # For all attribute values and all classes, metric values in hectares
-        # should be less than in meters, and excluding boundaries should be
-        # less or equal than including them
         for attribute_value in getattr(ml, ml.attribute_name):
+            # For all attribute values and all classes, metric values in hectares
+            # should be less than in meters, and excluding boundaries should be
+            # less or equal than including them
             landscape_metrics = landscape_metrics_df.loc[attribute_value]
             landscape_metrics_kws = landscape_metrics_kws_df.loc[attribute_value]
             self.assertLess(
@@ -559,6 +577,14 @@ class TestMultiLandscape(unittest.TestCase):
                         class_metrics["total_edge"],
                         1.01 * class_metrics_kws["total_edge"],
                     )
+
+            # For all attribute values, entropy metric values computed with the default
+            # base=2 should be greater than those computed with a custom base=10
+            for entropy_metric in entropy_metrics:
+                self.assertGreater(
+                    landscape_metrics[entropy_metric],
+                    landscape_metrics_kws[entropy_metric],
+                )
 
     def test_multilandscape_plot_metrics(self):
         ml = self.InstantiableMultiLandscape(
