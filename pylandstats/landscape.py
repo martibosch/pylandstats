@@ -812,7 +812,7 @@ class Landscape:
         Area of each patch of the landscape.
 
         .. math::
-           AREA = a_{i,j} \\quad [hec] \\; or \\; [m]
+           AREA = a_{i,j} \quad [hec] \; or \; [m^2]
 
         Parameters
         ----------
@@ -850,7 +850,7 @@ class Landscape:
         Perimeter of each patch of the landscape.
 
         .. math::
-           PERIM = p_{i,j} \\quad [m]
+           PERIM = p_{i,j} \quad [m]
 
         Parameters
         ----------
@@ -887,7 +887,7 @@ class Landscape:
         for the same shape, larger patches will have a smaller perimeter-area ratio.
 
         .. math::
-           PARA = \\frac{p_{i,j}}{a_{i,j}} \\quad [m/hec] \\; or \\; [m/m^2]
+           PARA = \frac{p_{i,j}}{a_{i,j}} \quad [m/hec] \; or \; [m/m^2]
 
         Parameters
         ----------
@@ -939,7 +939,7 @@ class Landscape:
         adjusting for a standard square shape.
 
         .. math::
-           SHAPE = \\frac{.25 \\; p_{i,j}}{\\sqrt{a_{i,j}}}
+           SHAPE = \frac{.25 \; p_{i,j}}{\sqrt{a_{i,j}}}
 
         Parameters
         ----------
@@ -976,7 +976,7 @@ class Landscape:
         Measure of shape complexity appropriate across a wide range of patch sizes.
 
         .. math::
-           FRAC = \\frac{2 \\; ln (.25 \\; p_{i,j})}{ln (a_{i,j})}
+           FRAC = \frac{2 \; ln (.25 \; p_{i,j})}{ln (a_{i,j})}
 
         Parameters
         ----------
@@ -1038,7 +1038,7 @@ class Landscape:
         Based on the shortest edge-to-edge Euclidean distance.
 
         .. math::
-           ENN = h_{i,j} \\quad [m]
+           ENN = h_{i,j} \quad [m]
 
         Parameters
         ----------
@@ -1118,13 +1118,12 @@ class Landscape:
         If `class_val` is provided, the metric is computed at the class level as in:
 
         .. math::
-           TA_i = \\sum_{j=1}^{n_i} a_{i,j} \\quad [hec] \\; or \\; [m] \\quad
-           (class \\; i)
+           TA_i = \sum_{j=1}^{n_i} a_{i,j} \quad [hec] \; or \; [m^2] \quad (class \; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
         .. math::
-           TA = A \\quad [hec] \\; or \\; [m] \\quad (landscape)
+           TA = A \quad [hec] \; or \; [m^2] \quad (landscape)
 
         Parameters
         ----------
@@ -1157,7 +1156,7 @@ class Landscape:
         Computed at the class level as in:
 
         .. math::
-           PLAND_i = P_i = \\frac{1}{A} \\sum_j^{n_i} a_{i,j} \\quad (class \\; i)
+           PLAND_i = P_i = \frac{1}{A} \sum_j^{n_i} a_{i,j} \quad (class \; i)
 
         Parameters
         ----------
@@ -1189,12 +1188,12 @@ class Landscape:
         If `class_val` is provided, the metric is computed at the class level as in:
 
         .. math::
-           NP_i = n_i \\quad (class \\; i)
+           NP_i = n_i \quad (class \; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
         .. math::
-           NP = N \\quad (landscape)
+           NP = N \quad (landscape)
 
         Parameters
         ----------
@@ -1223,14 +1222,12 @@ class Landscape:
         computed at the class level as in:
 
         .. math::
-           PD_i = \\frac{n_i}{A} \\quad [1/hec] \\; or \\; [1/m^2] \\quad
-           (class \\; i)
+           PD_i = \frac{n_i}{A} \quad [1/hec] \; or \; [1/m^2] \quad (class \; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
         .. math::
-           PD = \\frac{N}{A} \\quad [1/hec] \\; or \\; [1/m^2] \\quad
-           (landscape)
+           PD = \frac{N}{A} \quad [1/hec] \; or \; [1/m^2] \quad (landscape)
 
         Parameters
         ----------
@@ -1272,12 +1269,12 @@ class Landscape:
         If `class_val` is provided, the metric is computed at the class level as in:
 
         .. math::
-           LPI_i = \\frac{1}{A} \\max_{j=1}^{n_i} a_{i,j} \\quad (class \\; i)
+           LPI_i = \frac{1}{A} \max_{j=1}^{n_i} a_{i,j} \quad (class \; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
         .. math::
-           LPI = \\frac{1}{A} \\max a_{i,j} \\quad (landscape)
+           LPI = \frac{1}{A} \max a_{i,j} \quad (landscape)
 
         Parameters
         ----------
@@ -1312,12 +1309,12 @@ class Landscape:
         If `class_val` is provided, the metric is computed at the class level as in:
 
         .. math::
-           TE_i = \\sum_{k=1}^{m} e_{i,k} \\quad [m] \\quad (class \\; i)
+           TE_i = \sum_{k=1}^{m} e_{i,k} \quad [m] \quad (class \; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
         .. math::
-           TE = E \\quad [m] \\quad (landscape)
+           TE = E \quad [m] \quad (landscape)
 
         Parameters
         ----------
@@ -1411,14 +1408,13 @@ class Landscape:
         provided, the metric is computed at the class level as in:
 
         .. math::
-           ED_i = \\frac{1}{A} \\sum_{k=1}^{m} e_{i,k} \\quad [m/hec] \\; or
-           \\; [m/m^2] \\quad (class \\; i)
+           ED_i = \frac{1}{A} \sum_{k=1}^{m} e_{i,k} \quad [m/hec] \; or \; [m/m^2]
+           \quad (class \; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
         .. math::
-           ED = \\frac{E}{A} \\quad [m/hec] \\; or \\; [m/m^2] \\quad
-           (landscape)
+           ED = \frac{E}{A} \quad [m/hec] \; or \; [m/m^2] \quad (landscape)
 
         Parameters
         ----------
@@ -2397,14 +2393,14 @@ class Landscape:
         as in:
 
         .. math::
-           LSI_i = \\frac{.25 \\sum \\limits_{k=1}^{m} e_{i,k}}{\\sqrt{A}}
-           \\quad (class \\; i)
+           LSI_i = \frac{.25 \sum \limits_{k=1}^{m} e_{i,k}}{\sqrt{A}} \quad
+           (class \; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
         .. math::
 
-           LSI = \\frac{.25 E}{\\sqrt{A}} \\quad (landscape)
+           LSI = \frac{.25 E}{\sqrt{A}} \quad (landscape)
 
         Parameters
         ----------
@@ -2472,14 +2468,13 @@ class Landscape:
         If `class_val` is provided, the metric is computed at the class level as in:
 
         .. math::
-           MESH_i = \\frac{1}{A} \\sum_{j=1}^{n_i} a_{i,j}^2 \\quad [m] \\quad
-           (class \\; i)
+           MESH_i = \frac{1}{A} \sum_{j=1}^{n_i} a_{i,j}^2 \quad [m] \quad (class \; i)
 
         otherwise, the metric is computed at the landscape level as in:
 
         .. math::
-           MESH = \\frac{1}{A} \\sum_{i=1}^{m} \\sum_{j=1}^{n_i} a_{i,j}^2
-           \\quad [m] \\quad (landscape)
+           MESH = \frac{1}{A} \sum_{i=1}^{m} \sum_{j=1}^{n_i} a_{i,j}^2 \quad [m] \quad
+           (landscape)
 
         Parameters
         ----------
@@ -2520,7 +2515,7 @@ class Landscape:
         abundance of each class. It is computed at the landscape level as in:
 
         .. math::
-           ENT = - \\sum \\limits_{i=1}^{m} \\Big( P_i \\; log_b P_i \\Big)
+           ENT = - \sum \limits_{i=1}^{m} \Big( P_i \; log_b P_i \Big)
 
         where `b` is the base logarithm.
 
@@ -2557,7 +2552,7 @@ class Landscape:
         abundance of each class. It is computed at the landscape level as in:
 
         .. math::
-           SHDI = - \\sum \\limits_{i=1}^{m} \\Big( P_i \\; ln P_i \\Big)
+           SHDI = - \sum \limits_{i=1}^{m} \Big( P_i \; ln P_i \Big)
 
         It corresponds to the entropy with a natural logarithm (base `e`).
 
@@ -2582,10 +2577,10 @@ class Landscape:
         computed at the landscape level as in:
 
         .. math::
-           JOINENT = - \\sum \\limits_{i=1}^{m} \\sum \\limits_{k=1}^{m} \\Bigg[
-             P_i \\frac{g_{i,k}}{\\sum \\limits_{k=1}^{m} g_{i,k}} \\Bigg] \\Bigg[
-             log_b \\Bigg( P_i \\frac{g_{i,k}}{\\sum \\limits_{k=1}^{m} g_{i,k}} \\Bigg)
-             \\Bigg]
+           JOINENT = - \sum \limits_{i=1}^{m} \sum \limits_{k=1}^{m} \Bigg[
+             P_i \frac{g_{i,k}}{\sum \limits_{k=1}^{m} g_{i,k}} \Bigg] \Bigg[
+             log_b \Bigg( P_i \frac{g_{i,k}}{\sum \limits_{k=1}^{m} g_{i,k}} \Bigg)
+             \Bigg]
 
         where `b` is the base logarithm.
 
@@ -2623,10 +2618,10 @@ class Landscape:
         the landscape level as in:
 
         .. math::
-           CONDENT = - \\sum \\limits_{i=1}^{m} \\sum \\limits_{k=1}^{m} \\Bigg[
-             P_i \\frac{g_{i,k}}{\\sum \\limits_{k=1}^{m} g_{i,k}} \\Bigg] \\Bigg[
-             log_b \\Bigg( \\frac{g_{i,k}}{\\sum \\limits_{k=1}^{m} g_{i,k}} \\Bigg)
-             \\Bigg]
+           CONDENT = - \sum \limits_{i=1}^{m} \sum \limits_{k=1}^{m} \Bigg[
+             P_i \frac{g_{i,k}}{\sum \limits_{k=1}^{m} g_{i,k}} \Bigg] \Bigg[
+             log_b \Bigg( \frac{g_{i,k}}{\sum \limits_{k=1}^{m} g_{i,k}} \Bigg)
+             \Bigg]
 
         where `b` is the base logarithm.
 
@@ -2694,12 +2689,12 @@ class Landscape:
         is computed at the landscape level as in:
 
         .. math::
-           CONTAG = 1 + \\frac{
-             \\sum \\limits_{i=1}^{m} \\sum \\limits_{k=1}^{m} \\Bigg[
-               P_i \\frac{g_{i,k}}{\\sum \\limits_{k=1}^{m} g_{i,k}}
-             \\Bigg] \\Bigg[ ln \\Bigg(
-               P_i \\frac{g_{i,k}}{\\sum \\limits_{k=1}^{m} g_{i,k}}
-             \\Bigg) \\Bigg]}{2 ln(m)}
+           CONTAG = 1 + \frac{
+             \sum \limits_{i=1}^{m} \sum \limits_{k=1}^{m} \Bigg[
+               P_i \frac{g_{i,k}}{\sum \limits_{k=1}^{m} g_{i,k}}
+             \Bigg] \Bigg[ ln \Bigg(
+               P_i \frac{g_{i,k}}{\sum \limits_{k=1}^{m} g_{i,k}}
+             \Bigg) \Bigg]}{2 ln(m)}
 
         Parameters
         ----------

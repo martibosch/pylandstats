@@ -75,13 +75,20 @@ Aggregation
 Landscape-level metrics
 =======================
 
+Diversity
+---------
+
+.. automethod:: pylandstats.Landscape.entropy
+.. automethod:: pylandstats.Landscape.shannon_diversity_index
+
 Contagion, interspersion
 ------------------------
-
+.. automethod:: pylandstats.Landscape.joint_entropy
+.. automethod:: pylandstats.Landscape.conditional_entropy
+.. automethod:: pylandstats.Landscape.mutual_information
+.. automethod:: pylandstats.Landscape.relative_mutual_information
 .. automethod:: pylandstats.Landscape.contagion
-.. automethod:: pylandstats.Landscape.shannon_diversity_index
-                
-                
+
 -----------------------------
 Computing metrics data frames
 -----------------------------

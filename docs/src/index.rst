@@ -45,7 +45,7 @@ which will install PyLandStats and all of its dependencies. Alternatively, you c
     $ pip install pylandstats
 
 
-Nevertheless, note that the `BufferAnalysis` and `SpatioTemporalBufferAnalysis` classes make use of [geopandas](https://github.com/geopandas/geopandas), which cannot be installed with pip. If you already have [the dependencies for geopandas](https://geopandas.readthedocs.io/en/latest/install.html#dependencies) installed in your system, you might then install PyLandStats with the `geo` extras as in:
+Nevertheless, note that the `BufferAnalysis` and `SpatioTemporalBufferAnalysis` classes make use of `geopandas <https://github.com/geopandas/geopandas>`_, which cannot be installed with pip. If you already have `the dependencies for geopandas <https://geopandas.readthedocs.io/en/latest/install.html#dependencies>`_ installed in your system, you might then install PyLandStats with the `geo` extras as in:
 
     $ pip install pylandstats[geo]
     
