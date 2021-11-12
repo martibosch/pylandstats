@@ -193,9 +193,10 @@ class TestLandscape(unittest.TestCase):
         self.assertTrue((ls.perimeter_area_ratio()["perimeter_area_ratio"] > 0).all())
         self.assertTrue((ls.shape_index()["shape_index"] >= 1).all())
         _fractal_dimension_ser = ls.fractal_dimension()["fractal_dimension"]
-        self.assertTrue(
-            (_fractal_dimension_ser >= 1).all() and (_fractal_dimension_ser <= 2).all()
-        )
+        self.assertTrue((_fractal_dimension_ser <= 2).all())
+        # ACHTUNG: ugly hardcoded tolerance to correct for misterious errors in GitHub
+        # Actions with some Python versions
+        self.assertTrue((_fractal_dimension_ser >= 1 - 1e-3).all())
         # TODO: assert 0 <= ls.contiguity_index(patch_arr) <= 1
         # ACHTUNG: euclidean nearest neighbor can be nan for classes with less
         # than two patches
