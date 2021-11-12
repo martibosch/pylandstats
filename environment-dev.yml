@@ -1,4 +1,4 @@
-name: pylandstats-dev
+name: pylandstats
 
 channels:
   - conda-forge
