@@ -1,7 +1,7 @@
 [![PyPI version fury.io](https://badge.fury.io/py/pylandstats.svg)](https://pypi.python.org/pypi/pylandstats/)
 [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/pylandstats.svg)](https://anaconda.org/conda-forge/pylandstats)
 [![Documentation Status](https://readthedocs.org/projects/pylandstats/badge/?version=latest)](https://pylandstats.readthedocs.io/en/latest/?badge=latest)
-[![Build Status](https://travis-ci.org/martibosch/pylandstats.svg?branch=master)](https://travis-ci.org/martibosch/pylandstats)
+[![Build Status](https://github.com/martibosch/pylandstats/workflows/tests/badge.svg?branch=main)](https://github.com/martibosch/pylandstats/actions?query=workflow%3Atests)
 [![Coverage Status](https://coveralls.io/repos/github/martibosch/pylandstats/badge.svg?branch=master)](https://coveralls.io/github/martibosch/pylandstats?branch=master)
 [![GitHub license](https://img.shields.io/github/license/martibosch/pylandstats.svg)](https://github.com/martibosch/pylandstats/blob/master/LICENSE)
 
@@ -18,7 +18,7 @@ Open-source Pythonic library to compute landscape metrics within the PyData stac
     ```python
     import pylandstats as pls
 
-    ls = pls.read_geotiff('data/vaud_g100_clc00_V18_5.tif')
+    ls = pls.Landscape('data/vaud_g100_clc00_V18_5.tif')
 
     ls.plot_landscape(legend=True)
     ```
@@ -53,7 +53,7 @@ Open-source Pythonic library to compute landscape metrics within the PyData stac
             'fractal_dimension_am',
             'landscape_shape_index',
             'shannon_diversity_index'
-        ], classes=[1], dates=[2000, 2006, 2012], 
+        ], classes=[1], dates=[2000, 2006, 2012],
     )
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
@@ -83,7 +83,7 @@ which will install PyLandStats and all of its dependencies. Alternatively, you c
 Nevertheless, note that in order to define zones by vector geometries in `ZonalAnalysis`, or in order to use the the `BufferAnalysis` and `SpatioTemporalBufferAnalysis` classes, PyLandStats requires [geopandas](https://github.com/geopandas/geopandas), which cannot be installed with pip. If you already have [the dependencies for geopandas](https://geopandas.readthedocs.io/en/latest/install.html#dependencies) installed in your system, you might then install PyLandStats with the `geo` extras as in:
 
     $ pip install pylandstats[geo]
-    
+
 and you will be able to use the aforementioned features (without having to use conda).
 
 ### Development install
