@@ -1,2 +1,11 @@
 [build-system]
-requires = ['setuptools>=40.8.0', 'wheel', 'numpy', 'pythran', 'transonic>=0.4.0']
+requires = ["setuptools>=40.8.0", "wheel", "numpy", "pythran", "transonic>=0.4.0"]
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+known_first_party = "pylandstats"
+default_section = "THIRDPARTY"
+forced_separate = ["test_pylandstats", "pythran"]
+skip = "setup.py"
