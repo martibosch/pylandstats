@@ -7,7 +7,7 @@
 
 # PyLandStats
 
-Open-source Pythonic library to compute landscape metrics within the PyData stack (NumPy, pandas, matplotlib...)
+Open-source library to compute landscape metrics in the Python ecosystem (NumPy, pandas, matplotlib...)
 
 **Citation**: Bosch M. 2019. "PyLandStats: An open-source Pythonic library to compute landscape metrics". *PLOS ONE, 14(12), 1-19*. [doi.org/10.1371/journal.pone.0225734](https://doi.org/10.1371/journal.pone.0225734)
 
@@ -101,6 +101,11 @@ and then clone the repository and use pip to install it in development mode
 
 ## Acknowledgments
 
-* The computation of the adjacency matrix in [transonic](https://github.com/fluiddyn/transonic) has been implemented by Pierre Augier ([paugier](https://github.com/paugier)).
+* The computation of the adjacency matrix in [transonic](https://github.com/fluiddyn/transonic) has been implemented by Pierre Augier ([paugier](https://github.com/paugier))
+* Several information theory-based metrics from Nowosad and Stepinski [1] were added by [achennu](https://github.com/achennu)
 * With the support of the École Polytechnique Fédérale de Lausanne (EPFL)
 * The Corine Land Cover datasets used for the test datasets were produced with funding by the European Union
+
+## References
+
+1. Nowosad, J., & Stepinski, T. F. (2019). Information theory as a consistent framework for quantification and classification of landscape patterns. Landscape Ecology, 34(9), 2091-2101.
