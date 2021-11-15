@@ -1,5 +1,11 @@
 # Change log
 
+## 2.4.0 (13/11/2021)
+
+* added methods to compute information theory-based metrics by Nowosad et Stepinski (2019).
+* using pre-commit with black, isort, flake8 and pydocstyle
+* CI (tests) and CD (release to PyPI) with github actions
+
 ## 2.3.0 (23/04/2021)
 
 * improved exception caching in compute metric data frames methods
