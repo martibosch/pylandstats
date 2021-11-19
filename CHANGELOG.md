@@ -1,5 +1,9 @@
 # Change log
 
+## 2.4.0 (19/11/2021)
+
+* GitHub Actions tests in develop branch too
+
 ## 2.4.0 (13/11/2021)
 
 * added methods to compute information theory-based metrics by Nowosad et Stepinski (2019).
