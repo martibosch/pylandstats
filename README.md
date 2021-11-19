@@ -18,49 +18,41 @@ Open-source library to compute landscape metrics in the Python ecosystem (NumPy,
     ```python
     import pylandstats as pls
 
-    ls = pls.Landscape('data/vaud_g100_clc00_V18_5.tif')
-
+    ls = pls.Landscape("../data/processed/veveyse-AS18_4.tif")
     ls.plot_landscape(legend=True)
     ```
 
-    ![landscape-vaud](figures/landscape.png)
+    ![landscape-veveyse](figures/landscape.png)
 
 * Compute pandas data frames of landscape metrics at the patch, class and landscape level:
 
     ```python
-    class_metrics_df = ls.compute_class_metrics_df(metrics=['proportion_of_landscape', 'edge_density'])
+    class_metrics_df = ls.compute_class_metrics_df(
+        metrics=["proportion_of_landscape", "edge_density", "euclidean_nearest_neighbor_mn"]
+    )
     class_metrics_df
     ```
 
-    | class_val | proportion_of_landscape | edge_density |
-    | --------: | ----------------------: | -----------: |
-    |         1 |                   7.702 |        4.459 |
-    |         2 |                  92.298 |        4.459 |
+    | class_val | proportion_of_landscape | edge_density | euclidean_nearest_neighbor_mn |
+    | --------: | ----------------------: | -----------: | ----------------------------: |
+    |         1 |                7.749572 |    19.102211 |                    309.244705 |
+    |         2 |               56.271868 |    50.599270 |                    229.079970 |
+    |         3 |               33.946252 |    38.167200 |                    253.299859 |
+    |         4 |                2.032308 |     3.722177 |                    552.835154 |
 
 * Analyze the spatio-temporal evolution of landscapes:
 
     ```python
-    input_fnames = [
-        'data/vaud_g100_clc00_V18_5.tif',
-        'data/vaud_g100_clc06_V18_5a.tif',
-        'data/vaud_g100_clc12_V18_5a.tif'
+    import matplotlib.pyplot as plt
+
+    input_filepaths = [
+        "../data/processed/veveyse-AS97R_4.tif",
+        "../data/processed/veveyse-AS09R_4.tif",
+        "../data/processed/veveyse-AS18_4.tif",
     ]
 
-    sta = pls.SpatioTemporalAnalysis(
-        input_fnames, metrics=[
-            'proportion_of_landscape',
-            'edge_density',
-            'fractal_dimension_am',
-            'landscape_shape_index',
-            'shannon_diversity_index'
-        ], classes=[1], dates=[2000, 2006, 2012],
-    )
-
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    for metric, ax in zip(
-        ['proportion_of_landscape', 'edge_density', 'fractal_dimension_am'], axes):
-        sta.plot_metric(metric, class_val=1, ax=ax)
-    fig.suptitle('Class-level metrics (urban)')
+    sta = pls.SpatioTemporalAnalysis(input_filepaths, dates=["1992", "2004", "2012"])
+    sta.plot_metric("contagion")
     ```
 
     ![spatiotemporal-analysis](figures/spatiotemporal.png)
