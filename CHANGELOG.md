@@ -1,6 +1,11 @@
 # Change log
 
-## 2.4.0 (19/11/2021)
+## 2.4.2 (19/11/2021)
+
+* fix sum(level) -> groupby(level).sum (pandas deprecation)
+* dropped six for metaclasses (using direct ABC inheritance)
+
+## 2.4.1 (19/11/2021)
 
 * GitHub Actions tests in develop branch too
 
