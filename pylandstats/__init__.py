@@ -3,4 +3,4 @@ from .landscape import *
 from .spatiotemporal import *
 from .zonal import *
 
-__version__ = "2.4.1"
+__version__ = "2.4.2"
