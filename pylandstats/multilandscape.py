@@ -5,7 +5,6 @@ import functools
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import six
 
 from . import landscape as pls_landscape
 from . import settings
@@ -62,8 +61,7 @@ df : pandas.DataFrame
 """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class MultiLandscape:
+class MultiLandscape(abc.ABC):
     """Multi-landscape base abstract class."""
 
     @abc.abstractmethod
