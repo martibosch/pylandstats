@@ -679,9 +679,9 @@ class Landscape:
         adjacency_df: pandas.DataFrame
             Adjacency data frame with total adjacencies (vertical and horizontal).
         """
-        # first `sum` to sum vertical and horizontal adjacencies (first-level index),
-        # then `loc` to overlook the nodata row/column
-        return self._adjacency_df.sum(level=[1]).loc[self.classes, self.classes]
+        # first `groupby` and `sum` to sum vertical and horizontal adjacencies
+        # (first-level index), then `loc` to overlook the nodata row/column
+        return self._adjacency_df.groupby(level=1).sum().loc[self.classes, self.classes]
 
     # small utilities to get patch areas/perimeters for a particular class only
 
