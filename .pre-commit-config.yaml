@@ -1,28 +1,60 @@
-exclude: 'docs|node_modules|migrations|.git|.tox'
-default_stages: [commit]
-fail_fast: true
+ci:
+  autofix_commit_msg: "style(pre-commit.ci): auto fixes from pre-commit hooks"
+  autoupdate_commit_msg: "style(pre-commit.ci): pre-commit autoupdate"
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v4.4.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
 
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: 3.2.2
+    hooks:
+      - id: commitizen
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.0.1
+    hooks:
+      - id: prettier
+        additional_dependencies: [prettier, prettier-plugin-toml, prettier-plugin-ini]
+        types: ["ini", "toml", "yaml"]
+
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.16 # Use the ref you want to point at
+    hooks:
+      - id: mdformat
+        # Optionally add plugins
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-black
+
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.32.0
+    hooks:
+      - id: yamllint
+        args: ["-d relaxed"]
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.23.1
+    hooks:
+      - id: check-github-workflows
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.6.0
+    hooks:
+      - id: pyupgrade
+
   - repo: https://github.com/psf/black
-    rev: 21.5b1
+    rev: 23.3.0
     hooks:
       - id: black
 
-  - repo: https://github.com/timothycrosley/isort
-    rev: 5.8.0
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.0.272
     hooks:
-      - id: isort
-
-  - repo: https://gitlab.com/pycqa/flake8
-    rev: 3.9.2
-    hooks:
-      - id: flake8
-        args: ['--config=setup.cfg']
-        additional_dependencies: [flake8-isort, flake8-docstrings]
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff
