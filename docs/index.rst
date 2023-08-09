@@ -1,7 +1,7 @@
 PyLandStats documentation!
 ======================================
 
-Open-source Pythonic library to compute landscape metrics within the PyData stack (NumPy, pandas, matplotlib...)
+Open-source library to compute landscape metrics in the Python ecosystem (NumPy, pandas, matplotlib...).
 
 **Citation**: Bosch M. 2019. "PyLandStats: An open-source Pythonic library to compute landscape metrics". *PLOS ONE, 14(12), 1-19*. `doi.org/10.1371/journal.pone.0225734 <https://doi.org/10.1371/journal.pone.0225734>`_
 
@@ -21,10 +21,7 @@ Open-source Pythonic library to compute landscape metrics within the PyData stac
    changelog
    contributing
 
-This documentation is intended as an API reference. See also:
-
-* `pylandstats-notebooks <https://github.com/martibosch/pylandstats-notebooks>`_ repository (tutorial/thorough overview of PyLandStats)
-* `swiss-urbanization <https://github.com/martibosch/swiss-urbanization>`_ repository (example application of PyLandStats to evaluate the spatiotemporal patterns of urbanization in three Swiss urban agglomerations)
+This documentation is intended as an API reference. See the `pylandstats-notebooks <https://github.com/martibosch/pylandstats-notebooks>`_ repository (tutorial/thorough overview of PyLandStats).
 
 Features
 --------
