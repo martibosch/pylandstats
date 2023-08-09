@@ -1,24 +1,18 @@
 """Zonal analysis."""
 import warnings
 
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import rasterio as rio
 from numpy.lib import stride_tricks
 from rasterio import features
+from shapely import geometry
+from shapely.geometry import base as geometry_base
 
 from . import landscape as pls_landscape
 from . import multilandscape
-
-try:
-    import geopandas as gpd
-    from shapely import geometry
-    from shapely.geometry import base as geometry_base
-
-    geo_imports = True
-except ImportError:
-    geo_imports = False
 
 __all__ = ["ZonalAnalysis", "BufferAnalysis", "ZonalGridAnalysis"]
 
@@ -38,8 +32,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         masks_index_col=None,
         neighborhood_rule=None,
     ):
-        """
-        Initialize the zonal analysis.
+        """Initialize the zonal analysis.
 
         Parameters
         ----------
@@ -109,19 +102,9 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             )
             warnings.warn(msg, FutureWarning)
         if masks is not None:
-            if not geo_imports:
-                # if geopandas is not installed, `masks` must be either a
-                # list-like object or an ndarray - in both cases, an iterable
-                try:
-                    _ = iter(masks)
-                except TypeError:
-                    raise ImportError(
-                        "If `masks` is not a list-like of numpy arrays or a "
-                        "numpy array, it must be a `geopandas.GeoDataFrame` or"
-                        " a vector-based spatial data file, which requires the"
-                        " geopandas package."
-                    )
-
+            if isinstance(masks, np.ndarray) or (
+                isinstance(masks, list) and isinstance(masks[0], np.ndarray)
+            ):
                 # rename the variable to `masks_arr` so that it is properly
                 # used below
                 masks_arr = masks
@@ -271,8 +254,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         dst_filepath=None,
         custom_meta=None,
     ):
-        """
-        Compute the zonal statistics of a metric over a landscape raster.
+        """Compute the zonal statistics of a metric over a landscape raster.
 
         Parameters
         ----------
@@ -368,8 +350,7 @@ class BufferAnalysis(ZonalAnalysis):
         landscape_transform=None,
         neighborhood_rule=None,
     ):
-        """
-        Initialize the buffer analysis.
+        """Initialize the buffer analysis.
 
         Parameters
         ----------
@@ -403,12 +384,6 @@ class BufferAnalysis(ZonalAnalysis):
             and `landscape` is a file-like object or a path, the default value set in
             `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
-        # first check that we meet the package dependencies
-        if not geo_imports:
-            raise ImportError(
-                "The `BufferAnalysis` class requires the 'geopandas' package."
-            )
-
         # get `buffer_masks_arr` from a base geometry and a list of buffer
         # distances
         # 1. get a GeoSeries with the base mask geometry
@@ -579,8 +554,7 @@ class ZonalGridAnalysis(ZonalAnalysis):
         landscape_transform=None,
         neighborhood_rule=None,
     ):
-        """
-        Initialize the zonal grid analysis.
+        """Initialize the zonal grid analysis.
 
         Parameters
         ----------
@@ -753,8 +727,7 @@ class ZonalGridAnalysis(ZonalAnalysis):
         super(ZonalAnalysis, self).__init__(landscapes, "zones", zone_ids)
 
     def plot_landscapes(self, cmap=None, ax=None, figsize=None, **show_kws):
-        """
-        Plot the spatial distribution of the landscape zones.
+        """Plot the spatial distribution of the landscape zones.
 
         Parameters
         ----------

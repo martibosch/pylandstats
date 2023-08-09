@@ -23,6 +23,7 @@ classifiers = [
 requires-python = ">=3.8"
 dependencies = [
     "black",
+    "geopandas",
     "matplotlib >= 2.2",
     "numba ; platform_system == 'Windows'",
     "numpy >= 1.15",
@@ -36,7 +37,6 @@ dependencies = [
 Repository = "https://github.com/martibosch/pylandstats"
 
 [project.optional-dependencies]
-geo = ["geopandas"]
 test = ["black", "coverage[toml]", "pytest", "pytest-cov", "python-dotenv", "ruff"]
 dev = ["build", "commitizen", "pre-commit", "pip", "toml", "tox", "twine"]
 doc = ["m2r2", "sphinx"]
