@@ -51,10 +51,10 @@ def compute_adjacency_arr(padded_arr: AdjacencyArray, num_classes: "int"):
     #                          dtype=np.uint32)
     num_cols_adjacency = num_classes + 1
     horizontal_adjacency_arr = np.zeros(
-        num_cols_adjacency * num_cols_adjacency, dtype=np.uint32
+        num_cols_adjacency * num_cols_adjacency, dtype=ADJ_ARR_DTYPE
     )
     vertical_adjacency_arr = np.zeros(
-        num_cols_adjacency * num_cols_adjacency, dtype=np.uint32
+        num_cols_adjacency * num_cols_adjacency, dtype=ADJ_ARR_DTYPE
     )
     num_cols_pixel = padded_arr.shape[1]
     flat_arr = padded_arr.ravel()
@@ -630,10 +630,13 @@ class Landscape:
             # first create a reclassified array with the landscape's shape
             # where each class value will be an int from 0 to `num_classes - 1`
             # and the nodata value will be an int of value `num_classes`
-            reclassified_arr = np.copy(self.landscape_arr)
+            # reclassified_arr = np.copy(self.landscape_arr)
+            reclassified_arr = np.full_like(
+                self.landscape_arr, num_classes, dtype=ADJ_ARR_DTYPE
+            )
             for i, class_val in enumerate(self.classes):
                 reclassified_arr[self.landscape_arr == class_val] = i
-                reclassified_arr[self.landscape_arr == self.nodata] = num_classes
+                # reclassified_arr[self.landscape_arr == self.nodata] = num_classes
 
             # pad the reclassified array with the nodata value (i.e.,
             # `num_classes` see comment above). Set dtype to `np.uint32` to
@@ -644,7 +647,7 @@ class Landscape:
                 pad_width=1,
                 mode="constant",
                 constant_values=num_classes,
-            ).astype(np.uint32)
+            )
 
             # compute the adjacency array
             adjacency_arr = compute_adjacency_arr(
@@ -659,6 +662,7 @@ class Landscape:
                     names=["direction", "class_val"],
                 ),
                 columns=adjacency_cols,
+                dtype=adjacency_arr.dtype,
             )
             adjacency_df.loc["horizontal"] = adjacency_arr[0]
             adjacency_df.loc["vertical"] = adjacency_arr[1]
