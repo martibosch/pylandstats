@@ -2,7 +2,8 @@
 [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/pylandstats.svg)](https://anaconda.org/conda-forge/pylandstats)
 [![Documentation Status](https://readthedocs.org/projects/pylandstats/badge/?version=latest)](https://pylandstats.readthedocs.io/en/latest/?badge=latest)
 [![CI/CD](https://github.com/martibosch/pylandstats/actions/workflows/dev.yml/badge.svg)](https://github.com/martibosch/pylandstats/blob/main/.github/workflows/dev.yml)
-[![Coverage Status](https://coveralls.io/repos/github/martibosch/pylandstats/badge.svg?branch=master)](https://coveralls.io/github/martibosch/pylandstats?branch=master)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/martibosch/pylandstats/main.svg)](https://results.pre-commit.ci/latest/github/martibosch/pylandstats/main)
+[![codecov](https://codecov.io/github/martibosch/pylandstats/branch/main/graph/badge.svg?token=fqjSTzixmC)](https://codecov.io/github/martibosch/pylandstats)
 [![GitHub license](https://img.shields.io/github/license/martibosch/pylandstats.svg)](https://github.com/martibosch/pylandstats/blob/master/LICENSE)
 
 # PyLandStats
