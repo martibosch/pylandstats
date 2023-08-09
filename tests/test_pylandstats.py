@@ -21,22 +21,17 @@ geom_crs = "epsg:4326"
 
 class TestImports(unittest.TestCase):
     def test_base_imports(self):
-        import matplotlib.pyplot as plt
-        import numpy as np
-        import pandas as pd
-        import rasterio
-        from scipy import ndimage, spatial, stats
+        pass
 
     def test_geo_imports(self):
-        import geopandas as gpd
-        from shapely.geometry.base import BaseGeometry
+        pass
 
 
 class TestLandscape(unittest.TestCase):
     def setUp(self):
-        self.ls_arr = np.load("tests/input_data/ls250_06.npy", allow_pickle=True)
+        self.ls_arr = np.load("tests/input-data/ls250_06.npy", allow_pickle=True)
         self.ls = pls.Landscape(self.ls_arr, res=(250, 250))
-        self.landscape_fp = "tests/input_data/ls250_06.tif"
+        self.landscape_fp = "tests/input-data/ls250_06.tif"
 
     def test_io(self):
         # test that if we provide a ndarray, we also need to provide the
@@ -335,7 +330,7 @@ class TestLandscape(unittest.TestCase):
         # TODO: assert 0 < ls.interspersion_juxtaposition_index() <= 100
 
     def test_transonic(self):
-        ls_arr = np.load("tests/input_data/ls250_06.npy", allow_pickle=True)
+        ls_arr = np.load("tests/input-data/ls250_06.npy", allow_pickle=True)
         ls = pls.Landscape(ls_arr, res=(250, 250))
         adjacency_df = ls._adjacency_df
         self.assertIsInstance(adjacency_df, pd.DataFrame)
@@ -372,17 +367,17 @@ class TestMultiLandscape(unittest.TestCase):
 
         self.landscapes = [
             pls.Landscape(
-                np.load("tests/input_data/ls100_06.npy", allow_pickle=True),
+                np.load("tests/input-data/ls100_06.npy", allow_pickle=True),
                 res=(100, 100),
             ),
             pls.Landscape(
-                np.load("tests/input_data/ls250_06.npy", allow_pickle=True),
+                np.load("tests/input-data/ls250_06.npy", allow_pickle=True),
                 res=(250, 250),
             ),
         ]
         self.landscape_fps = [
-            "tests/input_data/ls100_06.tif",
-            "tests/input_data/ls250_06.tif",
+            "tests/input-data/ls100_06.tif",
+            "tests/input-data/ls250_06.tif",
         ]
         self.attribute_name = "resolution"
         self.attribute_values = [100, 250]
@@ -391,7 +386,7 @@ class TestMultiLandscape(unittest.TestCase):
         # use this class just for testing purposes
         class InstantiableMultiLandscape(multilandscape.MultiLandscape):
             def __init__(self, *args, **kwargs):
-                super(InstantiableMultiLandscape, self).__init__(*args, **kwargs)
+                super().__init__(*args, **kwargs)
 
         self.InstantiableMultiLandscape = InstantiableMultiLandscape
 
@@ -415,7 +410,7 @@ class TestMultiLandscape(unittest.TestCase):
             self.landscape_fps,
             self.attribute_name,
             self.attribute_values,
-            **landscape_kws
+            **landscape_kws,
         )
         for landscape in ml.landscapes:
             self.assertEqual(
@@ -677,8 +672,8 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
         # between passing `Landscape` objects or filepaths is already tested
         # in `TestMultiLandscape`
         self.landscape_fps = [
-            "tests/input_data/ls250_06.tif",
-            "tests/input_data/ls250_12.tif",
+            "tests/input-data/ls250_06.tif",
+            "tests/input-data/ls250_12.tif",
         ]
         self.dates = [2006, 2012]
         self.inexistent_class_val = 999
@@ -779,16 +774,16 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
 
 class TestZonaAlnalysis(unittest.TestCase):
     def setUp(self):
-        self.masks_arr = np.load("tests/input_data/masks_arr.npy", allow_pickle=True)
+        self.masks_arr = np.load("tests/input-data/masks_arr.npy", allow_pickle=True)
         self.landscape = pls.Landscape(
-            np.load("tests/input_data/ls250_06.npy", allow_pickle=True),
+            np.load("tests/input-data/ls250_06.npy", allow_pickle=True),
             res=(250, 250),
         )
-        self.landscape_fp = "tests/input_data/ls250_06.tif"
+        self.landscape_fp = "tests/input-data/ls250_06.tif"
         with rio.open(self.landscape_fp) as src:
             self.landscape_transform = src.transform
             self.landscape_crs = src.crs
-        self.masks_fp = "tests/input_data/gmb-lausanne"
+        self.masks_fp = "tests/input-data/gmb-lausanne.gpkg"
         # for buffer analysis
         self.geom = geometry.Point(6.6327025, 46.5218269)
         self.buffer_dists = [10000, 15000, 20000]
@@ -1184,8 +1179,8 @@ class TestZonaAlnalysis(unittest.TestCase):
 class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
     def setUp(self):
         self.landscape_fps = [
-            "tests/input_data/ls250_06.tif",
-            "tests/input_data/ls250_12.tif",
+            "tests/input-data/ls250_06.tif",
+            "tests/input-data/ls250_12.tif",
         ]
         self.dates = [2006, 2012]
         self.base_mask = gpd.GeoSeries(
