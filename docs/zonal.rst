@@ -10,4 +10,3 @@ Zonal analysis
 
 .. autoclass:: pylandstats.ZonalGridAnalysis
    :members:  __init__, compute_class_metrics_df, compute_landscape_metrics_df, compute_zonal_statistics_arr, plot_landscapes
-              

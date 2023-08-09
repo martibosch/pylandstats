@@ -66,8 +66,7 @@ class MultiLandscape(abc.ABC):
 
     @abc.abstractmethod
     def __init__(self, landscapes, attribute_name, attribute_values, **landscape_kws):
-        """
-        Initialize the multi-landscape instance.
+        """Initialize the multi-landscape instance.
 
         Parameters
         ----------
@@ -261,8 +260,7 @@ class MultiLandscape(abc.ABC):
         subplots_kws=None,
         metric_kws=None,
     ):
-        """
-        Plot the metric.
+        """Plot the metric.
 
         Parameters
         ----------
@@ -375,8 +373,7 @@ class MultiLandscape(abc.ABC):
         show_kws=None,
         subplots_adjust_kws=None,
     ):
-        """
-        Plot each landscape snapshot in a dedicated matplotlib axis.
+        """Plot each landscape snapshot in a dedicated matplotlib axis.
 
         Uses the `Landscape.plot_landscape` method of each instance.
 

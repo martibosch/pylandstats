@@ -590,7 +590,7 @@ class ZonalGridAnalysis(ZonalAnalysis):
             zones will be defined for the maximum subset (starting from the top, left
             corner) for which there is an even division. If not provided, then
             `num_pixel_width`/`num_pixel_height` must be provided.
-        num_pixel_width, num_pixel_height : int, optional
+        zone_pixel_width, zone_pixel_height : int, optional
             The width/height of each zone (in pixels). If the landscape dimensions and
             the desired zones do not divide evenly, the zones will be defined for the
             maximum subset (starting from the top, left corner) for which there is an

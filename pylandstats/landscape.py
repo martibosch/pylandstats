@@ -1,5 +1,4 @@
 """Landscape analysis."""
-from __future__ import division
 
 import functools
 import platform
@@ -34,9 +33,15 @@ NEIGHBORHOOD_KERNEL_DICT = {
     "4": ndimage.generate_binary_structure(2, 1),  # Von Neumann/rook
 }
 
+# type definitions
+ADJ_ARR_DTYPE = np.uint32
+# define type annotations outside signature to avoid ForwardAnnotationSyntaxError
+# see https://github.com/PyCQA/pyflakes/issues/542
+AdjacencyArray = transonic.Array[ADJ_ARR_DTYPE, "2d"]
+
 
 @transonic.boost
-def compute_adjacency_arr(padded_arr: "uint32[:,:]", num_classes: "int"):
+def compute_adjacency_arr(padded_arr: AdjacencyArray, num_classes: "int"):
     # flat-array approach to pixel adjacency from link below:
     # https://ilovesymposia.com/2016/12/20/numba-in-the-real-world/
     # the first axis of `adjacency_arr` is of fixed size of 2 and serves to
@@ -87,8 +92,7 @@ def compute_adjacency_arr(padded_arr: "uint32[:,:]", num_classes: "int"):
 
 
 def compute_entropy(counts, base=None):
-    """
-    Compute the entropy for a set of category count values.
+    """Compute the entropy for a set of category count values.
 
     The counts are given in integer amounts and the proportional abundances are
     computed inside the function.
@@ -131,8 +135,7 @@ class Landscape:
         neighborhood_rule="8",
         **kwargs,
     ):
-        """
-        Initialize the landscape instance.
+        """Initialize the landscape instance.
 
         Parameters
         ----------
@@ -261,8 +264,7 @@ class Landscape:
 
     # compute methods
     def class_label(self, class_val):
-        """
-        Generate an array with labeled patches of the class.
+        """Generate an array with labeled patches of the class.
 
         Parameters
         ----------
@@ -282,8 +284,7 @@ class Landscape:
     # compute methods to obtain a scalar from an array
 
     def compute_arr_perimeter(self, arr):
-        """
-        Compute the total perimeter of patches a categorical raster.
+        """Compute the total perimeter of patches a categorical raster.
 
         Parameters
         ----------
@@ -303,8 +304,7 @@ class Landscape:
     # compute methods to obtain patchwise scalars
 
     def compute_patch_areas(self, label_arr):
-        """
-        Compute the area of each patch in a labeled patch array.
+        """Compute the area of each patch in a labeled patch array.
 
         Parameters
         ----------
@@ -321,8 +321,7 @@ class Landscape:
         return np.bincount(label_arr.ravel())[1:] * self.cell_area
 
     def compute_patch_perimeters(self, label_arr):
-        """
-        Compute the perimeter of each patch in a labeled patch array.
+        """Compute the perimeter of each patch in a labeled patch array.
 
         Parameters
         ----------
@@ -364,8 +363,7 @@ class Landscape:
         return patch_perimeters
 
     def compute_patch_euclidean_nearest_neighbor(self, label_arr):
-        """
-        Compute the ENN distance of each patch in a labeled patch array.
+        """Compute the ENN distance of each patch in a labeled patch array.
 
         Parameters
         ----------
@@ -394,9 +392,10 @@ class Landscape:
             # Note that `label_arr` will use zero values to indicate nodata
             # (even if our landscape raster uses a different nodata value,
             # i.e., `self.nodata`)
-            I, J = np.nonzero(edges_arr)
-            labels = label_arr[I, J]  # this gives all the non-zero labels
-            coords = np.column_stack((I, J))
+            nonzero_i_idx, nonzero_j_idx = np.nonzero(edges_arr)
+            # this gives all the non-zero labels
+            labels = label_arr[nonzero_i_idx, nonzero_j_idx]
+            coords = np.column_stack((nonzero_i_idx, nonzero_j_idx))
 
             # sort labels/coordinates by the feature value
             sorter = np.argsort(labels)
@@ -462,8 +461,7 @@ class Landscape:
     # compute metrics from area and perimeter series
 
     def compute_shape_index(self, patch_areas, patch_perimeters):
-        """
-        Compute the area of each patch in a labeled patch array.
+        """Compute the area of each patch in a labeled patch array.
 
         Parameters
         ----------
@@ -504,11 +502,11 @@ class Landscape:
             # we could also divide by `self.cell_height`
             patch_perimeter_cells = patch_perimeters / self.cell_width
             n = np.floor(np.sqrt(patch_area_cells))
-            m = patch_area_cells - n ** 2
+            m = patch_area_cells - n**2
             min_p = np.ones(len(patch_area_cells))
             min_p = np.where(np.isclose(m, 0), 4 * n, min_p)
             min_p = np.where(
-                (n ** 2 < patch_area_cells) & (patch_area_cells <= n * (n + 1)),
+                (n**2 < patch_area_cells) & (patch_area_cells <= n * (n + 1)),
                 4 * n + 2,
                 min_p,
             )
@@ -671,8 +669,7 @@ class Landscape:
             return self._cached_adjacency_df
 
     def compute_total_adjacency_df(self):
-        """
-        Compute the total adjacency (vertical and horizontal) data frame.
+        """Compute the total adjacency (vertical and horizontal) data frame.
 
         Returns
         -------
@@ -808,8 +805,7 @@ class Landscape:
     # area and edge metrics
 
     def area(self, class_val=None, hectares=True):
-        r"""
-        Area of each patch of the landscape.
+        r"""Area of each patch of the landscape.
 
         .. math::
            AREA = a_{i,j} \quad [hec] \; or \; [m^2]
@@ -846,8 +842,7 @@ class Landscape:
             return area_ser
 
     def perimeter(self, class_val=None):
-        r"""
-        Perimeter of each patch of the landscape.
+        r"""Perimeter of each patch of the landscape.
 
         .. math::
            PERIM = p_{i,j} \quad [m]
@@ -880,8 +875,7 @@ class Landscape:
     # shape
 
     def perimeter_area_ratio(self, class_val=None, hectares=True):
-        r"""
-        Ratio between the perimeter and area of each patch of the landscape.
+        r"""Ratio between the perimeter and area of each patch of the landscape.
 
         Measures shape complexity, however it varies with the size of the patch, e.g,
         for the same shape, larger patches will have a smaller perimeter-area ratio.
@@ -932,8 +926,7 @@ class Landscape:
             return perimeter_area_ratio_ser
 
     def shape_index(self, class_val=None):
-        r"""
-        Measure of shape complexity.
+        r"""Measure of shape complexity.
 
         Similar to the perimeter-area ratio, but correcting for its size problem by
         adjusting for a standard square shape.
@@ -972,8 +965,7 @@ class Landscape:
             return shape_index_ser
 
     def fractal_dimension(self, class_val=None):
-        r"""
-        Measure of shape complexity appropriate across a wide range of patch sizes.
+        r"""Measure of shape complexity appropriate across a wide range of patch sizes.
 
         .. math::
            FRAC = \frac{2 \; ln (.25 \; p_{i,j})}{ln (a_{i,j})}
@@ -1011,8 +1003,7 @@ class Landscape:
             return fractal_dimension_ser
 
     def continguity_index(self, class_val=None):
-        """
-        Contiguity index.
+        """Contiguity index.
 
         Parameters
         ----------
@@ -1032,8 +1023,7 @@ class Landscape:
     # aggregation metrics (formerly isolation, proximity)
 
     def euclidean_nearest_neighbor(self, class_val=None):
-        r"""
-        Distance to the nearest neighboring patch of the same class.
+        r"""Distance to the nearest neighboring patch of the same class.
 
         Based on the shortest edge-to-edge Euclidean distance.
 
@@ -1084,8 +1074,7 @@ class Landscape:
             return euclidean_nearest_neighbor_ser
 
     def proximity(self, search_radius, class_val=None):
-        """
-        Proximity.
+        """Proximity.
 
         Parameters
         ----------
@@ -1112,8 +1101,7 @@ class Landscape:
     # area, density, edge
 
     def total_area(self, class_val=None, hectares=True):
-        r"""
-        Total area.
+        r"""Total area.
 
         If `class_val` is provided, the metric is computed at the class level as in:
 
@@ -1150,8 +1138,7 @@ class Landscape:
         return total_area
 
     def proportion_of_landscape(self, class_val, percent=True):
-        r"""
-        Proportional abundance of a particular class within the landscape.
+        r"""Proportional abundance of a particular class within the landscape.
 
         Computed at the class level as in:
 
@@ -1182,8 +1169,7 @@ class Landscape:
         return numerator / self.landscape_area
 
     def number_of_patches(self, class_val=None):
-        r"""
-        Number of patches.
+        r"""Number of patches.
 
         If `class_val` is provided, the metric is computed at the class level as in:
 
@@ -1214,8 +1200,7 @@ class Landscape:
         return num_patches
 
     def patch_density(self, class_val=None, percent=True, hectares=True):
-        r"""
-        Density of class patches.
+        r"""Density of class patches.
 
         Arguably more useful than the number of patches since it facilitates comparison
         among landscapes of different sizes. If `class_val` is provided, the metric is
@@ -1263,8 +1248,7 @@ class Landscape:
         return numerator / self.landscape_area
 
     def largest_patch_index(self, class_val=None, percent=True):
-        r"""
-        Proportion of total landscape comprised by the largest patch.
+        r"""Proportion of total landscape comprised by the largest patch.
 
         If `class_val` is provided, the metric is computed at the class level as in:
 
@@ -1303,8 +1287,7 @@ class Landscape:
         return numerator / self.landscape_area
 
     def total_edge(self, class_val=None, count_boundary=False):
-        r"""
-        Total edge length.
+        r"""Total edge length.
 
         If `class_val` is provided, the metric is computed at the class level as in:
 
@@ -1401,8 +1384,7 @@ class Landscape:
         return total_edge
 
     def edge_density(self, class_val=None, count_boundary=False, hectares=True):
-        r"""
-        Edge length per area unit.
+        r"""Edge length per area unit.
 
         Facilitates comparison among landscapes of different sizes. If `class_val` is
         provided, the metric is computed at the class level as in:
@@ -1444,8 +1426,7 @@ class Landscape:
         return numerator / self.landscape_area
 
     def area_mn(self, class_val=None, hectares=True):
-        """
-        Mean of the patch area distribution. See also the documentation of `area`.
+        """Mean of the patch area distribution. See also the documentation of `area`.
 
         Parameters
         ----------
@@ -1463,8 +1444,7 @@ class Landscape:
         return self._metric_mn(class_val, self.area, {"hectares": hectares})
 
     def area_am(self, class_val=None, hectares=True):
-        """
-        Area-weighted mean of the patch area distribution.
+        """Area-weighted mean of the patch area distribution.
 
         See also the documentation of `area`.
 
@@ -1484,8 +1464,7 @@ class Landscape:
         return self._metric_am(class_val, self.area, {"hectares": hectares})
 
     def area_md(self, class_val=None, hectares=True):
-        """
-        Median of the patch area distribution.
+        """Median of the patch area distribution.
 
         See also the documentation of `area`.
 
@@ -1505,8 +1484,7 @@ class Landscape:
         return self._metric_md(class_val, self.area, {"hectares": hectares})
 
     def area_ra(self, class_val=None, hectares=True):
-        """
-        Range of the patch area distribution.
+        """Range of the patch area distribution.
 
         See also the documentation of `area`.
 
@@ -1526,8 +1504,7 @@ class Landscape:
         return self._metric_ra(class_val, self.area, {"hectares": hectares})
 
     def area_sd(self, class_val=None, hectares=True):
-        """
-        Standard deviation of the patch area distribution.
+        """Standard deviation of the patch area distribution.
 
         See also the documentation of `area`.
 
@@ -1547,8 +1524,7 @@ class Landscape:
         return self._metric_sd(class_val, self.area, {"hectares": hectares})
 
     def area_cv(self, class_val=None, percent=True):
-        """
-        Coefficient of variation of the patch area distribution.
+        """Coefficient of variation of the patch area distribution.
 
         See also the documentation of `area`.
 
@@ -1568,8 +1544,7 @@ class Landscape:
         return self._metric_cv(class_val, self.area, percent=percent)
 
     def perimeter_mn(self, class_val=None):
-        """
-        Mean of the patch perimeter distribution.
+        """Mean of the patch perimeter distribution.
 
         See also the documentation of `perimeter`.
 
@@ -1586,8 +1561,7 @@ class Landscape:
         return self._metric_mn(class_val, self.perimeter)
 
     def perimeter_am(self, class_val=None):
-        """
-        Area-weighted mean of the patch perimeter distribution.
+        """Area-weighted mean of the patch perimeter distribution.
 
         See also the documentation of `perimeter`.
 
@@ -1604,8 +1578,7 @@ class Landscape:
         return self._metric_am(class_val, self.perimeter)
 
     def perimeter_md(self, class_val=None):
-        """
-        Median of the patch perimeter distribution.
+        """Median of the patch perimeter distribution.
 
         See also the documentation of `perimeter`.
 
@@ -1622,8 +1595,7 @@ class Landscape:
         return self._metric_md(class_val, self.perimeter)
 
     def perimeter_ra(self, class_val=None):
-        """
-        Range of the patch perimeter distribution.
+        """Range of the patch perimeter distribution.
 
         See also the documentation of `perimeter`.
 
@@ -1640,8 +1612,7 @@ class Landscape:
         return self._metric_ra(class_val, self.perimeter)
 
     def perimeter_sd(self, class_val=None):
-        """
-        Standard deviation of the patch perimeter distribution.
+        """Standard deviation of the patch perimeter distribution.
 
         See also the documentation of `perimeter`.
 
@@ -1658,8 +1629,7 @@ class Landscape:
         return self._metric_sd(class_val, self.perimeter)
 
     def perimeter_cv(self, class_val=None, percent=True):
-        """
-        Coefficient of variation of the patch perimeter distribution.
+        """Coefficient of variation of the patch perimeter distribution.
 
         See also the documentation of `perimeter`.
 
@@ -1681,8 +1651,7 @@ class Landscape:
     # shape
 
     def perimeter_area_ratio_mn(self, class_val=None, hectares=True):
-        """
-        Mean of the patch perimeter-area ratio distribution.
+        """Mean of the patch perimeter-area ratio distribution.
 
         See also the documentation of `perimeter_area_ratio`.
 
@@ -1704,8 +1673,7 @@ class Landscape:
         )
 
     def perimeter_area_ratio_am(self, class_val=None, hectares=True):
-        """
-        Area-weighted mean of the patch perimeter-area ratio distribution.
+        """Area-weighted mean of the patch perimeter-area ratio distribution.
 
         See also the documentation of `perimeter_area_ratio`.
 
@@ -1727,8 +1695,7 @@ class Landscape:
         )
 
     def perimeter_area_ratio_md(self, class_val=None, hectares=True):
-        """
-        Median of the patch perimeter-area ratio distribution.
+        """Median of the patch perimeter-area ratio distribution.
 
         See also the documentation of `perimeter_area_ratio`.
 
@@ -1750,8 +1717,7 @@ class Landscape:
         )
 
     def perimeter_area_ratio_ra(self, class_val=None, hectares=True):
-        """
-        Range of the patch perimeter-area ratio distribution.
+        """Range of the patch perimeter-area ratio distribution.
 
         See also the documentation of `perimeter_area_ratio`.
 
@@ -1773,8 +1739,7 @@ class Landscape:
         )
 
     def perimeter_area_ratio_sd(self, class_val=None, hectares=True):
-        """
-        Standard deviation of the patch perimeter-area ratio distribution.
+        """Standard deviation of the patch perimeter-area ratio distribution.
 
         See also the documentation of `perimeter_area_ratio`.
 
@@ -1796,8 +1761,7 @@ class Landscape:
         )
 
     def perimeter_area_ratio_cv(self, class_val=None, percent=True):
-        """
-        Coefficient of variation of the patch perimeter-area ratio distribution.
+        """Coefficient of variation of the patch perimeter-area ratio distribution.
 
         See also the documentation of `perimeter_area_ratio`.
 
@@ -1817,8 +1781,7 @@ class Landscape:
         return self._metric_cv(class_val, self.perimeter_area_ratio, percent=percent)
 
     def shape_index_mn(self, class_val=None):
-        """
-        Mean of the shape index distribution.
+        """Mean of the shape index distribution.
 
         See also the documentation of `shape_index`.
 
@@ -1835,8 +1798,7 @@ class Landscape:
         return self._metric_mn(class_val, self.shape_index)
 
     def shape_index_am(self, class_val=None):
-        """
-        Area-weighted mean of the shape index distribution.
+        """Area-weighted mean of the shape index distribution.
 
         See also the documentation of `shape_index`.
 
@@ -1853,8 +1815,7 @@ class Landscape:
         return self._metric_am(class_val, self.shape_index)
 
     def shape_index_md(self, class_val=None):
-        """
-        Median of the shape index distribution.
+        """Median of the shape index distribution.
 
         See also the documentation of `shape_index`.
 
@@ -1871,8 +1832,7 @@ class Landscape:
         return self._metric_md(class_val, self.shape_index)
 
     def shape_index_ra(self, class_val=None):
-        """
-        Range of the shape index distribution.
+        """Range of the shape index distribution.
 
         See also the documentation of `shape_index`.
 
@@ -1889,8 +1849,7 @@ class Landscape:
         return self._metric_ra(class_val, self.shape_index)
 
     def shape_index_sd(self, class_val=None):
-        """
-        Standard deviation of the shape index distribution.
+        """Standard deviation of the shape index distribution.
 
         See also the documentation of `shape_index`.
 
@@ -1907,8 +1866,7 @@ class Landscape:
         return self._metric_sd(class_val, self.shape_index)
 
     def shape_index_cv(self, class_val=None, percent=True):
-        """
-        Coefficient of variation of the shape index distribution.
+        """Coefficient of variation of the shape index distribution.
 
         See also the documentation of `shape_index`.
 
@@ -1928,8 +1886,7 @@ class Landscape:
         return self._metric_cv(class_val, self.shape_index, percent=percent)
 
     def fractal_dimension_mn(self, class_val=None):
-        """
-        Mean of the fractal dimension distribution.
+        """Mean of the fractal dimension distribution.
 
         See also the documentation of `fractal_dimension`.
 
@@ -1947,8 +1904,7 @@ class Landscape:
         return self._metric_mn(class_val, self.fractal_dimension)
 
     def fractal_dimension_am(self, class_val=None):
-        """
-        Area-weighted mean of the fractal dimension distribution.
+        """Area-weighted mean of the fractal dimension distribution.
 
         See also the documentation of `fractal_dimension`.
 
@@ -1965,8 +1921,7 @@ class Landscape:
         return self._metric_am(class_val, self.fractal_dimension)
 
     def fractal_dimension_md(self, class_val=None):
-        """
-        Median of the fractal dimension distribution.
+        """Median of the fractal dimension distribution.
 
         See also the documentation of `fractal_dimension`.
 
@@ -1983,8 +1938,7 @@ class Landscape:
         return self._metric_md(class_val, self.fractal_dimension)
 
     def fractal_dimension_ra(self, class_val=None):
-        """
-        Range of the fractal dimension distribution.
+        """Range of the fractal dimension distribution.
 
         See also the documentation of `fractal_dimension`.
 
@@ -2001,8 +1955,7 @@ class Landscape:
         return self._metric_ra(class_val, self.fractal_dimension)
 
     def fractal_dimension_sd(self, class_val=None):
-        """
-        Standard deviation of the fractal dimension distribution.
+        """Standard deviation of the fractal dimension distribution.
 
         See also the documentation of `fractal_dimension`.
 
@@ -2019,8 +1972,7 @@ class Landscape:
         return self._metric_sd(class_val, self.fractal_dimension)
 
     def fractal_dimension_cv(self, class_val=None, percent=True):
-        """
-        Coefficient of variation of the fractal dimension distribution.
+        """Coefficient of variation of the fractal dimension distribution.
 
         See also the documentation of `fractal_dimension`.
 
@@ -2040,8 +1992,7 @@ class Landscape:
         return self._metric_cv(class_val, self.fractal_dimension, percent=percent)
 
     def continguity_index_mn(self, class_val=None):
-        """
-        Mean of the contiguity index distribution.
+        """Mean of the contiguity index distribution.
 
         See also the documentation of `Landscape.contiguity_index`.
 
@@ -2059,8 +2010,7 @@ class Landscape:
         raise NotImplementedError
 
     def continguity_index_am(self, class_val=None):
-        """
-        Area-weighted mean of the contiguity index distribution.
+        """Area-weighted mean of the contiguity index distribution.
 
         See also the documentation of `Landscape.contiguity_index`.
 
@@ -2078,8 +2028,7 @@ class Landscape:
         raise NotImplementedError
 
     def continguity_index_md(self, class_val=None):
-        """
-        Median of the contiguity index distribution.
+        """Median of the contiguity index distribution.
 
         See also the documentation of `Landscape.contiguity_index`.
 
@@ -2097,8 +2046,7 @@ class Landscape:
         raise NotImplementedError
 
     def continguity_index_ra(self, class_val=None):
-        """
-        Range of the contiguity index distribution.
+        """Range of the contiguity index distribution.
 
         See also the documentation of `Landscape.contiguity_index`.
 
@@ -2116,8 +2064,7 @@ class Landscape:
         raise NotImplementedError
 
     def continguity_index_sd(self, class_val=None):
-        """
-        Standard deviation of the contiguity index distribution.
+        """Standard deviation of the contiguity index distribution.
 
         See also the documentation of `Landscape.contiguity_index`.
 
@@ -2135,8 +2082,7 @@ class Landscape:
         raise NotImplementedError
 
     def continguity_index_cv(self, class_val=None):
-        """
-        Coefficient of variation of the contiguity index distribution.
+        """Coefficient of variation of the contiguity index distribution.
 
         See also the documentation of `Landscape.contiguity_index`.
 
@@ -2156,8 +2102,7 @@ class Landscape:
     # isolation, proximity
 
     def proximity_mn(self, class_val=None):
-        """
-        Mean of the proximity index distribution.
+        """Mean of the proximity index distribution.
 
         See also the documentation of `Landscape.proximity`.
 
@@ -2175,8 +2120,7 @@ class Landscape:
         raise NotImplementedError
 
     def proximity_am(self, class_val=None):
-        """
-        Area-weighted mean of the proximity index distribution.
+        """Area-weighted mean of the proximity index distribution.
 
         See also the documentation of `Landscape.proximity`.
 
@@ -2194,8 +2138,7 @@ class Landscape:
         raise NotImplementedError
 
     def proximity_md(self, class_val=None):
-        """
-        Median of the proximity index distribution.
+        """Median of the proximity index distribution.
 
         See also the documentation of `Landscape.proximity`.
 
@@ -2213,8 +2156,7 @@ class Landscape:
         raise NotImplementedError
 
     def proximity_ra(self, class_val=None):
-        """
-        Range of the proximity index distribution.
+        """Range of the proximity index distribution.
 
         See also the documentation of `Landscape.proximity`.
 
@@ -2232,8 +2174,7 @@ class Landscape:
         raise NotImplementedError
 
     def proximity_sd(self, class_val=None):
-        """
-        Standard deviation of the contiguity index distribution.
+        """Standard deviation of the contiguity index distribution.
 
         See also the documentation of `Landscape.proximity`.
 
@@ -2251,8 +2192,7 @@ class Landscape:
         raise NotImplementedError
 
     def proximity_cv(self, class_val=None):
-        """
-        Coefficient of variation of the proximity index distribution.
+        """Coefficient of variation of the proximity index distribution.
 
         See also the documentation of `Landscape.proximity`.
 
@@ -2270,8 +2210,7 @@ class Landscape:
         raise NotImplementedError
 
     def euclidean_nearest_neighbor_mn(self, class_val=None):
-        """
-        Mean of the Euclidean nearest neigbhor distribution.
+        """Mean of the Euclidean nearest neigbhor distribution.
 
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
@@ -2288,8 +2227,7 @@ class Landscape:
         return self._metric_mn(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_am(self, class_val=None):
-        """
-        Area-weighted mean of the Euclidean nearest neighbor distribution.
+        """Area-weighted mean of the Euclidean nearest neighbor distribution.
 
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
@@ -2306,8 +2244,7 @@ class Landscape:
         return self._metric_am(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_md(self, class_val=None):
-        """
-        Median of the Euclidean nearest neighbor distribution.
+        """Median of the Euclidean nearest neighbor distribution.
 
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
@@ -2324,8 +2261,7 @@ class Landscape:
         return self._metric_md(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_ra(self, class_val=None):
-        """
-        Range of the Euclidean nearest neighbor distribution.
+        """Range of the Euclidean nearest neighbor distribution.
 
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
@@ -2342,8 +2278,7 @@ class Landscape:
         return self._metric_ra(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_sd(self, class_val=None):
-        """
-        Standard deviation of the Euclidean nearest neighbor distribution.
+        """Standard deviation of the Euclidean nearest neighbor distribution.
 
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
@@ -2360,8 +2295,7 @@ class Landscape:
         return self._metric_sd(class_val, self.euclidean_nearest_neighbor)
 
     def euclidean_nearest_neighbor_cv(self, class_val=None, percent=True):
-        """
-        Coefficient of variation of the Euclidean nearest neighbor distribution.
+        """Coefficient of variation of the Euclidean nearest neighbor distribution.
 
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 
@@ -2385,8 +2319,7 @@ class Landscape:
     # aggregation
 
     def landscape_shape_index(self, class_val=None):
-        r"""
-        Measure of class aggregation.
+        r"""Measure of class aggregation.
 
         Provides a standardized measure of edginess that adjusts for the size of the
         landscape. If `class_val` is provided, the metric is computed at the class level
@@ -2435,8 +2368,7 @@ class Landscape:
     # contagion, interspersion
 
     def interspersion_juxtaposition_index(self, class_val=None, percent=True):
-        """
-        Interspersion and juxtaposition index.
+        """Interspersion and juxtaposition index.
 
         Parameters
         ----------
@@ -2462,8 +2394,7 @@ class Landscape:
         raise NotImplementedError
 
     def effective_mesh_size(self, class_val=None, hectares=True):
-        r"""
-        Measure of aggregation based on the cumulative patch size distribution.
+        r"""Measure of aggregation based on the cumulative patch size distribution.
 
         If `class_val` is provided, the metric is computed at the class level as in:
 
@@ -2508,8 +2439,7 @@ class Landscape:
     # diversity (categorical)
 
     def entropy(self, base=2):
-        r"""
-        Measure of diversity of landscape classes.
+        r"""Measure of diversity of landscape classes.
 
         Reflects the number of classes present in the landscape as well as the relative
         abundance of each class. It is computed at the landscape level as in:
@@ -2545,8 +2475,7 @@ class Landscape:
         return compute_entropy(counts, base=base)
 
     def shannon_diversity_index(self):
-        r"""
-        Measure of diversity.
+        r"""Measure of diversity.
 
         Reflects the number of classes present in the landscape as well as the relative
         abundance of each class. It is computed at the landscape level as in:
@@ -2570,8 +2499,7 @@ class Landscape:
     # contagion, interspersion (spatial complexity)
 
     def joint_entropy(self, base=2):
-        r"""
-        Measure of spatial and categorical complexity of the landscape.
+        r"""Measure of spatial and categorical complexity of the landscape.
 
         Measures the probability that two adjacent cells belong to the same class. It is
         computed at the landscape level as in:
@@ -2611,8 +2539,7 @@ class Landscape:
         return compute_entropy(adjacencies, base=base)
 
     def conditional_entropy(self, base=2):
-        r"""
-        Measure of spatial complexity of the landscape.
+        r"""Measure of spatial complexity of the landscape.
 
         Reflects only the spatial intricacy of the landscape pattern. It is computed at
         the landscape level as in:
@@ -2638,8 +2565,7 @@ class Landscape:
         return self.joint_entropy(base=base) - self.entropy(base=base)
 
     def mutual_information(self, base=2):
-        """
-        Measure of aggregation.
+        """Measure of aggregation.
 
         Reflects the difference between diversity of categories and diversity of
         adjacencies, and thus helps distinguishing landscape patterns with the same
@@ -2661,8 +2587,7 @@ class Landscape:
         return self.entropy(base=base) - self.conditional_entropy(base=base)
 
     def relative_mutual_information(self):
-        """
-        Measure of aggregation.
+        """Measure of aggregation.
 
         Provides a standardized measure of mutual information that adjusts for the
         number of classes. It is computed at the landscape level as in:
@@ -2682,8 +2607,7 @@ class Landscape:
         return self.mutual_information(base=_base) / self.entropy(base=_base)
 
     def contagion(self, percent=True):
-        r"""
-        Measure of aggregation.
+        r"""Measure of aggregation.
 
         Measures the probability that two adjacent cells belong to the same class. It
         is computed at the landscape level as in:
@@ -2722,8 +2646,7 @@ class Landscape:
     # compute metrics data frames
 
     def compute_patch_metrics_df(self, metrics=None, metrics_kws=None):
-        """
-        Compute patch-level metrics.
+        """Compute patch-level metrics.
 
         Parameters
         ----------
@@ -2783,8 +2706,7 @@ class Landscape:
         return df
 
     def compute_class_metrics_df(self, metrics=None, classes=None, metrics_kws=None):
-        """
-        Compute class-level metrics.
+        """Compute class-level metrics.
 
         Parameters
         ----------
@@ -2869,8 +2791,7 @@ class Landscape:
         return df
 
     def compute_landscape_metrics_df(self, metrics=None, metrics_kws=None):
-        """
-        Compute landscape-level metrics.
+        """Compute landscape-level metrics.
 
         Parameters
         ----------
@@ -2931,8 +2852,7 @@ class Landscape:
         legend_kws=None,
         **show_kws,
     ):
-        """
-        Plot the landscape with a categorical legend.
+        """Plot the landscape with a categorical legend.
 
         Uses `rasterio.plot.show`.
 

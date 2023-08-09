@@ -15,8 +15,7 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
     """Spatio-temporal analysis."""
 
     def __init__(self, landscapes, dates=None, neighborhood_rule=None, **landscape_kws):
-        """
-        Initialize the spatio-temporal analysis.
+        """Initialize the spatio-temporal analysis.
 
         Parameters
         ----------
@@ -51,7 +50,7 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
             "dates",
             dates,
             neighborhood_rule=neighborhood_rule,
-            **landscape_kws
+            **landscape_kws,
         )
 
     # override docs
@@ -106,8 +105,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         dates=None,
         neighborhood_rule=None,
     ):
-        """
-        Initialize the spatio-temporal buffer analysis.
+        """Initialize the spatio-temporal buffer analysis.
 
         Parameters
         ----------
@@ -310,8 +308,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         plot_kws=None,
         subplots_kws=None,
     ):
-        """
-        Plot the time series of the metric accross the buffer zones.
+        """Plot the time series of the metric accross the buffer zones.
 
         Parameters
         ----------
@@ -394,8 +391,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         show_kws=None,
         subplots_adjust_kws=None,
     ):
-        """
-        Plot each landscape snapshot in a dedicated matplotlib axis.
+        """Plot each landscape snapshot in a dedicated matplotlib axis.
 
         Parameters
         ----------

@@ -10,7 +10,7 @@ The `Landscape` class is the core code unit of PyLandStats and is used to comput
 List of implemented metrics
 ---------------------------
 
-The metrics of PyLandStats `are computed according to their definitions in FRAGSTATS <https://github.com/martibosch/pylandstats-notebooks/blob/master/notebooks/A01-fragstats-metrics-comparison.ipynb>`_. 
+The metrics of PyLandStats `are computed according to their definitions in FRAGSTATS <https://github.com/martibosch/pylandstats-notebooks/blob/master/notebooks/A01-fragstats-metrics-comparison.ipynb>`_.
 
 The notation for the metrics below is as follows:
 
@@ -27,7 +27,7 @@ Like FRAGSTATS, PyLandStats features six distribution-statistics metrics for eac
 * the standard deviation, which can be computed by adding a  `_sd` suffix to the method name, e.g., `area_sd`
 * the coefficient of variation, which can be computed by adding a  `_cv` suffix to the method name, e.g., `area_cv`
 
-note that the distribution-statistics metrics do not appear in the documentation below.  
+note that the distribution-statistics metrics do not appear in the documentation below.
 
 See the `FRAGSTATS documentation <https://www.umass.edu/landeco/research/fragstats/documents/fragstats_documents.html>`_ for more information.
 
@@ -49,7 +49,7 @@ Shape
 
 Aggregation
 -----------
-                
+
 .. automethod:: pylandstats.Landscape.euclidean_nearest_neighbor
 
 Class-level and landscape-level metrics
@@ -68,10 +68,10 @@ Area, density, edge
 
 Aggregation
 -----------
-                
+
 .. automethod:: pylandstats.Landscape.landscape_shape_index
 .. automethod:: pylandstats.Landscape.effective_mesh_size
-                
+
 Landscape-level metrics
 =======================
 
@@ -92,7 +92,7 @@ Contagion, interspersion
 -----------------------------
 Computing metrics data frames
 -----------------------------
-                
+
 .. automethod:: pylandstats.Landscape.compute_patch_metrics_df
 .. automethod:: pylandstats.Landscape.compute_class_metrics_df
 .. automethod:: pylandstats.Landscape.compute_landscape_metrics_df
