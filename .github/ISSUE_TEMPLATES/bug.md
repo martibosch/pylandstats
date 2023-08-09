@@ -1,6 +1,6 @@
-* PyLandStats version:
-* Python version:
-* Operating System:
+- PyLandStats version:
+- Python version:
+- Operating System:
 
 ### Description
 
