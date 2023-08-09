@@ -1,0 +1,10 @@
+name: pylandstats
+channels:
+  - conda-forge
+dependencies:
+  - gdal
+  - pip
+  - pip:
+    - -e .
+  - pre-commit
+  - python=3

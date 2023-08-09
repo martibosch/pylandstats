@@ -1,0 +1,68 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: create release
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-versions: ["3.10"]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - name: generate change log
+        uses: heinrichreimer/github-changelog-generator-action@v2.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issues: true
+          issuesWoLabels: true
+          pullRequests: true
+          prWoLabels: true
+          unreleased: true
+          addSections: '{"documentation":{"prefix":"**Documentation:**","labels":["documentation"]}}'
+          sinceTag: v0.1.0
+          output: RELEASE-CHANGELOG.md
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-versions }}
+
+      - name: install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: build wheels and source tarball
+        run: |
+          python -m build
+          twine check --strict dist/*
+
+      - name: show temporary files
+        run: ls -l
+
+      - name: create github release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          body_path: ./RELEASE-CHANGELOG.md
+          files: dist/*.whl
+          draft: false
+          prerelease: false
+
+      - name: publish to pypi
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          skip_existing: true
