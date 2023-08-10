@@ -1,0 +1,42 @@
+name: tests
+
+on:
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        python-versions: ["3.8", "3.9", "3.10", "3.11"]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - miniforge-variant: Mambaforge
+            miniforge-version: 4.11.0-4
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: setup conda environment with mambaforge
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          use-mamba: true
+          python-version: ${{ matrix.python-version }}
+          miniforge-variant: ${{ matrix.miniforge-variant }}
+          miniforge-version: ${{ matrix.miniforge-version }}
+
+      - name: install dependencies
+        run: pip install tox tox-gh-actions
+
+      - name: test with tox
+        run: tox
+        env:
+          CONDA_EXE: mamba
+
+      - name: upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+
+      - name: list files
+        run: ls -l .
