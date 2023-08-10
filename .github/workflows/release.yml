@@ -15,6 +15,8 @@ jobs:
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
+      # see https://github.com/softprops/action-gh-release/issues/236
+      contents: write
     strategy:
       matrix:
         python-versions: ["3.10"]
@@ -55,10 +57,7 @@ jobs:
         run: ls -l
 
       - name: create github release
-        id: create_release
         uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           body_path: ./RELEASE-CHANGELOG.md
           files: dist/*.whl
