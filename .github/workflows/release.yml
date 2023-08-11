@@ -72,7 +72,7 @@ jobs:
           skip-existing: true
 
   release:
-    if: startsWith(github.event.ref, "refs/tags/v")
+    if: startsWith(github.event.ref, 'refs/tags/v')
     needs: [publish_dev_build]
     name: create release
     runs-on: ubuntu-latest
