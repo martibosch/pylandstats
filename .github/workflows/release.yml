@@ -40,9 +40,19 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: pypa/cibuildwheel@v2
+      # see https://github.com/pypa/cibuildwheel/issues/933
+      # - uses: pypa/cibuildwheel@v2
 
-      - name: Upload wheels
+      # Used to host cibuildwheel
+      - uses: actions/setup-python@v3
+
+      - name: install cibuildwheel
+        run: python -m pip install cibuildwheel==2.15.0
+
+      - name: build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
+
+      - name: upload wheels
         uses: actions/upload-artifact@v3
         with:
           path: wheelhouse/*.whl
