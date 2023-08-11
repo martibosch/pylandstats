@@ -148,13 +148,16 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                 elif not isinstance(masks, gpd.GeoDataFrame):
                     try:
                         masks = gpd.read_file(masks)
-                    except AttributeError:
+                    except (AttributeError, TypeError):
                         # AttributeError: 'list'/'numpy.ndarray' object has no
                         # attribute 'startswith'
                         # we assume that `masks` is a list-like of numpy
                         # arrays or a numpy array, in which case we rename the
                         # variable to `masks_arr` so that it is properly used
                         # below
+                        # TypeError: in windows, fiona will try to read `masks` as a
+                        # regular expression and raise a TypeError (see
+                        # https://github.com/Toblerity/Fiona/blob/master/fiona/path.py)
                         masks_arr = masks
 
                 # at this point, `masks` can either be a GeoDataFrame (in
