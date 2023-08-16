@@ -1,18 +1,17 @@
 """Zonal analysis."""
-import warnings
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import rasterio as rio
-from numpy.lib import stride_tricks
-from rasterio import features
+from pandas.api import types
+from rasterio import features, mask
 from shapely import geometry
 from shapely.geometry import base as geometry_base
 
-from . import landscape as pls_landscape
 from . import multilandscape
+from .landscape import Landscape
 
 __all__ = ["ZonalAnalysis", "BufferAnalysis", "ZonalGridAnalysis"]
 
@@ -22,318 +21,229 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
 
     def __init__(
         self,
-        landscape,
-        masks_arr=None,
-        landscape_crs=None,
-        landscape_transform=None,
-        attribute_name=None,
-        attribute_values=None,
-        masks=None,
-        masks_index_col=None,
+        landscape_filepath,
+        zones,
+        *,
+        zone_index=None,
+        zone_nodata=0,
         neighborhood_rule=None,
     ):
         """Initialize the zonal analysis.
 
         Parameters
         ----------
-        landscape : `Landscape` or str, file-like object or pathlib.Path object
-            A `Landscape` object or string/file-like object/pathlib.Path object that
-            will be passed as the `landscape` argument of `Landscape.__init__`.
-        masks_arr : list-like or numpy.ndarray, optional
-            A list-like of numpy arrays of shape (width, height), i.e., of the same
-            shape as the landscape raster image. Each array will serve to mask the
-            base landscape and define a region of study for which the metrics will be
-            computed separately. The same information can also be provided as a single
-            array of shape (num_masks, width, height). Ignored if `masks` is provided.
-        landscape_crs : str, dict or pyproj.CRS, optional
-            The coordinate reference system of the landscapes. Used to dump rasters in
-            the `compute_zonal_statistics_arr` method. Ignored if the passed-in
-            `landscape` is a path to a raster dataset that already contains such
-            information.
-        landscape_transform : affine.Affine
-            Transformation from pixel coordinates to coordinate reference system. Used
-            to dump rasters in the `compute_zonal_statistics_arr` method. Ignored if
-            the passed-in `landscape` is a path to a raster dataset that already
-            contains such information.
-        attribute_name : str, optional
-            Name of the attribute that will distinguish each landscape.
-        attribute_values : str, optional
-            Values of the attribute that correspond to each of the landscapes.
-        masks : list-like, numpy.ndarray, geopandas.GeoSeries, geopandas.GeoDataFrame, \
-                str, file-like object or pathlib.Path object, optional
+        landscape_filepath : str, file-like object or pathlib.Path object
+            A string/file-like object/pathlib.Path object with the landscape data.
+        zones : geopandas.GeoSeries, geopandas.GeoDataFrame, list-like, str, \
+            file-like object, pathlib.Path object, numpy.ndarray, optional
             This can either be:
 
+            * A geopandas geo-series or geo-data frame.
+            * A list-like of shapely geometries, in the CRS of the landscape.
+            * A filename or URL, a file-like object opened in binary ('rb') mode, or a
+              Path object that will be passed to `geopandas.read_file`.
             * A list-like of numpy arrays of shape (width, height), i.e., of the same
               shape as the landscape raster image. Each array will serve to mask the
               base landscape and define a region of study for which the metrics will be
-              computed separately. The same information can also be provided as a single
-              array of shape (num_masks, width, height).
-            * A geopandas geo-series or geo-data frame.
-            * A filename or URL, a file-like object opened in binary ('rb') mode, or a
-              Path object that will be passed to `geopandas.read_file`.
-        masks_index_col : str, optional
-            Column of the `masks` geo-data frame that will be used as attribute values,
-            i.e., index of the metrics data frames. Ignored if `masks` is not a geo-data
-            frame or a geo-data frame file, e.g., a shapefile.
+              computed separately. The arrays can be of boolean or integer types. For
+              integer arrays, if each zone is labeled by a unique integer, it will be
+              used to identify the zone (i.e., as index) - unless a different
+              `zone_index` is provided. The masks can also be provided as a single array
+              of shape (num_zones, width, height).
+        zone_index : list-like or str, optional
+            Index used to identify zones (i.e., index of the metrics data frames). This
+            can either be:
+
+            * A list-like of index labels that will be positionally mapped to each zone.
+            * A str with the name of a column only when `zones` is a geo-data frame or a
+              geo-data frame file, e.g., a shapefile.
+        zone_nodata : numeric, optional, default 0
+            Value of the `zones` array that corresponds to no data. Only considered if
+            `zones` is a numpy array of integer types.
         neighborhood_rule : {'8', '4'}, optional
             Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
             case/Moore neighborhood) or '4' (rook's case/Von Neumann neighborhood).
-            Ignored if `landscape` is a `Landscape` instance. If no value is provided
-            and `landscape` is a file-like object or a path, the default value set in
-            `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
+            Ignored if `landscape` is a `Landscape` instance. If no value is provided,
+            the default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
-        # read input data/metadata
-        if not isinstance(landscape, pls_landscape.Landscape):
-            with rio.open(landscape) as src:
-                landscape_crs = src.crs
-            landscape = pls_landscape.Landscape(landscape)
-        else:
-            neighborhood_rule = landscape.neighborhood_rule
-        landscape_arr = landscape.landscape_arr
-        height, width = landscape_arr.shape
-        if landscape.transform is not None:
-            landscape_transform = landscape.transform
+        # the overall approach to process the `zones` argument is: unless `zones` is
+        # provided as a geo-series or a list-like of shapely geometries, we first
+        # convert it to a geo-data frame, process it (mainly try to get the proper
+        # index) and then convert it to a geo-series to store it as instance attribute
 
-        # masks
-        if masks_arr is not None:
-            msg = (
-                "The `masks_arr` parameter is deprecated and will be removed "
-                "in a future version. Use the `masks` parameter instead"
-            )
-            warnings.warn(msg, FutureWarning)
-        if masks is not None:
-            if isinstance(masks, np.ndarray) or (
-                isinstance(masks, list) and isinstance(masks[0], np.ndarray)
-            ):
-                # rename the variable to `masks_arr` so that it is properly
-                # used below
-                masks_arr = masks
+        # first, try to read the `zones` argument as a geo-data frame-like file
+        try:
+            zones = gpd.read_file(zones)
+        except (AttributeError, TypeError):
+            # for GeoDataFrame, GeoSeries, list-like or ndarrays, we will get
+            # "AttributeError: object has no attribute 'startswith'"
+            # in windows, fiona will try to read `masks` as a regular expression and
+            # raise a TypeError (see
+            # https://github.com/Toblerity/Fiona/blob/master/fiona/path.py)
+            # we let this continue and try to read the `zones` argument differently
+            # below
+            pass
+
+        with rio.open(landscape_filepath) as src:
+            if types.is_list_like(zones):
+                if not isinstance(zones, np.ndarray):
+                    # if this is a list-like of 2d ndarrays, transform it into a 3d
+                    # ndarray
+                    for zone in zones:
+                        break
+                    if isinstance(zone, np.ndarray):
+                        zones = np.array(zones)
+            if isinstance(zones, np.ndarray):
+                # zones is a 3d ndarray, transform it into a geo-series
+                if zones.dtype == bool:
+                    # transform it into uint8 array (rasterio requires int/float dtypes
+                    # in `features.shapes` below), so False and True values become zeros
+                    # and ones respectively.
+                    zones = zones.astype(np.uint8)
+                    zone_nodata = 0
+                # we first instantiate a geo-data frame because if a int-labelled
+                # ndarray has been provided, we will try to use the labels as zone ids
+                zones = gpd.GeoDataFrame(
+                    [
+                        (val, geometry.shape(geom))
+                        for zone in zones
+                        for geom, val in features.shapes(zone, transform=src.transform)
+                        if val != zone_nodata
+                    ],
+                    columns=["zone", "geometry"],
+                    crs=src.crs,
+                )
+                if zone_index is None and not zones["zone"].duplicated().any():
+                    # if no zone indexing is provided and there are no duplicates (i.e.,
+                    # in the arrays, each zone is labeled by a unique integer), we will
+                    # use them as index
+                    # zones = zones.set_index("zone")
+                    # instead of using `set_index`, we will just set `zone_index` to
+                    # the column name "zone", so that the `set_index` is called when
+                    # processing the geo-data frame below
+                    zone_index = "zone"
+
+            # at this point, unless `zones` was provided as geo series or list-like of
+            # shapely geometries, `zones` must be a geo-data frame
+            if isinstance(zones, gpd.GeoDataFrame):
+                # if there is a non-None `zone_index`, use it
+                if zone_index is not None:
+                    # we get the index after calling `set_index` because this will give
+                    # us the right index both when `zone_index` is a column name or a
+                    # list-like
+                    zone_index = zones.set_index(zone_index).index
+                    # we now take just the "geometry" column and treat `zones` as
+                    # GeoSeries.
+                    zones = zones["geometry"]
+                else:
+                    # take just the "geometry" column, treat `zones` as GeoSeries but
+                    # rename it to "zone"
+                    zones = zones["geometry"].rename("zone")
+
+            # at this point, `zones` must be a geo-series or a list-like of shapely
+            # geometries
+            if not isinstance(zones, gpd.GeoSeries):
+                # convert to a geo-series with the CRS of the landscape raster
+                zones = gpd.GeoSeries(zones, crs=src.crs)
             else:
-                if isinstance(masks, gpd.GeoSeries):
-                    # if we have a GeoSeries, convert it to a GeoDataFrame so
-                    # that we can use the same code
-                    if attribute_name is None:
-                        # if no attribute_name is provided, we will first see
-                        # if there is a name in the geoseries or geoseries'
-                        # index that we might use as attribute name
-                        if masks.name:
-                            attribute_name = masks.name
-                        elif masks.index.name:
-                            attribute_name = masks.index.name
-                    masks = gpd.GeoDataFrame(geometry=masks, index=masks.index)
-                    # since `masks_index_col` is meant to be a column of the
-                    # geodataframe (or geodataframe file, e.g., shapefile)
-                    # provided as the `masks` argument, if `masks` is a
-                    # GeoSeries, such a column will not exist - we therefore
-                    # set it to `None` so that we do not enter the respective
-                    # "if" below and get errors
-                    masks_index_col = None
-                elif not isinstance(masks, gpd.GeoDataFrame):
-                    try:
-                        masks = gpd.read_file(masks)
-                    except (AttributeError, TypeError):
-                        # AttributeError: 'list'/'numpy.ndarray' object has no
-                        # attribute 'startswith'
-                        # we assume that `masks` is a list-like of numpy
-                        # arrays or a numpy array, in which case we rename the
-                        # variable to `masks_arr` so that it is properly used
-                        # below
-                        # TypeError: in windows, fiona will try to read `masks` as a
-                        # regular expression and raise a TypeError (see
-                        # https://github.com/Toblerity/Fiona/blob/master/fiona/path.py)
-                        masks_arr = masks
+                # `zones` must be a geo-series, reproject into the CRS of the landscape
+                # if needed
+                if zones.crs != src.crs:
+                    zones = zones.to_crs(src.crs)
+            if zone_index is not None:
+                # set the geo-series index
+                zones = zones.set_axis(zone_index)
 
-                # at this point, `masks` can either be a GeoDataFrame (in
-                # which case, we process it inside the "if" below) or a
-                # list-like of numpy arrays/numpy array (in which case no
-                # further pre-processing needs to be done)
-                if isinstance(masks, gpd.GeoDataFrame):
-                    # first of all, let us transform our geometries into the
-                    # CRS of the landscape
-                    try:
-                        masks_gser = masks["geometry"].to_crs(landscape_crs)
-                    except AttributeError as e:
-                        # geopandas uses pyproj's `is_exact_same` method,
-                        # which might return `False` for equivalent CRSs and
-                        # raise "AttributeError: 'NoneType' object has no
-                        # attribute 'is_empty'". To avoid that, we can try
-                        # using the basic equality test for the CRSs and avoid
-                        # reprojecting:
-                        if masks.crs == landscape_crs:
-                            masks_gser = masks["geometry"]
-                        else:
-                            raise e
+            # now that we have a processed geo series, store it as an instance attribute
+            self.zone_gser = zones
 
-                    # we first rasterize the geometries using the values of
-                    # each geometry's index key in the raster
-                    # to avoid confusing values used to map each zones (in
-                    # `zone_arr`) with the landscape nodata value, we start
-                    # with an array of zeros and use a sequence of integers
-                    # starting at 1 to map each zone
-                    zone_arr = features.rasterize(
-                        shapes=(
-                            (geom, val) for val, geom in enumerate(masks_gser, start=1)
-                        ),
-                        out_shape=landscape_arr.shape,
-                        fill=0,
-                        transform=landscape.transform,
-                    )
-                    # we now filter so that only the zone geometries that
-                    # intersect the data region of our landscape are considered
-                    # and also replace the zeros of `zone_arr` with the
-                    # landscape nodata value
-                    zone_arr = np.where(
-                        (landscape_arr != landscape.nodata) & (zone_arr != 0),
-                        zone_arr,
-                        landscape.nodata,
-                    )
-                    # we now get all the non-nodata values (i.e., index keys of
-                    # the GeoDataFrame) that intersect the data region of our
-                    # landscape
-                    zone_values = np.setdiff1d(np.unique(zone_arr), [landscape.nodata])
-                    # we now transform `zone_arr` into a list of boolean masks
-                    # that delineate the extent of each zone
-                    masks_arr = [zone_arr == mask_id for mask_id in zone_values]
+            # now perform a masked read of the raster for the zone geometries
+            landscapes = [
+                Landscape(
+                    zone_arr[0],
+                    res=src.res,
+                    nodata=src.nodata,
+                    transform=zone_transform,
+                    neighborhood_rule=neighborhood_rule,
+                )
+                for zone_arr, zone_transform in [
+                    mask.mask(src, [geom], crop=True) for geom in zones
+                ]
+            ]
 
-                    if masks_index_col is not None:
-                        # to index the data frames of landscape metrics with
-                        # the values of the `masks_index_col` of the
-                        # GeoDataFrame (instead of the index keys), we set the
-                        # `attribute_name` and `attribute_values` variables,
-                        # which will be set as instance attributes below
-                        attribute_name = masks_index_col
-                        attribute_values = masks[masks_index_col].iloc[zone_values - 1]
+            # start: raster-based alternative ------------------------------------------
+            # rasterize vector features into a labeled array and use it to generate the
+            # zone landscapes
+            # if types.is_list_like(zones):
+            #     # if isinstance(zones[0], (geometry.Polygon, geometry.MultiPolygon)):
+            #     zones = features.rasterize(
+            #     [
+            #         (geom, attribute_val)
+            #         for attribute_val, geom in zip(
+            #             attribute_values, zones.to_crs(src.crs)
+            #         )
+            #     ],
+            #     out_shape=src.shape,
+            #     transform=landscape_transform,
+            #     fill=src.nodata,
+            # )
 
-        # we generate the landscapes of each zone here
-        landscapes = [
-            pls_landscape.Landscape(
-                np.where(mask_arr, landscape_arr, landscape.nodata).astype(
-                    landscape.landscape_arr.dtype
-                ),
-                res=(landscape.cell_width, landscape.cell_height),
-                nodata=landscape.nodata,
-                transform=landscape.transform,
-                neighborhood_rule=neighborhood_rule,
-            )
-            for mask_arr in masks_arr
-        ]
-
-        # store `landscape_meta`/`masks_arr` as instance attributes so that we
-        # can compute zonal statistics
-        self.landscape_meta = dict(
-            driver="GTiff",
-            width=width,
-            height=height,
-            count=1,
-            transform=landscape_transform,
-            crs=landscape_crs,
-        )
-        self.masks_arr = masks_arr
-        # useful in `compute_zonal_statistics_arr` below
-        self.filter_landscape_nodata = True
-
-        # The attribute name will be `buffer_dists` for `BufferAnalysis` or
-        # `transect_dist` for `TransectAnalysis`, but for any other custom use
-        # of `ZonalAnalysis`, the user might provide (or not) a custom name
-        if attribute_name is None:
-            attribute_name = "attribute_values"
-
-        # If the values for the distinguishing attribute are not provided, a
-        # basic enumeration will be automatically generated
-        if attribute_values is None:
-            attribute_values = [i for i in range(len(masks_arr))]
+            # # finally, zones is a labeled array
+            # landscape_arr = src.read(1)
+            # landscapes = [
+            #     Landscape(landscape_arr[loc]) for loc in ndimage.find_objects(zones)
+            # ]
+            # end: raster-based alternative --------------------------------------------
 
         # now call the parent's init
-        super().__init__(landscapes, attribute_name, attribute_values)
+        # for the parent class (MultiLandscape), set:
+        # * `attribute_name` (by order of preference): (i) the series' index name if
+        #    non-None, (ii) the series' name if non-None, or (iii) provide a default
+        # * `attribute_values`: the index of the zones geo-series
+        super().__init__(
+            landscapes,
+            self.zone_gser.index.name or self.zone_gser.name or "zone",
+            self.zone_gser.index.values,
+        )
 
-    def compute_zonal_statistics_arr(
-        self,
-        metric,
-        class_val=None,
-        metric_kws=None,
-        dst_filepath=None,
-        custom_meta=None,
+    def compute_zonal_statistics_gdf(
+        self, metrics, *, class_val=None, metrics_kws=None
     ):
-        """Compute the zonal statistics of a metric over a landscape raster.
+        """Compute the zonal statistics geo-data frame over the landscape raster.
 
         Parameters
         ----------
-        metric : str
-            A string indicating the name of the metric for which the zonal statistics
-            will be computed.
+        metrics : list-like, optional
+            A list-like of strings with the names of the metrics that should be
+            computed. If `None`, all the implemented class-level metrics will be
+            computed.
         class_val : int, optional
-            If provided, the zonal statistics will be computed for the metric computed
-            at the level of the corresponding class, otherwise they will be computed at
-            the landscape level.
-        metric_kws : dict, optional
-            Keyword arguments to be passed to the method that computes the metric
-            (specified in the `metric` argument) for each landscape.
-        dst_filepath : str, file-like object or pathlib.Path object, optional
-            Path to dump the zonal statistics raster. If not provided, no raster will be
-            dumped.
-        custom_meta : dict, optional
-            Custom meta data for the output raster, consistent with the rasterio
-            library.
+            If provided, the zonal statistics will be computed at the level of the
+            corresponding class, otherwise they will be computed at the landscape level.
+        metrics_kws : dict, optional
+            Dictionary mapping the keyword arguments (values) that should be passed to
+            each metric method (key), e.g., to exclude the boundary from the computation
+            of `total_edge`, metric_kws should map the string 'total_edge' (method name)
+            to {'count_boundary': False}. If `None`, each metric will be computed
+            according to FRAGSTATS defaults.
 
         Returns
         -------
-        zonal_statistics_arr : numpy.ndarray
-            Two-dimensional array with the computed zonal statistics.
+        zonal_statistics_gdf : geopandas.GeoDataFrame
+            Geo-data frame with the computed zonal statistics.
         """
-        # ACHTUNG: do not confuse `metric_kws` and `metrics_kws`. The former
-        # are the keyword arguments for the method to compute the metric. The
-        # latter is a dict mapping the metric to such keyword argument (such
-        # dict will be passed to the `compute_class_metrics_df`/
-        # `compute_landscape_metrics_df` method)
-        if metric_kws is None:
-            metrics_kws = None
-        else:
-            metrics_kws = {metric: metric_kws}
         if class_val is None:
             zonal_metrics_df = self.compute_landscape_metrics_df(
-                metrics=[metric], metrics_kws=metrics_kws
+                metrics=metrics, metrics_kws=metrics_kws
             )
-            metric_ser = zonal_metrics_df[metric]
         else:
             zonal_metrics_df = self.compute_class_metrics_df(
-                metrics=[metric], classes=[class_val], metrics_kws=metrics_kws
+                metrics=metrics, classes=[class_val], metrics_kws=metrics_kws
             )
-            metric_ser = zonal_metrics_df.loc[class_val, metric]
         # ensure that we have numeric types (not strings)
-        metric_ser = pd.to_numeric(metric_ser)
+        # metric_ser = pd.to_numeric(metric_ser)
 
-        # reconstruct the zonal statistics array
-        zonal_statistics_arr = np.full(
-            (self.landscape_meta["height"], self.landscape_meta["width"]),
-            np.nan,
-            dtype=metric_ser.dtype,
-        )
-        if self.filter_landscape_nodata:
-            for metric_val, landscape, mask_arr in zip(
-                metric_ser, self.landscapes, self.masks_arr
-            ):
-                zonal_statistics_arr[
-                    (landscape.landscape_arr != landscape.nodata) & mask_arr
-                ] = metric_val
-        else:
-            for metric_val, mask_arr in zip(metric_ser, self.masks_arr):
-                zonal_statistics_arr[mask_arr] = metric_val
-
-        # dump a raster
-        if dst_filepath:
-            dst_meta = self.landscape_meta.copy()
-            dst_meta.update(dtype=zonal_statistics_arr.dtype)
-            if custom_meta is None:
-                dst_meta.update(nodata=np.nan)
-            else:
-                if "nodata" in custom_meta:
-                    zonal_statistics_arr[np.isnan(zonal_statistics_arr)] = custom_meta[
-                        "nodata"
-                    ]
-                dst_meta.update(**custom_meta)
-            with rio.open(dst_filepath, "w", **dst_meta) as dst:
-                dst.write(zonal_statistics_arr, 1)
-        return zonal_statistics_arr
+        return gpd.GeoDataFrame(zonal_metrics_df, geometry=self.zone_gser)
 
 
 class BufferAnalysis(ZonalAnalysis):
@@ -341,102 +251,62 @@ class BufferAnalysis(ZonalAnalysis):
 
     def __init__(
         self,
-        landscape,
-        base_mask,
+        landscape_filepath,
+        base_geom,
         buffer_dists,
+        *,
         buffer_rings=False,
-        base_mask_crs=None,
-        landscape_crs=None,
-        landscape_transform=None,
+        base_geom_crs=None,
         neighborhood_rule=None,
     ):
         """Initialize the buffer analysis.
 
         Parameters
         ----------
-        landscape : `Landscape` or str, file-like object or pathlib.Path object
-            A `Landscape` object or of string/file-like object/pathlib.Path object that
-            will be passed as the `landscape` argument of `Landscape.__init__`
-        base_mask : shapely geometry or geopandas.GeoSeries
-            Geometry that will serve as a base mask to buffer around.
+        landscape_filepath : str, file-like object or pathlib.Path object
+            A string/file-like object/pathlib.Path object with the landscape data.
+        base_geom : shapely geometry or geopandas.GeoSeries
+            Geometry that will serve as a base to buffer around.
         buffer_dists : list-like
             Buffer distances.
         buffer_rings : bool, default False
             If `False`, each buffer zone will consist of the whole region that lies
-            within the respective buffer distance around the base mask. If `True`,
-            buffer zones will take the form of rings around the base mask.
-        base_mask_crs : str, dict or pyproj.CRS, optional
-            The coordinate reference system of the base mask. Required if the base mask
-            is a shapely geometry or a geopandas GeoSeries without the `crs` attribute
-            set.
-        landscape_crs : str, dict or pyproj.CRS, optional
-            The coordinate reference system of the landscapes. Required if the passed-in
-            landscapes are `Landscape` instances, ignored if they are paths to raster
-            datasets that already contain such information.
-        landscape_transform : affine.Affine
-            Transformation from pixel coordinates to coordinate reference system.
-            Required if the passed-in landscapes are `Landscape` instances, ignored if
-            they are paths to raster datasets that already contain such information.
+            within the respective buffer distance around the base geometry. If `True`,
+            buffer zones will take the form of rings around the base geometry.
+        base_geom_crs : str, dict or pyproj.CRS, optional
+            The coordinate reference system of the base geometry. Required if the base
+            geometry is a shapely geometry or a geopandas GeoSeries without the `crs`
+            attribute set.
         neighborhood_rule : {'8', '4'}, optional
             Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
             case/Moore neighborhood) or '4' (rook's case/Von Neumann neighborhood).
-            Ignored if `landscape` is a `Landscape` instance. If no value is provided
-            and `landscape` is a file-like object or a path, the default value set in
-            `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
+            Ignored if `landscape` is a `Landscape` instance. If no value is provided,
+            the default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
-        # get `buffer_masks_arr` from a base geometry and a list of buffer
-        # distances
-        # 1. get a GeoSeries with the base mask geometry
-        if isinstance(base_mask, geometry_base.BaseGeometry):
-            if base_mask_crs is None:
+        # 1. get a GeoSeries with the base geometry
+        if isinstance(base_geom, geometry_base.BaseGeometry):
+            if base_geom_crs is None:
                 raise ValueError(
-                    "If `base_mask` is a shapely geometry, `base_mask_crs` "
-                    "must be provided"
+                    "If `base_geom` is a shapely geometry, `base_geom_crs` must be"
+                    " provided."
                 )
-            # BufferSpatioTemporalAnalysis.get_buffer_masks_gser(
-            base_mask_gser = gpd.GeoSeries(base_mask, crs=base_mask_crs)
+            base_gser = gpd.GeoSeries(base_geom, crs=base_geom_crs)
         else:
-            # we assume that `base_mask` is a geopandas GeoSeries
-            if base_mask.crs is None:
-                if base_mask_crs is None:
+            # we assume that `base_geom` is a geopandas GeoSeries
+            if base_geom.crs is None:
+                if base_geom_crs is None:
                     raise ValueError(
-                        "If `base_mask` is a naive geopandas GeoSeries (with "
-                        "no crs set), `base_mask_crs` must be provided"
+                        "If `base_geom` is a naive geopandas GeoSeries (with no crs"
+                        " set), `base_geom_crs` must be provided."
                     )
 
-                base_mask_gser = base_mask.copy()  # avoid alias/ref problems
-                base_mask_gser.crs = base_mask_crs
+                base_gser = base_geom.copy()  # avoid alias/ref problems
+                base_gser.crs = base_geom_crs
             else:
-                base_mask_gser = base_mask
-
-        # 2. get the crs, transform and shape of the landscapes
-        if isinstance(landscape, pls_landscape.Landscape):
-            if landscape_crs is None:
-                raise ValueError(
-                    "If passing `Landscape` instances (instead of paths to "
-                    "raster datasets), `landscape_crs` must be provided"
-                )
-            if landscape_transform is None:
-                if landscape.transform is None:
-                    raise ValueError(
-                        "If passing `Landscape` instances (instead of paths to"
-                        " raster datasets), either they have a non-None "
-                        "`transform` attribute, either `landscape_transform` "
-                        "must be provided"
-                    )
-                landscape_transform = landscape.transform
-            landscape_shape = landscape.landscape_arr.shape
-            # note that we DO NOT have to get `neighborhood_rule` from
-            # `landscape` since this will be done when calling
-            # `ZonalAnalysis.__init__` at the end of this method
-        else:
-            with rio.open(landscape) as src:
-                landscape_crs = src.crs
-                landscape_transform = src.transform
-                landscape_shape = src.height, src.width
+                base_gser = base_geom
 
         # 3. buffer around base mask
-        avg_longitude = base_mask_gser.to_crs(
+        avg_longitude = base_gser.to_crs(
             "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
         ).unary_union.centroid.x
         # trick from OSMnx to be able to buffer in meters
@@ -451,11 +321,11 @@ class BufferAnalysis(ZonalAnalysis):
         utm_crs = (
             f"+proj=utm +zone={utm_zone} +ellps=WGS84 +datum=WGS84 " "+units=m +no_defs"
         )
-        base_mask_geom = base_mask_gser.to_crs(utm_crs).iloc[0]
+        base_proj_geom = base_gser.to_crs(utm_crs).iloc[0]
         if buffer_rings:
-            if not isinstance(base_mask_geom, geometry.Point):
+            if not isinstance(base_proj_geom, geometry.Point):
                 raise ValueError(
-                    "Buffer rings can only work when `base_mask_geom` is a " "`Point`"
+                    "Buffer rings can only work when `base_geom` is a `Point`."
                 )
             _buffer_dists = np.concatenate([[0], buffer_dists])
             buffer_dists = list(
@@ -464,46 +334,27 @@ class BufferAnalysis(ZonalAnalysis):
                     zip(_buffer_dists[:-1], _buffer_dists[1:]),
                 )
             )
-            masks_gser = gpd.GeoSeries(
+            zone_gser = gpd.GeoSeries(
                 [
-                    base_mask_geom.buffer(_buffer_dists[i + 1])
-                    - base_mask_geom.buffer(_buffer_dists[i])
+                    base_proj_geom.buffer(_buffer_dists[i + 1])
+                    - base_proj_geom.buffer(_buffer_dists[i])
                     for i in range(len(_buffer_dists) - 1)
                 ],
                 index=buffer_dists,
                 crs=utm_crs,
-            ).to_crs(landscape_crs)
+            )
         else:
-            masks_gser = gpd.GeoSeries(
-                [base_mask_geom.buffer(buffer_dist) for buffer_dist in buffer_dists],
+            zone_gser = gpd.GeoSeries(
+                [base_proj_geom.buffer(buffer_dist) for buffer_dist in buffer_dists],
                 index=buffer_dists,
                 crs=utm_crs,
-            ).to_crs(landscape_crs)
-
-        # 4. rasterize each mask
-        num_rows, num_cols = landscape_shape
-        buffer_masks_arr = np.zeros(
-            (len(buffer_dists), num_rows, num_cols), dtype=np.uint8
-        )
-        for i in range(len(masks_gser)):
-            buffer_masks_arr[i] = features.rasterize(
-                [masks_gser.iloc[i]],
-                out_shape=landscape_shape,
-                transform=landscape_transform,
-                dtype=np.uint8,
             )
 
-        buffer_masks_arr = buffer_masks_arr.astype(bool)
-
         # now we can call the parent's init with the landscape and the
-        # constructed buffer_masks_arr
+        # constructed buffer geoseries
         super().__init__(
-            landscape,
-            masks=buffer_masks_arr,
-            landscape_crs=landscape_crs,
-            landscape_transform=landscape_transform,
-            attribute_name="buffer_dists",
-            attribute_values=buffer_dists,
+            landscape_filepath,
+            zones=zone_gser.rename_axis("buffer_dist"),  # set the index name
             neighborhood_rule=neighborhood_rule,
         )
 
@@ -543,190 +394,143 @@ class BufferAnalysis(ZonalAnalysis):
 class ZonalGridAnalysis(ZonalAnalysis):
     """Zonal analysis over a grid."""
 
+    @staticmethod
+    def _get_grid_gser(
+        bounds, num_zone_rows, num_zone_cols, zone_width, zone_height, offset
+    ):
+        # get the zone dimensions to generate the grid
+        left, bottom, right, top = bounds
+
+        total_width = right - left
+        total_height = top - bottom
+
+        # make sure that we have both the number of zone rows/columns and the zone
+        # width/height
+        if zone_width is None:
+            try:
+                zone_width = np.ceil(total_width / num_zone_cols)
+            except TypeError:
+                # num_zone_cols is also None
+                raise ValueError(
+                    "Either `num_zone_cols` or `zone_width` must be provided"
+                )
+        if zone_height is None:
+            try:
+                zone_height = np.ceil(total_height / num_zone_rows)
+            except TypeError:
+                # num_zone_rows is also None
+                raise ValueError(
+                    "Either `num_zone_rows` or `zone_height` must be provided"
+                )
+        if num_zone_cols is None:
+            num_zone_cols = int(np.ceil(total_width / zone_width))
+
+        if num_zone_rows is None:
+            num_zone_rows = int(np.ceil(total_height / zone_height))
+
+        # once we have the number of zone rows/columns and the zone width/height, we can
+        # compute the grid
+        if offset == "center":
+            # center the grid on the raster bounds
+            left = left - (num_zone_cols * zone_width - total_width) / 2
+            top = top + (num_zone_rows * zone_height - total_height) / 2
+
+        # generate a grid of size using numpy meshgrid
+        grid_x, grid_y = np.meshgrid(
+            np.arange(num_zone_cols) * zone_width + left,
+            top - np.arange(num_zone_rows) * zone_height,
+            indexing="xy",
+        )
+
+        # vectorize the grid as a geo series
+        flat_grid_x = grid_x.flatten()
+        flat_grid_y = grid_y.flatten()
+        zones = pd.DataFrame(
+            {
+                "xmin": flat_grid_x,
+                "ymin": flat_grid_y - zone_height,
+                "xmax": flat_grid_x + zone_width,
+                "ymax": flat_grid_y,
+            }
+        ).apply(lambda row: geometry.box(*row), axis=1)
+
+        # # identify zones as their (row, col) position
+        # zone_ids = np.array(
+        #     [(row, col)
+        #      for row in range(num_zone_rows) for col in range(num_zone_cols)]
+        # )
+        # return grid_gser.set_index(zone_ids)
+
+        return zones
+
     def __init__(
         self,
-        landscape,
-        num_zone_rows=None,
+        landscape_filepath,
+        *,
         num_zone_cols=None,
-        zone_pixel_width=None,
-        zone_pixel_height=None,
-        landscape_crs=None,
-        landscape_transform=None,
+        num_zone_rows=None,
+        zone_width=None,
+        zone_height=None,
+        offset=None,
         neighborhood_rule=None,
     ):
         """Initialize the zonal grid analysis.
 
         Parameters
         ----------
-        landscape : `Landscape` or str, file-like object or pathlib.Path object
-            A `Landscape` object or of string/file-like object/pathlib.Path object that
-            will be passed as the `landscape` argument of `Landscape.__init__`.
-        num_zone_rows, num_zone_cols : int, optional
-            The number of zone rows/columns into which the landscape will be separated.
+        landscape_filepath : str, file-like object or pathlib.Path object
+            A string/file-like object/pathlib.Path object with the landscape data.
+        num_zone_cols, num_zone_rows : int, optional
+            The number of zone columns/rows into which the landscape will be separated.
             If the landscape dimensions and the desired zones do not divide evenly, the
-            zones will be defined for the maximum subset (starting from the top, left
-            corner) for which there is an even division. If not provided, then
-            `num_pixel_width`/`num_pixel_height` must be provided.
-        zone_pixel_width, zone_pixel_height : int, optional
-            The width/height of each zone (in pixels). If the landscape dimensions and
-            the desired zones do not divide evenly, the zones will be defined for the
-            maximum subset (starting from the top, left corner) for which there is an
-            even division. If not provided, then `num_zone_rows`/`num_zone_cols` must be
-            provided.
-        landscape_crs : str, dict or pyproj.CRS, optional
-            The coordinate reference system of the landscapes. Required to reconstruct
-            the zonal statistics rasters if the passed-in landscapes are `Landscape`
-            instances, ignored if they are paths to raster datasets that already contain
-            such information.
-        landscape_transform : affine.Affine
-            Transformation from pixel coordinates to coordinate reference system.
-            Required if the passed-in landscapes are `Landscape` instances, ignored if
-            they are paths to raster datasets that already contain such information.
+            zones will be defined for the minimum superset that covers the landscape
+            bounds. If not provided, then `num_width`/`num_height` must be provided.
+        zone_width, zone_height : numeric, optional
+            The width/height of each zone (in units of the landscape CRS). If the
+            landscape dimensions and the desired zones do not divide evenly, the zones
+            will be defined for the minimum superset that covers the landscape bounds.
+            If not provided, then `num_width`/`num_height` must be provided.
+        offset : str, optional
+            If set to "center", the and the landscape dimensions and the desired zones
+            do not divide evenly, the grid is offsetted so that the landscape bounds are
+            in the center of the grid. Otherwise, the grid starts at the top-left corner
+            of the landscape. Ignored if the landscape dimensions and the desired zones
+            divide evenly.
         neighborhood_rule : {'8', '4'}, optional
             Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
             case/Moore neighborhood) or '4' (rook's case/Von Neumann neighborhood). If
-            no value is provided, the value will be taken from `landscape` if it is an
-            instance of `Landscape`, otherwise the default value set in
+            no value is provided, the default value set in
             `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
-        if not isinstance(landscape, pls_landscape.Landscape):
-            with rio.open(landscape) as src:
-                landscape_crs = src.crs
-            landscape = pls_landscape.Landscape(landscape)
-        else:
-            # note that we DO HAVE to get the neighborhood from `landscape`
-            # since we are bypassing the parent's (i.e., `ZonalAnalysis`)
-            # initialization method at the end of this method
-            neighborhood_rule = landscape.neighborhood_rule
-        landscape_arr = landscape.landscape_arr
-        height, width = landscape_arr.shape
-
-        if zone_pixel_height is None:
-            if num_zone_rows is None:
-                raise ValueError(
-                    "Either `num_zone_rows` or `zone_pixel_height` must be " "provided"
-                )
-            zone_pixel_height = height // num_zone_rows
-        if zone_pixel_width is None:
-            if num_zone_cols is None:
-                raise ValueError(
-                    "Either `num_zone_cols` or `zone_pixel_width` must be " "provided"
-                )
-            zone_pixel_width = width // num_zone_cols
-
-        if num_zone_rows is None:
-            num_zone_rows = height // zone_pixel_height
-        if num_zone_cols is None:
-            num_zone_cols = width // zone_pixel_width
-
-        # raster meta
-        # transform.from_origin(landscape_transform.c, landscape_transform.f)
-        if landscape.transform is not None:
-            landscape_transform = landscape.transform
-        self.landscape_meta = dict(
-            driver="GTiff",
-            width=num_zone_cols,
-            height=num_zone_rows,
-            count=1,
-            transform=landscape_transform
-            * landscape_transform.scale(zone_pixel_width, zone_pixel_height),
-            crs=landscape_crs,
-        )
-
-        # Based on `skimage.util.shape.view_as_blocks`
-        # arr_shape = np.array([height, width])
-        zone_shape = np.array([zone_pixel_height, zone_pixel_width])
-        # num_even_rows, num_even_cols = arr_shape - arr_shape % zone_shape
-        # landscape_arr[:num_even_rows, :num_even_cols]
-        landscape_arrs = stride_tricks.as_strided(
-            landscape_arr,
-            # shape=tuple(arr_shape // zone_shape) + tuple(zone_shape),
-            shape=(num_zone_rows, num_zone_cols) + tuple(zone_shape),
-            strides=tuple(landscape_arr.strides * zone_shape) + landscape_arr.strides,
-        )
-        # the reshape could probably be done directly in the `as_strided` call
-        # tuple(landscape_arrs.shape[0] * landscape_arrs.shape[1])
-        landscape_arrs = landscape_arrs.reshape(
-            (num_zone_cols * num_zone_rows,) + tuple(zone_shape)
-        )
-        # identify zones as their (row, col) position
-        zone_ids = np.array(
-            [(row, col) for row in range(num_zone_rows) for col in range(num_zone_cols)]
-        )
-
-        # check which zones actually contain only nans
-        # nan_zones = np.full(len(masks), False)
-        # for i, mask_arr in enumerate(masks):
-        #     if np.any(landscape.landscape_arr[mask_arr] != landscape.nodata):
-        #         nan_zones[i] = True
-        # save this as instance attribute since we will need it to reconstruct
-        # the zonal statistics raster
-        self.data_zones = np.array(
-            [
-                np.any(landscape_arr != landscape.nodata)
-                for landscape_arr in landscape_arrs
-            ]
-        )
-
-        # We only need to consider zones that actually contain non-nan pixels
-        landscapes = [
-            pls_landscape.Landscape(
-                landscape_arr,
-                res=(landscape.cell_width, landscape.cell_height),
-                nodata=landscape.nodata,
-                neighborhood_rule=neighborhood_rule,
+        with rio.open(landscape_filepath) as src:
+            zone_gser = gpd.GeoSeries(
+                ZonalGridAnalysis._get_grid_gser(
+                    src.bounds,
+                    num_zone_rows,
+                    num_zone_cols,
+                    zone_width,
+                    zone_height,
+                    offset,
+                ),
+                crs=src.crs,
             )
-            for landscape_arr in landscape_arrs[self.data_zones]
-        ]
-        zone_ids = list(map(tuple, zone_ids[self.data_zones]))
 
-        # TODO: find a better way to DRY this (see comment just below)
-        # build a list of numpy masks, each representing a grid cell of our
-        # zonal analysis. Doing this here is rather silly, but it allows us to
-        # re-use the `compute_zonal_statistics_arr` method of the
-        # `ZonalAnalysis` class (at the expense of some performance loss,
-        # though most-likely not too critical)
-        # masks = []
-        # # base_mask_arr = np.full((height, width), False)
-        # for zone_row_start in range(0, height, zone_pixel_height):
-        #     for zone_col_start in range(0, width, zone_pixel_width):
-        #         # mask_arr = np.copy(base_mask_arr)
-        #         mask_arr = np.full((height, width), False)
-        #         mask_arr[zone_row_start:zone_row_start +
-        #                  zone_pixel_height, zone_col_start:zone_col_start +
-        #                  zone_pixel_width] = True
-        #         masks.append(mask_arr)
-        # # make it a numpy array, filter out the nan zones and store it as a
-        # # class attribute
-        # self.masks_arr = np.array(masks)[self.data_zones]
-        masks = []
-        for zone_rowcol in zone_ids:
-            mask_arr = np.full(
-                (self.landscape_meta["height"], self.landscape_meta["width"]),
-                False,
-            )
-            mask_arr[zone_rowcol] = True
-            masks.append(mask_arr)
-        self.masks_arr = np.array(masks)
+            # filter out zones that do not meet any valid data pixel
+            def has_valid_data(geom):
+                zone_arr, _ = mask.mask(src, [geom], crop=True)
+                return np.any(zone_arr != src.nodata)
 
-        # to reuse the `compute_zonal_statistics_arr` from `ZonalAnalysis`
-        self.filter_landscape_nodata = False
+            zone_gser = zone_gser[zone_gser.apply(has_valid_data)]
 
-        # Note that
-        # # now we can call the parent's init with the landscape and the
-        # # constructed masks. We only need to consider zones that actually
-        # # contain non-nan pixels
-        # zones = list(map(tuple, np.compress(nan_zones, zones, axis=0)))
-        # super(ZonalGridAnalysis, self).__init__(
-        #     landscape, np.compress(nan_zones, masks, axis=0),'zones', zones,
-        #     crop_landscapes=False)
+        # now we can call the parent's init with the landscape and the
+        # constructed grid geoseries
+        super().__init__(
+            landscape_filepath,
+            zones=zone_gser.rename_axis("grid_cell"),  # set the index name
+            neighborhood_rule=neighborhood_rule,
+        )
 
-        # ACHTUNG: since we have built the landscapes here, we bypass the
-        # parent's init (i.e., `ZonalAnalysis`), and call the grandparent's
-        # init instead
-        super(ZonalAnalysis, self).__init__(landscapes, "zones", zone_ids)
-
-    def plot_landscapes(self, cmap=None, ax=None, figsize=None, **show_kws):
+    def plot_landscapes(self, cmap=None, ax=None, figsize=None, **plot_kws):
         """Plot the spatial distribution of the landscape zones.
 
         Parameters
@@ -737,8 +541,8 @@ class ZonalGridAnalysis(ZonalAnalysis):
             Plot in given axis; if None creates a new figure.
         figsize : tuple of two numeric types, optional
             Size of the figure to create. Ignored if axis `ax` is provided.
-        **show_kws : optional
-            Keyword arguments to be passed to `rasterio.plot.show`.
+        **plot_kws : optional
+            Keyword arguments to be passed to `geopandas.GeoSeries.plot`.
 
         Returns
         -------
@@ -755,18 +559,11 @@ class ZonalGridAnalysis(ZonalAnalysis):
             fig, ax = plt.subplots(figsize=figsize)
             ax.set_aspect("equal")
 
-        if show_kws is None:
-            show_kws = {}
+        if plot_kws is None:
+            plot_kws = {}
 
-        zone_arr = np.full_like(self.data_zones, np.nan, dtype=np.float32)
-        zone_arr[self.data_zones] = np.random.random(np.sum(self.data_zones))
-
-        ax.imshow(
-            zone_arr.reshape(
-                self.landscape_meta["height"], self.landscape_meta["width"]
-            ),
-            cmap=cmap,
-            **show_kws,
-        )
+        gpd.GeoDataFrame(
+            {"color": np.arange(len(self.zone_gser))}, geometry=self.zone_gser
+        ).plot("color", ax=ax, cmap=cmap, **plot_kws)
 
         return ax

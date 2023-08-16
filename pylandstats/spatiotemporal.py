@@ -4,6 +4,8 @@ import functools
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import rasterio as rio
+from rasterio import mask
 
 from . import landscape as pls_landscape
 from . import multilandscape, zonal
@@ -96,12 +98,11 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
     def __init__(
         self,
         landscapes,
-        base_mask,
+        base_geom,
         buffer_dists,
+        *,
         buffer_rings=False,
-        base_mask_crs=None,
-        landscape_crs=None,
-        landscape_transform=None,
+        base_geom_crs=None,
         dates=None,
         neighborhood_rule=None,
     ):
@@ -110,27 +111,20 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         Parameters
         ----------
         landscapes : list-like
-            A list-like of `Landscape` instances or of strings/file-like/pathlib.Path
-            objects so that each is passed as the `landscape` argument of
-            `Landscape.__init__`.
-        base_mask : shapely geometry or geopandas.GeoSeries
-            Geometry that will serve as a base mask to buffer around.
+            A list-like of `Landscape` of strings/file-like/pathlib.Path objects so that
+            each is passed as the `landscape` argument of `Landscape.__init__`.
+        base_geom : shapely geometry or geopandas.GeoSeries
+            Geometry that will serve as a base to buffer around.
+        buffer_dists : list-like
+            Buffer distances.
         buffer_rings : bool, default False
             If `False`, each buffer zone will consist of the whole region that lies
-            within the respective buffer distance around the base mask. If `True`,
-            buffer zones will take the form of rings around the base mask.
-        base_mask_crs : str, dict or pyproj.CRS, optional
-            The coordinate reference system of the base mask. Required if the base mask
-            is a shapely geometry or a geopandas GeoSeries without the `crs` attribute
-            set.
-        landscape_crs : str, dict or pyproj.CRS, optional
-            The coordinate reference system of the landscapes. Required if the passed-in
-            landscapes are `Landscape` instances, ignored if they are paths to raster
-            datasets that already contain such information.
-        landscape_transform : affine.Affine
-            Transformation from pixel coordinates to coordinate reference system.
-            Required if the passed-in landscapes are `Landscape` instances, ignored if
-            they are paths to raster datasets that already contain such information.
+            within the respective buffer distance around the base geometry. If `True`,
+            buffer zones will take the form of rings around the base geometry.
+        base_geom_crs : str, dict or pyproj.CRS, optional
+            The coordinate reference system of the base geometry. Required if the base
+            geometry is a shapely geometry or a geopandas GeoSeries without the `crs`
+            attribute set.
         dates : list-like, optional
             A list-like of ints or strings that label the date of each snapshot of
             `landscapes` (for DataFrame indices and plot labels).
@@ -141,68 +135,53 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
             is provided and the passed-in landscapes are file-like objects or paths, the
             default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
-        super().__init__(landscapes, dates=dates, neighborhood_rule=neighborhood_rule)
         ba = zonal.BufferAnalysis(
             landscapes[0],
-            base_mask=base_mask,
-            buffer_dists=buffer_dists,
+            base_geom,
+            buffer_dists,
             buffer_rings=buffer_rings,
-            base_mask_crs=base_mask_crs,
-            landscape_crs=landscape_crs,
-            landscape_transform=landscape_transform,
+            base_geom_crs=base_geom_crs,
         )
-        # while `BufferAnalysis.__init__` will set the `buffer_dists`
-        # attribute to the instantiated object (stored in the variable `ba`),
-        # it will not set it to the current `SpatioTemporalBufferAnalysis`,
-        # so we need to do it here
-        self.buffer_dists = ba.buffer_dists
+        # while `BufferAnalysis.__init__` will set the `zone_gser` attribute to the
+        # instantiated object (stored in the variable `ba`), it will not set it to the
+        # current `SpatioTemporalBufferAnalysis`, so we need to do it here
+        self.zone_gser = ba.zone_gser
 
-        # init the `SpatioTemporalAnalysis` instance
+        # init the `SpatioTemporalAnalysis` instances
         self.stas = []
-        for buffer_dist, mask_arr in zip(ba.buffer_dists, ba.masks_arr):
-            self.stas.append(
-                SpatioTemporalAnalysis(
-                    [
+        for buffer_dist, zone_geom in ba.zone_gser.items():
+            zone_landscapes = []
+            for landscape in landscapes:
+                with rio.open(landscape) as src:
+                    zone_arr, zone_transform = mask.mask(src, [zone_geom], crop=True)
+                    zone_landscapes.append(
                         pls_landscape.Landscape(
-                            np.where(
-                                mask_arr,
-                                landscape.landscape_arr,
-                                landscape.nodata,
-                            ).astype(landscape.landscape_arr.dtype),
-                            res=(landscape.cell_width, landscape.cell_height),
-                            nodata=landscape.nodata,
-                            transform=landscape.transform,
-                            neighborhood_rule=landscape.neighborhood_rule,
+                            zone_arr,
+                            res=src.res,
+                            transform=zone_transform,
+                            neighborhood_rule=neighborhood_rule,
                         )
-                        for landscape in self.landscapes
-                    ],
-                    dates=dates,
-                )
-            )
+                    )
+            self.stas.append(SpatioTemporalAnalysis(zone_landscapes, dates=dates))
 
-        # the `self.present_classes` attribute will have been set by this
-        # instance father's init (namely the `super` in the first line of this
-        # method), however some of the classes may not actually be found in
-        # any of buffer zones. We therefore need to get the union of the
-        # classes found at the spatio-temporal analysis instance of each
-        # `buffer_dist`
+        # We need to get the union of the classes found at the spatio-temporal analysis
+        # instance of each `buffer_dist`
         self.present_classes = functools.reduce(
             np.union1d, tuple(sta.present_classes for sta in self.stas)
         )
 
-        # the dates will be the same for all the `SpatioTemporalAnalysis`
-        # instances stored in `self.stas`. We will just take them from the
-        # first instance and store them as attribute of this
-        # `SpatioTemporalBufferAnalysis` so that it can be used more
-        # conveniently below.
-        # ACHTUNG: we do it AFTER instantiating the `SpatioTemporalAnalysis`
-        # instances of `self.stats` so that we let the `__init__` method of
-        # `SpatioTemporalAnalysis.__init__` deal with the logic of what to do
-        # with the `dates` argument
+        # the dates will be the same for all the `SpatioTemporalAnalysis` instances
+        # stored in `self.stas`. We will just take them from the first instance and
+        # store them as attribute of this `SpatioTemporalBufferAnalysis` so that it can
+        # be used more conveniently below.
+        # ACHTUNG: we do it AFTER instantiating the `SpatioTemporalAnalysis` instances
+        # of `self.stats` so that we let the `__init__` method of
+        # `SpatioTemporalAnalysis.__init__` deal with the logic of what to do with the
+        # `dates` argument
         self.dates = self.stas[0].dates
 
     def compute_class_metrics_df(  # noqa: D102
-        self, metrics=None, classes=None, metrics_kws=None, fillna=None
+        self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
     ):
         if classes is None:
             classes = self.present_classes
@@ -213,48 +192,48 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         else:
             columns = metrics
 
-        # IMPORTANT: since some classes might not be present for each date
-        # and/or buffer distance, we will init the MultiIndex manually to
-        # ensure that every class is present in the resulting data frame. If
-        # some class does not appear for some some date/buffer distance, the
-        # corresponding row will be nan. This probably preferable than having
-        # a MultiIndex that can have different levels (i.e., the second level
-        # `class_val`) for each buffer distance.
-        # Note that this approach is likely slower since for each of the
-        # `buffer_dists`, we have to iterate as in (see below):
+        # IMPORTANT: since some classes might not be present for each date and/or buffer
+        # distance, we will init the MultiIndex manually to ensure that every class is
+        # present in the resulting data frame. If some class does not appear for some
+        # date/buffer distance, the corresponding row will be nan. This probably
+        # preferable than having a MultiIndex that can have different levels (i.e., the
+        # second level `class_val`) for each buffer distance.
+        # Note that this approach is likely slower since for each of the buffer
+        # distances, we have to iterate as in (see below):
         # `for class_val, date in class_metrics_df.loc[buffer_dist].index`
         class_metrics_df = pd.DataFrame(
-            index=pd.MultiIndex.from_product([self.buffer_dists, classes, self.dates]),
+            index=pd.MultiIndex.from_product(
+                [self.zone_gser.index, classes, self.dates]
+            ),
             columns=columns,
         )
         class_metrics_df.index.names = "buffer_dist", "class_val", "dates"
         class_metrics_df.columns.name = "metric"
 
-        for buffer_dist, sta in zip(self.buffer_dists, self.stas):
-            # get the class metrics data frame for the
-            # `SpatioTemporalAnalysis` instance that corresponds to this
-            # `buffer_dist`
+        for buffer_dist, sta in zip(self.zone_gser.index, self.stas):
+            # get the class metrics data frame for the `SpatioTemporalAnalysis` instance
+            # that corresponds to this `buffer_dist`
             df = sta.compute_class_metrics_df(
                 metrics=metrics,
                 classes=classes,
                 metrics_kws=metrics_kws,
                 fillna=fillna,
             )
-            # put the metrics data frame of the `SpatioTemporalAnalysis`
-            # of this `buffer_dist` into the global metrics data frame of
-            # the `SpatioTemporalBufferAnalysis`
+            # put the metrics data frame of the `SpatioTemporalAnalysis` of this
+            # `buffer_dist` into the global metrics data frame of the
+            # `SpatioTemporalBufferAnalysis`
             for class_val, date in class_metrics_df.loc[buffer_dist].index:
-                # use `class_metrics_df.loc` for the first level (i.e.,
-                # `buffer_dist`) again (we have already used it in the
-                # iterator above) to avoid `SettingWithCopyWarning`
+                # use `class_metrics_df.loc` for the first level (i.e., `buffer_dist`)
+                # again (we have already used it in the iterator above) to avoid
+                # `SettingWithCopyWarning`
                 try:
                     class_metrics_df.loc[buffer_dist, class_val, date] = df.loc[
                         class_val, date
                     ]
                 except KeyError:
-                    # this means that `class_val` is not in `df`,
-                    # therefore we do nothing and the corresponding row of
-                    # `class_metrics_df` will stay as nan
+                    # this means that `class_val` is not in `df`, therefore we do
+                    # nothing and the corresponding row of `class_metrics_df` will stay
+                    # as nan
                     pass
 
         return class_metrics_df
@@ -267,21 +246,20 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
     )
 
     def compute_landscape_metrics_df(  # noqa: D102
-        self, metrics=None, metrics_kws=None
+        self, *, metrics=None, metrics_kws=None
     ):
-        # we will create a dict where each key is a `buffer_dist`, and its
-        # value is the corresponding metrics data frame of the
-        # `SpatioTemporalAnalysis` instance
+        # we will create a dict where each key is a `buffer_dist`, and its value is the
+        # corresponding metrics data frame of the `SpatioTemporalAnalysis` instance
         df_dict = {
             buffer_dist: sta.compute_landscape_metrics_df(
                 metrics=metrics, metrics_kws=metrics_kws
             )
-            for buffer_dist, sta in zip(self.buffer_dists, self.stas)
+            for buffer_dist, sta in zip(self.zone_gser.index, self.stas)
         }
 
         # we concatenate each value of the dict dataframe using its respective
-        # `buffer_dist` key to create an extra index level (i.e., using the
-        # `keys` argument of `pd.concat`)
+        # `buffer_dist` key to create an extra index level (i.e., using the `keys`
+        # argument of `pd.concat`)
         landscape_metrics_df = pd.concat(df_dict.values(), keys=df_dict.keys())
         # now we set the name of each index and column level
         landscape_metrics_df.index.names = "buffer_dist", "dates"
@@ -299,6 +277,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
     def plot_metric(
         self,
         metric,
+        *,
         class_val=None,
         ax=None,
         metric_legend=True,
@@ -355,7 +334,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         if "label" not in plot_kws:
             # avoid alias/refrence issues
             _plot_kws = plot_kws.copy()
-            for buffer_dist, sta in zip(self.buffer_dists, self.stas):
+            for buffer_dist, sta in zip(self.zone_gser.index, self.stas):
                 _plot_kws["label"] = buffer_dist
                 ax = sta.plot_metric(
                     metric,
@@ -385,6 +364,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
 
     def plot_landscapes(
         self,
+        *,
         cmap=None,
         legend=True,
         subplots_kws=None,
@@ -411,8 +391,8 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         fig : matplotlib.figure.Figure
             The figure with its corresponding plots drawn into its axes.
         """
-        # the number of rows is the number of dates, which will be the same
-        # for all the `SpatioTemporalAnalysis` instances of `self.stas`
+        # the number of rows is the number of dates, which will be the same for all the
+        # `SpatioTemporalAnalysis` instances of `self.stas`
         dates = self.stas[0].dates
 
         # avoid alias/refrence issues
@@ -424,7 +404,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         if figsize is None:
             figwidth, figheight = plt.rcParams["figure.figsize"]
             figsize = (
-                figwidth * len(self.buffer_dists),
+                figwidth * len(self.zone_gser),
                 figheight * len(dates),
             )
 
@@ -435,7 +415,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         if show_kws is None:
             show_kws = {}
         flat_axes = axes.flat
-        for buffer_dist, sta in zip(self.buffer_dists, self.stas):
+        for buffer_dist, sta in zip(self.zone_gser.index, self.stas):
             for date, landscape in zip(sta.dates, sta.landscapes):
                 ax = landscape.plot_landscape(
                     cmap=cmap, ax=next(flat_axes), legend=legend, **show_kws
@@ -445,7 +425,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalAnalysis):
         for date, ax in zip(dates, axes[0]):
             ax.set_title(date)
 
-        for buffer_dist, ax in zip(self.buffer_dists, axes[:, 0]):
+        for buffer_dist, ax in zip(self.zone_gser.index, axes[:, 0]):
             ax.set_ylabel(buffer_dist)
 
         # adjust spacing between axes

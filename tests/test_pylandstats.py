@@ -779,18 +779,15 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
 
 class TestZonaAlnalysis(unittest.TestCase):
     def setUp(self):
-        self.masks_arr = np.load(
-            path.join(tests_data_dir, "masks_arr.npy"), allow_pickle=True
-        )
-        self.landscape = pls.Landscape(
-            np.load(path.join(tests_data_dir, "ls250_06.npy"), allow_pickle=True),
-            res=(250, 250),
-        )
         self.landscape_fp = path.join(tests_data_dir, "ls250_06.tif")
         with rio.open(self.landscape_fp) as src:
             self.landscape_transform = src.transform
             self.landscape_crs = src.crs
-        self.masks_fp = path.join(tests_data_dir, "gmb-lausanne.gpkg")
+        self.zones_fp = path.join(tests_data_dir, "gmb-lausanne.gpkg")
+        self.zone_gdf = gpd.read_file(self.zones_fp)
+        self.masks_arr = np.load(
+            path.join(tests_data_dir, "masks_arr.npy"), allow_pickle=True
+        )
         # for buffer analysis
         self.geom = geometry.Point(6.6327025, 46.5218269)
         self.buffer_dists = [10000, 15000, 20000]
@@ -802,173 +799,157 @@ class TestZonaAlnalysis(unittest.TestCase):
         shutil.rmtree(self.tmp_dir)
 
     def test_zonal_init(self):
-        # test that the attribute names and values are consistent with the
-        # provided `masks_arr`
-        za = pls.ZonalAnalysis(self.landscape, masks=self.masks_arr)
-        self.assertEqual(za.attribute_name, "attribute_values")
-        self.assertEqual(len(za), len(self.masks_arr))
-        self.assertEqual(len(za), len(za.attribute_values))
-
-        # test that if we init a `ZonalAnalysis` from filepaths, Landscape
-        # instances are automaticaly built, and the attribute names and values
-        # are also consistent with the provided `masks_arr`
-        za = pls.ZonalAnalysis(self.landscape_fp, masks=self.masks_arr)
-        for landscape in za.landscapes:
-            self.assertIsInstance(landscape, pls.Landscape)
-        self.assertEqual(za.attribute_name, "attribute_values")
-        self.assertEqual(len(za), len(self.masks_arr))
-        self.assertEqual(len(za), len(za.attribute_values))
-
-        # test passing GeoSeries, GeoDataFrame and geopandas files as `masks`
-        masks_gdf = gpd.read_file(self.masks_fp)
-        masks_index_col = "GMDNAME"
-
-        # first test the GeoSeries, which works like the others except that we
-        # cannot set a column as the zone index
-        masks_gser = masks_gdf["geometry"].copy()
-        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gser)
-        self.assertLessEqual(len(za), len(masks_gdf))
-        za = pls.ZonalAnalysis(
-            self.landscape_fp,
-            masks=masks_gser,
-            masks_index_col=masks_index_col,
-        )
-        self.assertLessEqual(len(za), len(masks_gdf))
-        # also test that attribute name is properly set when using geoseries
-        # as `masks` note that if a non-None `attriubte_name` is provided, it
-        # always takes precedence
-        attribute_name = "foo"
+        # test passing GeoSeries, list-like of geometries, GeoDataFrame and geopandas
+        # files as `zones`
+        # first test the GeoSeries and list-like of shapely geometries, which work like
+        # the others except that we cannot set a column as the zone index
+        zone_gser = self.zone_gdf["geometry"].copy()
+        za = pls.ZonalAnalysis(self.landscape_fp, zone_gser)
+        self.assertLessEqual(len(za), len(self.zone_gdf))
+        self.assertTrue(np.all(za.zone_gser.index == zone_gser.index))
+        # also test that attribute name is properly set when using geoseries as `zones`
         # first test for a geoseries with name and unnamed index
-        masks_gser.name = "bar"
-        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gser)
-        self.assertEqual(za.attribute_name, masks_gser.name)
-        za = pls.ZonalAnalysis(
-            self.landscape_fp, masks=masks_gser, attribute_name=attribute_name
-        )
-        self.assertEqual(za.attribute_name, attribute_name)
-        # now test that for a geoseries with name and named index, the
-        # geoseries name takes precedence
-        masks_gser.index.name = "name"
-        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gser)
-        self.assertEqual(za.attribute_name, masks_gser.name)
-        za = pls.ZonalAnalysis(
-            self.landscape_fp, masks=masks_gser, attribute_name=attribute_name
-        )
-        self.assertEqual(za.attribute_name, attribute_name)
-        # finally test that for an unnamed geoseries with named index, the
-        # geoseries index name is taken
-        masks_gser.name = None
-        za = pls.ZonalAnalysis(self.landscape_fp, masks=masks_gser)
-        self.assertEqual(za.attribute_name, masks_gser.index.name)
-        za = pls.ZonalAnalysis(
-            self.landscape_fp, masks=masks_gser, attribute_name=attribute_name
-        )
-        self.assertEqual(za.attribute_name, attribute_name)
+        zone_gser.name = "bar"
+        za = pls.ZonalAnalysis(self.landscape_fp, zone_gser)
+        self.assertEqual(za.attribute_name, zone_gser.name)
+        # now test that for a named geoseries with a named index, the geoseries index
+        # name takes precedence
+        zone_gser.index.name = "name"
+        za = pls.ZonalAnalysis(self.landscape_fp, zone_gser)
+        self.assertEqual(za.attribute_name, zone_gser.index.name)
+        # test that for an named geoseries with an unnamed index, the geoseries name is
+        # taken
+        zone_gser.index.name = None
+        za = pls.ZonalAnalysis(self.landscape_fp, zone_gser)
+        self.assertEqual(za.attribute_name, zone_gser.name)
+        # test overriding the zone index
+        zone_index = zone_gser.index + 1
+        za = pls.ZonalAnalysis(self.landscape_fp, zone_gser, zone_index=zone_index)
+        self.assertTrue(np.all(za.zone_gser.index == zone_index))
+        # test overriding the zone index with a named index
+        zone_index = zone_index.rename("foo")
+        za = pls.ZonalAnalysis(self.landscape_fp, zone_gser, zone_index=zone_index)
+        self.assertEqual(za.attribute_name, zone_index.name)
+        # test that for a list-like of shapely geometries, the CRS of the landscape is
+        # taken
+        zones = list(zone_gser)
+        za = pls.ZonalAnalysis(self.landscape_fp, zones)
+        self.assertEqual(za.zone_gser.crs, self.landscape_crs)
 
         # now test the GeoDataFrame and geopandas file
-        for masks in self.masks_fp, masks_gdf:
+        zone_index_col = "GMDNAME"
+        for zones in self.zones_fp, self.zone_gdf:
             # test init
-            za = pls.ZonalAnalysis(self.landscape_fp, masks=masks)
-            self.assertLessEqual(len(za), len(masks_gdf))
+            za = pls.ZonalAnalysis(self.landscape_fp, zones)
+            self.assertLessEqual(len(za), len(self.zone_gdf))
             self.assertTrue(
-                np.all(np.isin(getattr(za, za.attribute_name), masks_gdf.index))
+                np.all(np.isin(getattr(za, za.attribute_name), self.zone_gdf.index))
             )
             # test that we can set a column as the zone index
-            za = pls.ZonalAnalysis(
-                self.landscape_fp, masks=masks, masks_index_col=masks_index_col
-            )
+            za = pls.ZonalAnalysis(self.landscape_fp, zones, zone_index=zone_index_col)
             self.assertTrue(
                 np.all(
                     np.isin(
-                        getattr(za, masks_index_col),
-                        masks_gdf[masks_index_col],
+                        getattr(za, zone_index_col),
+                        self.zone_gdf[zone_index_col],
                     )
                 )
             )
 
+        # test that we can still pass a raster masks array
+        # test that the attribute names and values are consistent with the provided
+        # `masks_arr`
+        za = pls.ZonalAnalysis(self.landscape_fp, self.masks_arr)
+        self.assertEqual(za.attribute_name, "zone")
+        self.assertEqual(len(za), len(self.masks_arr))
+        # test that Landscape instances are automaticaly built
+        for landscape in za.landscapes:
+            self.assertIsInstance(landscape, pls.Landscape)
+        # test that we can override the zone index
+        zone_index = pd.Series(range(1, len(self.masks_arr) + 1), name="foo")
+        za = pls.ZonalAnalysis(self.landscape_fp, self.masks_arr, zone_index=zone_index)
+        self.assertEqual(za.attribute_name, "foo")
+        self.assertTrue(np.all(za.zone_gser.index == zone_index))
+
+        # test raster masks array with unique zone labels
+        # use list so that we can iterate it multiple times
+        iterator = list(enumerate(self.masks_arr, start=1))
+        masks_arr = np.array(
+            [mask_arr.astype(np.uint8) * i for i, mask_arr in iterator]
+        )
+        zone_index = pd.Series([i for i, _ in iterator])
+        za = pls.ZonalAnalysis(self.landscape_fp, masks_arr)
+        self.assertEqual(za.attribute_name, "zone")
+        self.assertEqual(len(za), len(masks_arr))
+        self.assertTrue(np.all(za.zone_gser.index == zone_index))
+        # test that we can still override the index when masks have unique zone labels
+        zone_index = pd.Series(zone_index + 1, name="foo")
+        za = pls.ZonalAnalysis(self.landscape_fp, masks_arr, zone_index=zone_index)
+        self.assertEqual(za.attribute_name, "foo")
+        self.assertEqual(len(za), len(masks_arr))
+        self.assertTrue(np.all(za.zone_gser.index == zone_index))
+        # test that we can override the nodata value of the masks
+        nodata_val = 255
+        masks_arr = np.where(masks_arr == 0, masks_arr, nodata_val)
+        za = pls.ZonalAnalysis(self.landscape_fp, masks_arr)
+        self.assertEqual(len(za), len(masks_arr))
+
         # test the `neighborhood_rule` argument
         neighborhood_rule = "4"
-        other_neighborhood_rule = "8"
-        # test that if provided and `landscape` is a filepath, the
-        # value is passed to each landscape
+        # test that if provided, the value is passed to each landscape
         for ls in pls.ZonalAnalysis(
             self.landscape_fp,
-            masks=self.masks_arr,
+            zone_gser,
             neighborhood_rule=neighborhood_rule,
         ).landscapes:
             self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
-        # test that if provided and `landscape` is a `Landscape` instance, the
-        # value is ignored
-        for ls in pls.ZonalAnalysis(
-            pls.Landscape(self.landscape_fp, neighborhood_rule=other_neighborhood_rule),
-            masks=self.masks_arr,
-            neighborhood_rule=neighborhood_rule,
-        ).landscapes:
-            self.assertEqual(ls.neighborhood_rule, other_neighborhood_rule)
-        # test that if not provided and `landscape` is a filepath, the default
-        # value is taken
-        # from this point on, always instantiate from filepaths
-        for ls in pls.ZonalAnalysis(self.landscape_fp, masks=self.masks_arr).landscapes:
+        # test that if not provided, the default value is taken
+        for ls in pls.ZonalAnalysis(self.landscape_fp, self.masks_arr).landscapes:
             self.assertEqual(
                 ls.neighborhood_rule, pls.settings.DEFAULT_NEIGHBORHOOD_RULE
             )
 
     def test_zonal_plot_metrics(self):
-        za = pls.ZonalAnalysis(self.landscape_fp, masks=self.masks_arr)
+        za = pls.ZonalAnalysis(self.landscape_fp, self.zone_gdf)
 
         # test for `None` (landscape-level) and an existing class (class-level)
         for class_val in [None, za.present_classes[0]]:
             # test that the x data of the line corresponds to the attribute
-            # values
+            # values, i.e., the zone ids
             self.assertTrue(
                 np.all(
                     za.plot_metric("patch_density", class_val=class_val)
                     .lines[0]
                     .get_xdata()
-                    == za.attribute_values
+                    == za.zone_gser.index
                 )
             )
 
-    def test_compute_zonal_statistics_arr(self):
-        za = pls.ZonalAnalysis(self.landscape_fp, masks=self.masks_arr)
+    def test_compute_zonal_statistics_gdf(self):
+        za = pls.ZonalAnalysis(self.landscape_fp, self.zone_gdf)
 
-        # test that the array has the proper shape
-        zs_arr = za.compute_zonal_statistics_arr("patch_density")
-        zs_arr.shape = za.landscape_meta["height"], za.landscape_meta["width"]
+        # test that the gdf has the proper shape (number of zones, number of metrics +
+        # geometry column)
+        metrics = ["patch_density"]
+        zs_gdf = za.compute_zonal_statistics_gdf(metrics)
+        self.assertEqual(zs_gdf.shape, (len(self.zone_gdf), len(metrics) + 1))
 
-        # test that a zonal statistics array computed at the class level has
-        # at least as many nan values than its landscape-level counterpart
-        self.assertGreaterEqual(
-            np.isnan(zs_arr).sum(),
-            np.isnan(
-                za.compute_zonal_statistics_arr(
-                    "patch_density", class_val=za.present_classes[0]
-                )
-            ).sum(),
-        )
-
-        # test that the zonal statistics when excluding boundaries should be
-        # less or equal than including them
+        # test that the zonal statistics when excluding boundaries should be less or
+        # equal than including them
+        metric = "total_edge"
+        metric_kws = {"count_boundary": True}
         self.assertLessEqual(
-            np.nansum(za.compute_zonal_statistics_arr("total_edge")),
-            np.nansum(
-                za.compute_zonal_statistics_arr(
-                    "total_edge", metric_kws={"count_boundary": True}
-                )
-            ),
+            za.compute_zonal_statistics_gdf([metric])[metric].sum(),
+            za.compute_zonal_statistics_gdf([metric], metrics_kws={metric: metric_kws})[
+                metric
+            ].sum(),
         )
-
-        # test that passing `dst_filepath` dumps a raster file
-        dst_filepath = path.join(self.tmp_dir, "foo.tif")
-        za.compute_zonal_statistics_arr("patch_density", dst_filepath=dst_filepath)
-        self.assertTrue(path.exists(dst_filepath))
 
     def test_buffer_init(self):
         naive_gser = gpd.GeoSeries([self.geom])
         gser = gpd.GeoSeries([self.geom], crs=geom_crs)
 
-        # test that we cannot init from a shapely geometry without providing
-        # its crs
+        # test that we cannot init from a shapely geometry without providing its crs
         self.assertRaises(
             ValueError,
             pls.BufferAnalysis,
@@ -976,99 +957,40 @@ class TestZonaAlnalysis(unittest.TestCase):
             self.geom,
             self.buffer_dists,
         )
-        # test that we cannot init with a landscape that does not have crs and
-        # transform information, even when providing the `base_mask` arguments
-        # properly
-        for base_mask in [self.geom, naive_gser, gser]:
-            # missing landscape CRS and transform
-            self.assertRaises(
-                ValueError,
-                pls.BufferAnalysis,
-                self.landscape,
-                base_mask,
-                self.buffer_dists,
-                {"base_mask_crs": geom_crs},
-            )
-            # missing landscape transform
-            self.assertRaises(
-                ValueError,
-                pls.BufferAnalysis,
-                self.landscape,
-                base_mask,
-                self.buffer_dists,
-                {
-                    "base_mask_crs": geom_crs,
-                    "landscape_crs": self.landscape_crs,
-                },
-            )
-            # missing landscape CRS
-            self.assertRaises(
-                ValueError,
-                pls.BufferAnalysis,
-                self.landscape,
-                base_mask,
-                self.buffer_dists,
-                {
-                    "base_mask_crs": geom_crs,
-                    "landscape_transform": self.landscape_transform,
-                },
-            )
 
         # test that we can properly instantiate it from:
         # 1. a landscape filepath, shapely geometry, and its crs
-        # 2. a landscape filepath, naive geopandas GeoSeries (with no crs set)
-        #    and its crs
+        # 2. a landscape filepath, naive geopandas GeoSeries (with no crs set) and its
+        #    crs
         # 3. a landscape filepath, geopandas GeoSeries with crs set
-        # 4. a landscape filepath, geopandas GeoSeries with crs set and a crs (
-        #    which will override the crs of the GeoSeries)
-        # 5. any of the above but changing the landscape filepath for a
-        #    Landscape instance with a non-None `tranform` attribute its crs as
-        #    argument
-        # 6. any of the above but changing the landscape filepath for a
-        #    Landscape instance with its crs and transform as argument
+        # 4. a landscape filepath, geopandas GeoSeries with crs set and a crs (which
+        #    will override the crs of the GeoSeries)
         for ba in [
             pls.BufferAnalysis(
                 self.landscape_fp,
                 self.geom,
                 self.buffer_dists,
-                base_mask_crs=geom_crs,
+                base_geom_crs=geom_crs,
             ),
             pls.BufferAnalysis(
                 self.landscape_fp,
                 naive_gser,
                 self.buffer_dists,
-                base_mask_crs=geom_crs,
+                base_geom_crs=geom_crs,
             ),
             pls.BufferAnalysis(self.landscape_fp, gser, self.buffer_dists),
             pls.BufferAnalysis(
                 self.landscape_fp,
                 gser,
                 self.buffer_dists,
-                base_mask_crs=geom_crs,
-            ),
-            pls.BufferAnalysis(
-                pls.Landscape(self.landscape_fp),
-                gser,
-                self.buffer_dists,
-                base_mask_crs=geom_crs,
-                landscape_crs=self.landscape_crs,
-            ),
-            pls.BufferAnalysis(
-                self.landscape,
-                gser,
-                self.buffer_dists,
-                base_mask_crs=geom_crs,
-                landscape_crs=self.landscape_crs,
-                landscape_transform=self.landscape_transform,
+                base_geom_crs=geom_crs,
             ),
         ]:
-            self.assertEqual(ba.attribute_name, "buffer_dists")
-            self.assertEqual(len(ba), len(ba.masks_arr))
-            self.assertEqual(len(ba), len(ba.buffer_dists))
+            self.assertEqual(ba.attribute_name, "buffer_dist")
+            self.assertEqual(len(ba), len(ba.zone_gser))
 
-        # test that we cannot instantiate a `BufferAnalysis` with
-        # `buffer_rings=True` if `base_mask` is a polygon or a GeoSeries
-        # containing a polygon
+        # test that we cannot instantiate a `BufferAnalysis` with `buffer_rings=True` if
+        # `base_mask` is a polygon or a GeoSeries containing a polygon
         polygon = self.geom.buffer(1000)  # this will return a polygon instance
         self.assertRaises(
             ValueError,
@@ -1076,7 +998,7 @@ class TestZonaAlnalysis(unittest.TestCase):
             self.landscape_fp,
             polygon,
             self.buffer_dists,
-            {"buffer_rings": True, "base_mask_crs": geom_crs},
+            {"buffer_rings": True, "base_geom_crs": geom_crs},
         )
         polygon_gser = gpd.GeoSeries([polygon], crs=geom_crs)
         self.assertRaises(
@@ -1094,23 +1016,22 @@ class TestZonaAlnalysis(unittest.TestCase):
         ba_rings = pls.BufferAnalysis(
             self.landscape_fp, gser, self.buffer_dists, buffer_rings=True
         )
-        # the `buffer_dists` attribute must be a string of the form '{r}-{R}'
-        # where r and R respectively represent the smaller and larger radius
-        # that compose each ring
-        for buffer_ring_str in ba_rings.buffer_dists:
+        # the `buffer_dists` attribute must be a string of the form '{r}-{R}' where r
+        # and R respectively represent the smaller and larger radius that compose each
+        # ring
+        for buffer_ring_str in ba_rings.zone_gser.index:
             self.assertIn("-", buffer_ring_str)
 
-        # compare it with the default instance (with the argument
-        # `buffer_rings=False`) that does not consider rings but cumulatively
-        # considers the inner areas in each mask. The first mask will in fact
-        # be the same in both cases (the region that goes from 0 to the first
-        # item of `self.buffer_dists`), but the successive masks will be
-        # always larger in the default instance (since they will have the
-        # surface of the corresponding ring plus the surface of the inner
-        # region that is excluded when `buffer_rings=True`)
+        # compare it with the default instance (with the argument `buffer_rings=False`)
+        # that does not consider rings but cumulatively considers the inner areas in
+        # each zone. The first zone will in fact be the same in both cases (the region
+        # that goes from 0 to the first item of `self.buffer_dists`), but the successive
+        # zones will be always larger in the default instance (since they will have the
+        # surface of the corresponding ring plus the surface of the inner region that is
+        # excluded when `buffer_rings=True`)
         ba = pls.BufferAnalysis(self.landscape_fp, gser, self.buffer_dists)
-        for mask_arr, ring_mask_arr in zip(ba.masks_arr, ba_rings.masks_arr):
-            self.assertGreaterEqual(np.sum(mask_arr), np.sum(ring_mask_arr))
+        for zone_gser, ring_zone_gser in zip(ba.zone_gser, ba_rings.zone_gser):
+            self.assertGreaterEqual(zone_gser.area.sum(), ring_zone_gser.area.sum())
 
     def test_grid_init(self):
         # test init by number of zone rows/cols
@@ -1120,28 +1041,28 @@ class TestZonaAlnalysis(unittest.TestCase):
             num_zone_rows=num_zone_rows,
             num_zone_cols=num_zone_cols,
         )
-        self.assertEqual(len(zga.data_zones), num_zone_rows * num_zone_cols)
-        self.assertGreaterEqual(len(zga.data_zones), len(zga.masks_arr))
+        # there are at most as many zones as num_zone_rows * num_zone_cols, because
+        # cells with no valid data are excluded from `zone_gser`
+        self.assertLessEqual(len(zga.zone_gser), num_zone_rows * num_zone_cols)
 
-        # test init by zone pixel width/height
-        zone_pixel_width, zone_pixel_height = 100, 100
+        # test init by zone width/height
+        zone_width, zone_height = 1000, 1000
         zga = pls.ZonalGridAnalysis(
             self.landscape_fp,
-            zone_pixel_width=zone_pixel_width,
-            zone_pixel_height=zone_pixel_height,
+            zone_width=zone_width,
+            zone_height=zone_height,
         )
 
         # test that init must provide one arg for each dimension (i.e,
-        # `num_zone_cols`/`zone_pixel_width` and
-        # `num_zone_rows`/`zone_pixel_height`
+        # `num_zone_cols`/`zone_width` and `num_zone_rows`/`zone_height`)
         for kws in [
             {},
             {
-                "zone_pixel_height": zone_pixel_height,
+                "zone_height": zone_height,
                 "num_zone_rows": num_zone_rows,
             },
             {
-                "zone_pixel_width": zone_pixel_width,
+                "zone_width": zone_width,
                 "num_zone_cols": num_zone_cols,
             },
         ]:
@@ -1151,32 +1072,19 @@ class TestZonaAlnalysis(unittest.TestCase):
 
         # test the `neighborhood_rule` argument
         neighborhood_rule = "4"
-        other_neighborhood_rule = "8"
-        # test that if provided and `landscape` is a filepath, the
-        # value is passed to each landscape
+        # test that the value is passed to each landscape
         for ls in pls.ZonalGridAnalysis(
             self.landscape_fp,
-            zone_pixel_width=zone_pixel_width,
-            zone_pixel_height=zone_pixel_height,
+            zone_width=zone_width,
+            zone_height=zone_height,
             neighborhood_rule=neighborhood_rule,
         ).landscapes:
             self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
-        # test that if provided and `landscape` is a `Landscape` instance, the
-        # value is ignored
-        for ls in pls.ZonalGridAnalysis(
-            pls.Landscape(self.landscape_fp, neighborhood_rule=other_neighborhood_rule),
-            zone_pixel_width=zone_pixel_width,
-            zone_pixel_height=zone_pixel_height,
-            neighborhood_rule=neighborhood_rule,
-        ).landscapes:
-            self.assertEqual(ls.neighborhood_rule, other_neighborhood_rule)
-        # test that if not provided and `landscape` is a filepath, the default
-        # value is taken
-        # from this point on, always instantiate from filepaths
+        # test that if not provided, the default value is taken
         for ls in pls.ZonalGridAnalysis(
             self.landscape_fp,
-            zone_pixel_width=zone_pixel_width,
-            zone_pixel_height=zone_pixel_height,
+            zone_width=zone_width,
+            zone_height=zone_height,
         ).landscapes:
             self.assertEqual(
                 ls.neighborhood_rule, pls.settings.DEFAULT_NEIGHBORHOOD_RULE
@@ -1190,7 +1098,7 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
             path.join(tests_data_dir, "ls250_12.tif"),
         ]
         self.dates = [2006, 2012]
-        self.base_mask = gpd.GeoSeries(
+        self.base_geom = gpd.GeoSeries(
             [geometry.Point(6.6327025, 46.5218269)], crs=geom_crs
         )
         self.buffer_dists = [10000, 15000, 20000]
@@ -1201,7 +1109,7 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
         # `TestZonalAnalysis`)
         stba = pls.SpatioTemporalBufferAnalysis(
             self.landscape_fps,
-            self.base_mask,
+            self.base_geom,
             self.buffer_dists,
             dates=self.dates,
         )
@@ -1211,42 +1119,20 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
 
         # test the `neighborhood_rule` argument
         neighborhood_rule = "4"
-        other_neighborhood_rule = "8"
-        # test that if provided and the elements of `landscapes` are filepaths,
-        # the value is passed to each landscape
+        # test that if provided, the value is passed to each landscape
         for sta in pls.SpatioTemporalBufferAnalysis(
             self.landscape_fps,
-            self.base_mask,
+            self.base_geom,
             self.buffer_dists,
             dates=self.dates,
             neighborhood_rule=neighborhood_rule,
         ).stas:
             for ls in sta.landscapes:
                 self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
-        # test that if provided and the elements of `landscapes` are
-        # `Landscape` instances, the value is ignored
-        with rio.open(self.landscape_fps[0]) as src:
-            landscape_crs = src.crs
-            landscape_transform = src.transform
-        for sta in pls.SpatioTemporalBufferAnalysis(
-            [
-                pls.Landscape(landscape_fp, neighborhood_rule=other_neighborhood_rule)
-                for landscape_fp in self.landscape_fps
-            ],
-            self.base_mask,
-            self.buffer_dists,
-            landscape_crs=landscape_crs,
-            landscape_transform=landscape_transform,
-            dates=self.dates,
-            neighborhood_rule=neighborhood_rule,
-        ).stas:
-            for ls in sta.landscapes:
-                self.assertEqual(ls.neighborhood_rule, other_neighborhood_rule)
-        # test that if not provided and the elements of `landscapes` are
-        # filepaths, the default value is taken
+        # test that if not provided, the default value is taken
         for sta in pls.SpatioTemporalBufferAnalysis(
             self.landscape_fps,
-            self.base_mask,
+            self.base_geom,
             self.buffer_dists,
             dates=self.dates,
         ).stas:
@@ -1259,13 +1145,13 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
     def test_spatiotemporalbufferanalysis_dataframes(self):
         stba = pls.SpatioTemporalBufferAnalysis(
             self.landscape_fps,
-            self.base_mask,
+            self.base_geom,
             self.buffer_dists,
             dates=self.dates,
         )
 
-        # test that the data frames that result from `compute_class_metrics_df`
-        # and `compute_landscape_metrics_df` are well constructed
+        # test that the data frames that result from `compute_class_metrics_df` and
+        # `compute_landscape_metrics_df` are well constructed
         class_metrics_df = stba.compute_class_metrics_df()
         self.assertTrue(
             np.all(
@@ -1283,8 +1169,8 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
             )
         )
 
-        # now test the same but with an analysis that only considers a
-        # subset of metrics and a subset of classes
+        # now test the same but with an analysis that only considers a subset of metrics
+        # and a subset of classes
         metrics = ["total_area", "edge_density", "proportion_of_landscape"]
         classes = stba.present_classes[:2]
 
@@ -1297,8 +1183,8 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
                 == pd.MultiIndex.from_product([stba.buffer_dists, classes, stba.dates])
             )
         )
-        # 'proportion_of_landscape' cannot be computed at the landscape level
-        # (TODO: test for that elsewhere)
+        # 'proportion_of_landscape' cannot be computed at the landscape level (TODO:
+        # test for that elsewhere)
         landscape_metrics = metrics[:2]
         landscape_metrics_df = stba.compute_landscape_metrics_df(
             metrics=landscape_metrics
@@ -1312,7 +1198,7 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
 
     def test_spatiotemporalbufferanalysis_plot_metric(self):
         stba = pls.SpatioTemporalBufferAnalysis(
-            self.landscape_fps, self.base_mask, self.buffer_dists
+            self.landscape_fps, self.base_geom, self.buffer_dists
         )
 
         # test for `None` (landscape-level) and an existing class (class-level)
@@ -1326,13 +1212,12 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
 
     def test_plot_landscapes(self):
         stba = pls.SpatioTemporalBufferAnalysis(
-            self.landscape_fps, self.base_mask, self.buffer_dists
+            self.landscape_fps, self.base_geom, self.buffer_dists
         )
 
         fig = stba.plot_landscapes()
 
-        # there must be one column for each buffer distance and one row for
-        # each date
+        # there must be one column for each buffer distance and one row for each date
         self.assertEqual(len(fig.axes), len(stba.buffer_dists) * len(stba.dates))
 
         # returned axes must be instances of matplotlib axes
@@ -1343,12 +1228,12 @@ class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
         # matplotlib's settings
         rc_figwidth, rc_figheight = plt.rcParams["figure.figsize"]
         figwidth, figheight = fig.get_size_inches()
-        # the actual `figwidth` must be `len(stba.buffer_dists) * rc_figwidth`
-        # and `figheight` must be `len(stba.dates) * rc_figheight`
+        # the actual `figwidth` must be `len(stba.buffer_dists) * rc_figwidth` and
+        # `figheight` must be `len(stba.dates) * rc_figheight`
         self.assertAlmostEqual(figwidth, len(stba.buffer_dists) * rc_figwidth)
         self.assertAlmostEqual(figheight, len(stba.dates) * rc_figheight)
-        # if instead, we customize the figure size, the dimensions of the
-        # resulting figure must be the customized ones
+        # if instead, we customize the figure size, the dimensions of the resulting
+        # figure must be the customized ones
         custom_figsize = (10, 10)
         fig = stba.plot_landscapes(subplots_kws={"figsize": custom_figsize})
         figwidth, figheight = fig.get_size_inches()
