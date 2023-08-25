@@ -114,6 +114,11 @@ jobs:
           sinceTag: v0.1.0
           output: RELEASE-CHANGELOG.md
 
+      - uses: actions/download-artifact@v3
+        with:
+          name: artifact
+          path: dist
+
       - name: create github release
         uses: softprops/action-gh-release@v1
         with:
