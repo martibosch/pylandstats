@@ -59,7 +59,7 @@ jobs:
           path: wheelhouse/*.whl
 
   publish_dev_build:
-    needs: [make_sdist, build_wheels]
+    needs: [build_sdist_pure_wheels, build_binary_wheels]
     runs-on: ubuntu-latest
     environment:
       name: testpypi
