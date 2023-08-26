@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel", "numpy", "pythran", "transonic>=0.4.0"]
+requires = ["setuptools>=61.0", "wheel", "numpy", "pythran", "black", "transonic>=0.4.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -22,6 +22,7 @@ classifiers = [
 ]
 requires-python = ">=3.8"
 dependencies = [
+    "black",
     "matplotlib >= 2.2",
     "numba ; platform_system == 'Windows'",
     "numpy >= 1.15",
