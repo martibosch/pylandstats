@@ -114,7 +114,7 @@ class TestLandscape(unittest.TestCase):
         # Python 2 and 3)
         for class_val in [1, 2, None]:
             with warnings.catch_warnings(record=True) as w:
-                ls.euclidean_nearest_neighbor(class_val)
+                ls.euclidean_nearest_neighbor(class_val=class_val)
                 self.assertGreater(len(w), 0)
 
         # landscape-level metrics
@@ -209,12 +209,12 @@ class TestLandscape(unittest.TestCase):
         # TODO: assert 0 <= ls.proximity(patch_arr) <= 1
 
         # class-level metrics
-        self.assertGreater(ls.total_area(class_val), 0)
+        self.assertGreater(ls.total_area(class_val=class_val), 0)
         self.assertTrue(0 < ls.proportion_of_landscape(class_val) < 100)
-        self.assertTrue(ls.patch_density(class_val) > 0)
-        self.assertTrue(0 < ls.largest_patch_index(class_val) < 100)
-        self.assertGreaterEqual(ls.total_edge(class_val), 0)
-        self.assertGreaterEqual(ls.edge_density(class_val), 0)
+        self.assertTrue(ls.patch_density(class_val=class_val) > 0)
+        self.assertTrue(0 < ls.largest_patch_index(class_val=class_val) < 100)
+        self.assertGreaterEqual(ls.total_edge(class_val=class_val), 0)
+        self.assertGreaterEqual(ls.edge_density(class_val=class_val), 0)
 
         # the value ranges of mean, area-weighted mean and median aggregations
         # are going to be the same as their respective original metrics
@@ -226,49 +226,60 @@ class TestLandscape(unittest.TestCase):
         var_suffixes = ["_ra", "_sd", "_cv"]
 
         for mean_suffix in mean_suffixes:
-            self.assertGreater(getattr(ls, "area" + mean_suffix)(class_val), 0)
             self.assertGreater(
-                getattr(ls, "perimeter_area_ratio" + mean_suffix)(class_val), 0
+                getattr(ls, "area" + mean_suffix)(class_val=class_val), 0
+            )
+            self.assertGreater(
+                getattr(ls, "perimeter_area_ratio" + mean_suffix)(class_val=class_val),
+                0,
             )
             self.assertGreaterEqual(
-                getattr(ls, "shape_index" + mean_suffix)(class_val), 1
+                getattr(ls, "shape_index" + mean_suffix)(class_val=class_val), 1
             )
             self.assertTrue(
-                1 <= getattr(ls, "fractal_dimension" + mean_suffix)(class_val) <= 2
+                1
+                <= getattr(ls, "fractal_dimension" + mean_suffix)(class_val=class_val)
+                <= 2
             )
             # assert 0 <= getattr(
             #     ls, 'contiguity_index' + mean_suffix)(class_val) <= 1
             # assert getattr(ls, 'proximity' + mean_suffix)(class_val) >= 0
             # ACHTUNG: euclidean nearest neighbor can be nan for classes with
             # less than two patches
-            enn = getattr(ls, "euclidean_nearest_neighbor" + mean_suffix)(class_val)
+            enn = getattr(ls, "euclidean_nearest_neighbor" + mean_suffix)(
+                class_val=class_val
+            )
             self.assertTrue(enn > 0 or np.isnan(enn))
 
         for var_suffix in var_suffixes:
-            self.assertGreaterEqual(getattr(ls, "area" + mean_suffix)(class_val), 0)
             self.assertGreaterEqual(
-                getattr(ls, "perimeter_area_ratio" + var_suffix)(class_val), 0
+                getattr(ls, "area" + mean_suffix)(class_val=class_val), 0
             )
             self.assertGreaterEqual(
-                getattr(ls, "shape_index" + var_suffix)(class_val), 0
+                getattr(ls, "perimeter_area_ratio" + var_suffix)(class_val=class_val), 0
             )
             self.assertGreaterEqual(
-                getattr(ls, "fractal_dimension" + var_suffix)(class_val), 0
+                getattr(ls, "shape_index" + var_suffix)(class_val=class_val), 0
+            )
+            self.assertGreaterEqual(
+                getattr(ls, "fractal_dimension" + var_suffix)(class_val=class_val), 0
             )
             # assert getattr(
             #    ls, 'contiguity_index' + var_suffix)(class_val) >= 0
             # assert getattr(ls, 'proximity' + var_suffix)(class_val) >= 0
             # ACHTUNG: euclidean nearest neighbor can be nan for classes with
             # less than two patches
-            enn = getattr(ls, "euclidean_nearest_neighbor" + var_suffix)(class_val)
+            enn = getattr(ls, "euclidean_nearest_neighbor" + var_suffix)(
+                class_val=class_val
+            )
             self.assertTrue(enn >= 0 or np.isnan(enn))
 
         # TODO: assert 0 < ls.interspersion_juxtaposition_index(
         #           class_val) <= 100
-        self.assertGreaterEqual(ls.landscape_shape_index(class_val), 1)
+        self.assertGreaterEqual(ls.landscape_shape_index(class_val=class_val), 1)
         self.assertTrue(
             ls.cell_area / ls.landscape_area
-            <= ls.effective_mesh_size(class_val)
+            <= ls.effective_mesh_size(class_val=class_val)
             <= ls.landscape_area,
             1,
         )
@@ -998,7 +1009,8 @@ class TestZonaAlnalysis(unittest.TestCase):
             self.landscape_fp,
             polygon,
             self.buffer_dists,
-            {"buffer_rings": True, "base_geom_crs": geom_crs},
+            buffer_rings=True,
+            base_geom_crs=geom_crs,
         )
         polygon_gser = gpd.GeoSeries([polygon], crs=geom_crs)
         self.assertRaises(
@@ -1007,9 +1019,7 @@ class TestZonaAlnalysis(unittest.TestCase):
             self.landscape_fp,
             polygon_gser,
             self.buffer_dists,
-            {
-                "buffer_rings": True,
-            },
+            buffer_rings=True,
         )
 
         # test that otherwise, buffer rings are properly instantiated
@@ -1031,7 +1041,7 @@ class TestZonaAlnalysis(unittest.TestCase):
         # excluded when `buffer_rings=True`)
         ba = pls.BufferAnalysis(self.landscape_fp, gser, self.buffer_dists)
         for zone_gser, ring_zone_gser in zip(ba.zone_gser, ba_rings.zone_gser):
-            self.assertGreaterEqual(zone_gser.area.sum(), ring_zone_gser.area.sum())
+            self.assertGreaterEqual(zone_gser.area, ring_zone_gser.area)
 
     def test_grid_init(self):
         # test init by number of zone rows/cols

@@ -144,7 +144,7 @@ class MultiLandscape(abc.ABC):
         return len(self.landscapes)
 
     def compute_class_metrics_df(  # noqa: D102
-        self, metrics=None, classes=None, metrics_kws=None, fillna=None
+        self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
     ):
         attribute_values = getattr(self, self.attribute_name)
 
@@ -210,7 +210,7 @@ class MultiLandscape(abc.ABC):
     )
 
     def compute_landscape_metrics_df(  # noqa: D102
-        self, metrics=None, metrics_kws=None
+        self, *, metrics=None, metrics_kws=None
     ):
         attribute_values = getattr(self, self.attribute_name)
 
@@ -236,7 +236,7 @@ class MultiLandscape(abc.ABC):
             landscape_metrics_df.loc[
                 attribute_value, columns
             ] = landscape.compute_landscape_metrics_df(
-                metrics, metrics_kws=metrics_kws
+                metrics=metrics, metrics_kws=metrics_kws
             ).iloc[
                 0
             ]
@@ -251,6 +251,7 @@ class MultiLandscape(abc.ABC):
     def plot_metric(
         self,
         metric,
+        *,
         class_val=None,
         ax=None,
         metric_legend=True,
@@ -367,6 +368,7 @@ class MultiLandscape(abc.ABC):
 
     def plot_landscapes(
         self,
+        *,
         cmap=None,
         legend=True,
         subplots_kws=None,

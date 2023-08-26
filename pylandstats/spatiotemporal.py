@@ -16,7 +16,9 @@ __all__ = ["SpatioTemporalAnalysis", "SpatioTemporalBufferAnalysis"]
 class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
     """Spatio-temporal analysis."""
 
-    def __init__(self, landscapes, dates=None, neighborhood_rule=None, **landscape_kws):
+    def __init__(
+        self, landscapes, *, dates=None, neighborhood_rule=None, **landscape_kws
+    ):
         """Initialize the spatio-temporal analysis.
 
         Parameters
@@ -57,7 +59,7 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
 
     # override docs
     def compute_class_metrics_df(  # noqa: D102
-        self, metrics=None, classes=None, metrics_kws=None, fillna=None
+        self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
     ):
         return super().compute_class_metrics_df(
             metrics=metrics,
@@ -74,7 +76,7 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
     )
 
     def compute_landscape_metrics_df(  # noqa: D102
-        self, metrics=None, metrics_kws=None
+        self, *, metrics=None, metrics_kws=None
     ):
         return super().compute_landscape_metrics_df(
             metrics=metrics, metrics_kws=metrics_kws
