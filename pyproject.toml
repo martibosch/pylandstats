@@ -87,4 +87,4 @@ version_files = [
 
 [tool.cibuildwheel]
 build = ["cp38-*", "cp39-*", "cp310-*", "cp311-*"]
-skip = "cp38-musllinux_i686"
+skip = "*-musllinux_i686"
