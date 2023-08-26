@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build_sdist_pure_wheels:
+  build_sdist:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,16 +20,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install build twine
 
-      - name: build wheels and source tarball
+      - name: build source tarball
         run: |
-          python -m build
+          python -m build --sdist
           twine check --strict dist/*
 
       - uses: actions/upload-artifact@v3
         with:
           path: dist/*
 
-  build_binary_wheels:
+  build_wheels:
     name: wheel on ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -59,7 +59,7 @@ jobs:
           path: wheelhouse/*.whl
 
   publish_dev_build:
-    needs: [build_sdist_pure_wheels, build_binary_wheels]
+    needs: [build_sdist, build_wheels]
     runs-on: ubuntu-latest
     environment:
       name: testpypi
