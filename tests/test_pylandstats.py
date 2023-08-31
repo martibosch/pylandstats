@@ -1101,160 +1101,174 @@ class TestZonaAlnalysis(unittest.TestCase):
             )
 
 
-class TestSpatioTemporalBufferAnalysis(unittest.TestCase):
+class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
     def setUp(self):
         self.landscape_fps = [
             path.join(tests_data_dir, "ls250_06.tif"),
             path.join(tests_data_dir, "ls250_12.tif"),
         ]
         self.dates = [2006, 2012]
+        # zonal
+        self.zone_gser = pls.ZonalAnalysis(
+            self.landscape_fps[0],
+            np.load(path.join(tests_data_dir, "masks_arr.npy"), allow_pickle=True),
+        ).zone_gser
+        # buffer
         self.base_geom = gpd.GeoSeries(
             [geometry.Point(6.6327025, 46.5218269)], crs=geom_crs
         )
         self.buffer_dists = [10000, 15000, 20000]
+        # grid
+        self.num_zone_rows, self.num_zone_cols = 10, 10
+        # self.zone_width, self.zone_height = 1000, 1000
+        self.init_combinations = zip(
+            [
+                pls.SpatioTemporalZonalAnalysis,
+                pls.SpatioTemporalBufferAnalysis,
+                pls.SpatioTemporalZonalGridAnalysis,
+            ],
+            [[self.zone_gser], [self.base_geom, self.buffer_dists], []],
+            [
+                {},
+                {},
+                {
+                    "num_zone_cols": self.num_zone_cols,
+                    "num_zone_rows": self.num_zone_rows,
+                },
+            ],
+            ["zone", "buffer_dist", "grid_cell"],
+        )
 
-    def test_spatiotemporalbufferanalysis_init(self):
+    def test_init(self):
         # we will just test the base init, the rest of functionalities have
         # already been tested above (in `TestSpatioTemporalAnalysis` and
         # `TestZonalAnalysis`)
-        stba = pls.SpatioTemporalBufferAnalysis(
-            self.landscape_fps,
-            self.base_geom,
-            self.buffer_dists,
-            dates=self.dates,
-        )
-        self.assertEqual(len(stba.buffer_dists), len(stba.stas))
-        for sta in stba.stas:
-            self.assertEqual(sta.dates, self.dates)
+        for _class, init_args, init_kws, attr_name in self.init_combinations:
+            # test zones and dates
+            stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
+            self.assertEqual(len(stza.zone_gser), len(stza.stas))
+            self.assertEqual(stza.attribute_name, attr_name)
 
-        # test the `neighborhood_rule` argument
-        neighborhood_rule = "4"
-        # test that if provided, the value is passed to each landscape
-        for sta in pls.SpatioTemporalBufferAnalysis(
-            self.landscape_fps,
-            self.base_geom,
-            self.buffer_dists,
-            dates=self.dates,
-            neighborhood_rule=neighborhood_rule,
-        ).stas:
-            for ls in sta.landscapes:
-                self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
-        # test that if not provided, the default value is taken
-        for sta in pls.SpatioTemporalBufferAnalysis(
-            self.landscape_fps,
-            self.base_geom,
-            self.buffer_dists,
-            dates=self.dates,
-        ).stas:
-            for ls in sta.landscapes:
-                self.assertEqual(
-                    ls.neighborhood_rule,
-                    pls.settings.DEFAULT_NEIGHBORHOOD_RULE,
-                )
+            for sta in stza.stas:
+                self.assertEqual(sta.dates, self.dates)
 
-    def test_spatiotemporalbufferanalysis_dataframes(self):
-        stba = pls.SpatioTemporalBufferAnalysis(
-            self.landscape_fps,
-            self.base_geom,
-            self.buffer_dists,
-            dates=self.dates,
-        )
+            # test the `neighborhood_rule` argument
+            # test that if not provided, the default value is taken
+            for sta in stza.stas:
+                for ls in sta.landscapes:
+                    self.assertEqual(
+                        ls.neighborhood_rule,
+                        pls.settings.DEFAULT_NEIGHBORHOOD_RULE,
+                    )
+            neighborhood_rule = "4"
+            # test that if provided, the value is passed to each landscape
+            stza = _class(
+                self.landscape_fps,
+                *init_args,
+                neighborhood_rule=neighborhood_rule,
+                **init_kws,
+            )
+            for sta in stza.stas:
+                for ls in sta.landscapes:
+                    self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
 
-        # test that the data frames that result from `compute_class_metrics_df` and
-        # `compute_landscape_metrics_df` are well constructed
-        class_metrics_df = stba.compute_class_metrics_df()
-        self.assertTrue(
-            np.all(
-                class_metrics_df.index
-                == pd.MultiIndex.from_product(
-                    [stba.buffer_dists, stba.present_classes, stba.dates]
+    def test_dataframes(self):
+        for _class, init_args, init_kws, _ in self.init_combinations:
+            stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
+            zone_index = stza.zone_gser.index
+
+            # test that the data frames that result from `compute_class_metrics_df` and
+            # `compute_landscape_metrics_df` are well constructed
+            class_metrics_df = stza.compute_class_metrics_df()
+            self.assertTrue(
+                np.all(
+                    class_metrics_df.index
+                    == pd.MultiIndex.from_product(
+                        [zone_index, stza.present_classes, stza.dates]
+                    )
                 )
             )
-        )
-        landscape_metrics_df = stba.compute_landscape_metrics_df()
-        self.assertTrue(
-            np.all(
-                landscape_metrics_df.index
-                == pd.MultiIndex.from_product([stba.buffer_dists, stba.dates])
+            landscape_metrics_df = stza.compute_landscape_metrics_df()
+            self.assertTrue(
+                np.all(
+                    landscape_metrics_df.index
+                    == pd.MultiIndex.from_product([zone_index, stza.dates])
+                )
             )
-        )
 
-        # now test the same but with an analysis that only considers a subset of metrics
-        # and a subset of classes
-        metrics = ["total_area", "edge_density", "proportion_of_landscape"]
-        classes = stba.present_classes[:2]
+            # now test the same but with an analysis that only considers a subset of
+            # metrics and a subset of classes
+            metrics = ["total_area", "edge_density", "proportion_of_landscape"]
+            classes = stza.present_classes[:2]
 
-        class_metrics_df = stba.compute_class_metrics_df(
-            metrics=metrics, classes=classes
-        )
-        self.assertTrue(
-            np.all(
-                class_metrics_df.index
-                == pd.MultiIndex.from_product([stba.buffer_dists, classes, stba.dates])
+            class_metrics_df = stza.compute_class_metrics_df(
+                metrics=metrics, classes=classes
             )
-        )
-        # 'proportion_of_landscape' cannot be computed at the landscape level (TODO:
-        # test for that elsewhere)
-        landscape_metrics = metrics[:2]
-        landscape_metrics_df = stba.compute_landscape_metrics_df(
-            metrics=landscape_metrics
-        )
-        self.assertTrue(
-            np.all(
-                landscape_metrics_df.index
-                == pd.MultiIndex.from_product([stba.buffer_dists, stba.dates])
+            self.assertTrue(
+                np.all(
+                    class_metrics_df.index
+                    == pd.MultiIndex.from_product([zone_index, classes, stza.dates])
+                )
             )
-        )
+            # 'proportion_of_landscape' cannot be computed at the landscape level (TODO:
+            # test for that elsewhere)
+            landscape_metrics = metrics[:2]
+            landscape_metrics_df = stza.compute_landscape_metrics_df(
+                metrics=landscape_metrics
+            )
+            self.assertTrue(
+                np.all(
+                    landscape_metrics_df.index
+                    == pd.MultiIndex.from_product([zone_index, stza.dates])
+                )
+            )
 
-    def test_spatiotemporalbufferanalysis_plot_metric(self):
-        stba = pls.SpatioTemporalBufferAnalysis(
-            self.landscape_fps, self.base_geom, self.buffer_dists
-        )
-
-        # test for `None` (landscape-level) and an existing class (class-level)
-        for class_val in [None, stba.stas[0].present_classes[0]]:
-            ax = stba.plot_metric("patch_density", class_val=class_val)
-            # test that there is a line for each buffer distance
-            self.assertEqual(len(ax.lines), len(self.buffer_dists))
-            # test that there is a legend label for each buffer distance
-            handles, labels = ax.get_legend_handles_labels()
-            self.assertEqual(len(labels), len(self.buffer_dists))
+    def test_plot_metric(self):
+        for _class, init_args, init_kws, _ in self.init_combinations:
+            stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
+            # test for `None` (landscape-level) and an existing class (class-level)
+            for class_val in [None, stza.stas[0].present_classes[0]]:
+                ax = stza.plot_metric("patch_density", class_val=class_val)
+                # test that there is a line for each zone
+                self.assertEqual(len(ax.lines), len(stza.zone_gser))
+                # test that there is a legend label for each zone
+                handles, labels = ax.get_legend_handles_labels()
+                self.assertEqual(len(labels), len(stza.zone_gser))
 
     def test_plot_landscapes(self):
-        stba = pls.SpatioTemporalBufferAnalysis(
-            self.landscape_fps, self.base_geom, self.buffer_dists
-        )
+        for _class, init_args, init_kws, _ in self.init_combinations:
+            stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
+            fig = stza.plot_landscapes()
 
-        fig = stba.plot_landscapes()
+            # there must be one column for each buffer distance and one row for each
+            # date
+            self.assertEqual(len(fig.axes), len(stza.zone_gser) * len(stza.dates))
 
-        # there must be one column for each buffer distance and one row for each date
-        self.assertEqual(len(fig.axes), len(stba.buffer_dists) * len(stba.dates))
+            # returned axes must be instances of matplotlib axes
+            for ax in fig.axes:
+                self.assertIsInstance(ax, plt.Axes)
 
-        # returned axes must be instances of matplotlib axes
-        for ax in fig.axes:
-            self.assertIsInstance(ax, plt.Axes)
+            # test that by default, the dimensions of the resulting will come from
+            # matplotlib's settings
+            rc_figwidth, rc_figheight = plt.rcParams["figure.figsize"]
+            figwidth, figheight = fig.get_size_inches()
+            # the actual `figwidth` must be `len(stba.buffer_dists) * rc_figwidth` and
+            # `figheight` must be `len(stba.dates) * rc_figheight`
+            self.assertAlmostEqual(figwidth, len(stza.zone_gser) * rc_figwidth)
+            self.assertAlmostEqual(figheight, len(stza.dates) * rc_figheight)
+            # if instead, we customize the figure size, the dimensions of the resulting
+            # figure must be the customized ones
+            custom_figsize = (10, 10)
+            fig = stza.plot_landscapes(subplots_kws={"figsize": custom_figsize})
+            figwidth, figheight = fig.get_size_inches()
+            self.assertAlmostEqual(custom_figsize[0], figwidth)
+            self.assertAlmostEqual(custom_figsize[1], figheight)
 
-        # test that by default, the dimensions of the resulting will come from
-        # matplotlib's settings
-        rc_figwidth, rc_figheight = plt.rcParams["figure.figsize"]
-        figwidth, figheight = fig.get_size_inches()
-        # the actual `figwidth` must be `len(stba.buffer_dists) * rc_figwidth` and
-        # `figheight` must be `len(stba.dates) * rc_figheight`
-        self.assertAlmostEqual(figwidth, len(stba.buffer_dists) * rc_figwidth)
-        self.assertAlmostEqual(figheight, len(stba.dates) * rc_figheight)
-        # if instead, we customize the figure size, the dimensions of the resulting
-        # figure must be the customized ones
-        custom_figsize = (10, 10)
-        fig = stba.plot_landscapes(subplots_kws={"figsize": custom_figsize})
-        figwidth, figheight = fig.get_size_inches()
-        self.assertAlmostEqual(custom_figsize[0], figwidth)
-        self.assertAlmostEqual(custom_figsize[1], figheight)
-
-        # first row has the date as title
-        for date, ax in zip(stba.dates, fig.axes):
-            self.assertEqual(str(date), ax.get_title())
-        # first column has the buffer distance as `ylabel`
-        for buffer_dist, i in zip(
-            stba.buffer_dists, range(0, len(fig.axes), len(stba.dates))
-        ):
-            self.assertEqual(str(buffer_dist), fig.axes[i].get_ylabel())
+            # first row has the date as title
+            for date, ax in zip(stza.dates, fig.axes):
+                self.assertEqual(str(date), ax.get_title())
+            # first column has the buffer distance as `ylabel`
+            for zone, i in zip(
+                stza.zone_gser.index, range(0, len(fig.axes), len(stza.dates))
+            ):
+                self.assertEqual(str(zone), fig.axes[i].get_ylabel())
