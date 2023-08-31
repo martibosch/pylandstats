@@ -303,44 +303,20 @@ class MultiLandscape(abc.ABC):
         # dates
         if metric_kws is None:
             metric_kws = {}
+        # since we are using the compute data frame methods even though we are just
+        # computing a single metric (so that error management regarding the computation
+        # of metrics is defined in a single place), we need to provide the `metrics_kws`
+        # (mapping a metric to its keyword-arguments `metric_kws`).
+        metrics_kws = {metric: metric_kws}
+        metrics = [metric]
         if class_val is None:
-            try:
-                metric_values = [
-                    getattr(landscape, metric)(**metric_kws)
-                    for landscape in self.landscapes
-                ]
-            except AttributeError:
-                raise ValueError(
-                    "{metric} is not among {metrics}".format(
-                        metric=metric,
-                        metrics=pls_landscape.Landscape.CLASS_METRICS,
-                    )
-                )
-            except TypeError:
-                raise ValueError(
-                    "{metric} cannot be computed at the landscape level".format(
-                        metric=metric
-                    )
-                )
+            metric_values = self.compute_landscape_metrics_df(
+                metrics=metrics, metrics_kws=metrics_kws
+            ).values
         else:
-            try:
-                metric_values = [
-                    getattr(landscape, metric)(class_val=class_val, **metric_kws)
-                    for landscape in self.landscapes
-                ]
-            except AttributeError:
-                raise ValueError(
-                    "{metric} is not among {metrics}".format(
-                        metric=metric,
-                        metrics=pls_landscape.Landscape.LANDSCAPE_METRICS,
-                    )
-                )
-            except TypeError:
-                raise ValueError(
-                    "{metric} cannot be computed at the class level".format(
-                        metric=metric
-                    )
-                )
+            metric_values = self.compute_class_metrics_df(
+                metrics=metrics, classes=[class_val], metrics_kws=metrics_kws
+            ).values
 
         if ax is None:
             if subplots_kws is None:
