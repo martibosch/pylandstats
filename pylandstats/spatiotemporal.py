@@ -86,9 +86,8 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
         if dates is None:
             dates = ["t{}".format(i) for i in range(len(landscapes))]
 
-        # pop the `neighborhood_rule` from `landscape_kws` (this is merely done
-        # so that the `neighborhood_rule` argument is explicitly documented in
-        # this method
+        # pop the `neighborhood_rule` from `landscape_kws` (this is merely done so that
+        # the `neighborhood_rule` argument is explicitly documented in this method
         _ = landscape_kws.pop("neighborhood_rule", None)
         # call the parent's init
         super().__init__(

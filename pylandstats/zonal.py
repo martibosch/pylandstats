@@ -76,12 +76,10 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             zones = gpd.read_file(zones)
         except (AttributeError, TypeError):
             # for GeoDataFrame, GeoSeries, list-like or ndarrays, we will get
-            # "AttributeError: object has no attribute 'startswith'"
-            # in windows, fiona will try to read `masks` as a regular expression and
-            # raise a TypeError (see
-            # https://github.com/Toblerity/Fiona/blob/master/fiona/path.py)
-            # we let this continue and try to read the `zones` argument differently
-            # below
+            # "AttributeError: object has no attribute 'startswith'" in windows, fiona
+            # will try to read `masks` as a regular expression and raise a TypeError
+            # (see https://github.com/Toblerity/Fiona/blob/master/fiona/path.py). we let
+            # this continue and try to read the `zones` argument differently below
             pass
 
         with rio.open(landscape_filepath) as src:
@@ -118,8 +116,8 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                     # in the arrays, each zone is labeled by a unique integer), we will
                     # use them as index
                     # zones = zones.set_index("zone")
-                    # instead of using `set_index`, we will just set `zone_index` to
-                    # the column name "zone", so that the `set_index` is called when
+                    # instead of using `set_index`, we will just set `zone_index` to the
+                    # column name "zone", so that the `set_index` is called when
                     # processing the geo-data frame below
                     zone_index = "zone"
 
@@ -350,8 +348,8 @@ class BufferAnalysis(ZonalAnalysis):
                 crs=utm_crs,
             )
 
-        # now we can call the parent's init with the landscape and the
-        # constructed buffer geoseries
+        # now we can call the parent's init with the landscape and the constructed
+        # buffer geoseries
         super().__init__(
             landscape_filepath,
             zones=zone_gser.rename_axis("buffer_dist"),  # set the index name
@@ -522,8 +520,8 @@ class ZonalGridAnalysis(ZonalAnalysis):
 
             zone_gser = zone_gser[zone_gser.apply(has_valid_data)]
 
-        # now we can call the parent's init with the landscape and the
-        # constructed grid geoseries
+        # now we can call the parent's init with the landscape and the constructed grid
+        # geoseries
         super().__init__(
             landscape_filepath,
             zones=zone_gser.rename_axis("grid_cell"),  # set the index name

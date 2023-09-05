@@ -24,9 +24,8 @@ transonic.set_backend_for_this_module(backend)
 
 __all__ = ["Landscape"]
 
-# sometimes pixel resolutions in GeoTIFF files are floats therefore
-# compparisons (e.g., `cell_width == cell_height`) should allow for some
-# tolerance (i.e., using `np.isclose`)
+# sometimes pixel resolutions in GeoTIFF files are floats therefore comparisons (e.g.,
+# `cell_width == cell_height`) should allow for some tolerance, i.e., using `np.isclose`
 CELLLENGTH_RTOL = 0.001
 NEIGHBORHOOD_KERNEL_DICT = {
     "8": ndimage.generate_binary_structure(2, 2),  # Moore/queen
@@ -44,9 +43,9 @@ AdjacencyArray = transonic.Array[ADJ_ARR_DTYPE, "2d"]
 def compute_adjacency_arr(padded_arr: AdjacencyArray, num_classes: "int"):
     # flat-array approach to pixel adjacency from link below:
     # https://ilovesymposia.com/2016/12/20/numba-in-the-real-world/
-    # the first axis of `adjacency_arr` is of fixed size of 2 and serves to
-    # distinguish between vertical and horizontal adjacencies (we could also
-    # use a tuple of two 2-D arrays)
+    # the first axis of `adjacency_arr` is of fixed size of 2 and serves to distinguish
+    # between vertical and horizontal adjacencies (we could also use a tuple of two 2-D
+    # arrays)
     # adjacency_arr = np.zeros((2, num_classes + 1, num_classes + 1),
     #                          dtype=np.uint32)
     num_cols_adjacency = num_classes + 1
@@ -58,8 +57,8 @@ def compute_adjacency_arr(padded_arr: AdjacencyArray, num_classes: "int"):
     )
     num_cols_pixel = padded_arr.shape[1]
     flat_arr = padded_arr.ravel()
-    # steps_to_neighbors as argument to distinguish between vertical/
-    # horizontal adjacencies
+    # steps_to_neighbors as argument to distinguish between vertical/horizontal
+    # adjacencies
     # steps_to_neighbors = [1, num_cols, -1, -num_cols]
     horizontal_neighbors = [1, -1]
     vertical_neighbors = [num_cols_pixel, -num_cols_pixel]
@@ -94,8 +93,8 @@ def compute_adjacency_arr(padded_arr: AdjacencyArray, num_classes: "int"):
 def compute_entropy(counts, base=None):
     """Compute the entropy for a set of category count values.
 
-    The counts are given in integer amounts and the proportional abundances are
-    computed inside the function.
+    The counts are given in integer amounts and the proportional abundances are computed
+    inside the function.
 
     The base of the logarithm calculates the entropy in different units. Shannon's
     entropy definition uses base 2 with units of "bits" or "shannons". Base e provides
@@ -109,8 +108,8 @@ def compute_entropy(counts, base=None):
     counts: list-like
         The number of occurrences of each category
     base: numeric
-        The base for logarithm calculation, with default as the natural
-        logarithm (Euler's number).
+        The base for logarithm calculation, with default as the natural logarithm
+        (Euler's number).
 
     Returns
     -------
@@ -196,10 +195,9 @@ class Landscape:
             raise ValueError("`neighborhood_rule` is not among ('8', '4')")
         self.neighborhood_rule = neighborhood_rule
 
-        # by default, numpy creates arrays of floats. Instead, land use/land
-        # cover rasters are often of integer dtypes. Therefore, we will
-        # explicitly set the dtype of the landscape classes to ensure
-        # consistency
+        # by default, numpy creates arrays of floats. Instead, land use/land cover
+        # rasters are often of integer dtypes. Therefore, we will explicitly set the
+        # dtype of the landscape classes to ensure consistency
         classes = np.array(
             sorted(np.unique(landscape_arr)), dtype=self.landscape_arr.dtype
         )
@@ -317,8 +315,8 @@ class Landscape:
         patch_areas : numpy.ndarray
             One-dimensional array with the area of each patch.
         """
-        # we could use `ndimage.find_objects`, but since we do not need to
-        # preserve the feature shapes, `np.bincount` is much faster
+        # we could use `ndimage.find_objects`, but since we do not need to preserve the
+        # feature shapes, `np.bincount` is much faster
         return np.bincount(label_arr.ravel())[1:] * self.cell_area
 
     def compute_patch_perimeters(self, label_arr):
@@ -334,23 +332,21 @@ class Landscape:
         patch_perimeters : numpy.ndarray
             One-dimensional array with the perimeter of each patch.
         """
-        # NOTE: performance comparison of `patch_perimeters` as np.array of
-        # fixed size with `patch_perimeters[i] = ...` within the loop is
-        # slower and less Pythonic but can lead to better performances if
-        # optimized via Cython/numba
+        # NOTE: performance comparison of `patch_perimeters` as np.array of fixed size
+        # with `patch_perimeters[i] = ...` within the loop is slower and less Pythonic
+        # but can lead to better performances if optimized via Cython/numba
         patch_perimeters = []
-        # `ndimage.find_objects` only finds the (rectangular) bounds; there
-        # might be parts of other patches within such bounds, so we need to
-        # check which pixels correspond to the patch of interest. Since
-        # `ndimage.label` labels patches with an enumeration starting by 1, we
-        # can use Python's built-in `enumerate`
+        # `ndimage.find_objects` only finds the (rectangular) bounds; there might be
+        # parts of other patches within such bounds, so we need to check which pixels
+        # correspond to the patch of interest. Since `ndimage.label` labels patches with
+        # an enumeration starting by 1, we can use Python's built-in `enumerate`.
         # NOTE: feature-wise iteration could this be done with
         # `ndimage.labeled_comprehension(
         #     label_arr, label_arr, np.arange(1, num_patches + 1),
         #     _compute_arr_perimeter, np.float, default=None)`
         # ?
-        # I suspect no, because each feature array is flattened, which does
-        # not allow for the computation of the perimeter or other shape metrics
+        # I suspect no, because each feature array is flattened, which does not allow
+        # for the computation of the perimeter or other shape metrics
         for i, patch_slice in enumerate(ndimage.find_objects(label_arr), start=1):
             patch_arr = np.pad(
                 label_arr[patch_slice] == i,
@@ -380,9 +376,9 @@ class Landscape:
         if np.max(label_arr) < 2:  # num_patches < 2
             return np.array([np.nan])
         else:
-            # we will first get only the edges of the patches, since the
-            # shortest edge-to-edge distance between patches is certainly
-            # going to be between pixels at their corresponding patch edge
+            # we will first get only the edges of the patches, since the shortest
+            # edge-to-edge distance between patches is certainly going to be between
+            # pixels at their corresponding patch edge
             label_mask = label_arr != 0
             edges_mask = label_mask & ~ndimage.binary_erosion(
                 label_mask, NEIGHBORHOOD_KERNEL_DICT[self.neighborhood_rule]
@@ -390,9 +386,8 @@ class Landscape:
             edges_arr = label_arr * edges_mask
 
             # get coordinates with non-zero values
-            # Note that `label_arr` will use zero values to indicate nodata
-            # (even if our landscape raster uses a different nodata value,
-            # i.e., `self.nodata`)
+            # Note that `label_arr` will use zero values to indicate nodata (even if our
+            # landscape raster uses a different nodata value, i.e., `self.nodata`)
             nonzero_i_idx, nonzero_j_idx = np.nonzero(edges_arr)
             # this gives all the non-zero labels
             labels = label_arr[nonzero_i_idx, nonzero_j_idx]
@@ -424,31 +419,27 @@ class Landscape:
 
             enn = np.empty(len(unique_labels))
             for unique_label in unique_labels:
-                # we build a KDTree with all the coords that are not part of
-                # the current feature
+                # we build a KDTree with all the coords that are not part of the current
+                # feature
                 tree = spatial.cKDTree(
                     coords[labels != unique_label],
                     balanced_tree=False,
                     compact_nodes=False,
                 )
-                # now, for each coord of the current feature, we query the
-                # closest coord of the tree (which does not include points of
-                # the current feature)
+                # now, for each coord of the current feature, we query the closest coord
+                # of the tree (which does not include points of the current feature)
                 mindist, minid = tree.query(coords[labels == unique_label])
-                # note that `mindist` and `minid` will be 1D arrays, whose
-                # lengths correspond to the number of pixels within the
-                # current feature.
-                # Each position of `mindist` and `mindid` matches the
-                # corresponding pixel of the current feature to its closest
-                # neighbor from the non-feature tree. Since we are only
-                # interested in the closest distance, we will just get
-                # `min(mindist)`. Note that because of the symmetry, we could
-                # use `minid` to assign this same distance to the counterpart
-                # of `unique_label`.
-                # Nevertheless, the overheads of maintaining the required data
-                # structure would most likely exceed any potential gains.
-                # We use `unique_label - 1` to obtain the corresponding 0-based
-                # index
+                # note that `mindist` and `minid` will be 1D arrays, whose lengths
+                # correspond to the number of pixels within the current feature.
+                # Each position of `mindist` and `mindid` matches the corresponding
+                # pixel of the current feature to its closest neighbor from the
+                # non-feature tree. Since we are only interested in the closest
+                # distance, we will just get `min(mindist)`. Note that because of the
+                # symmetry, we could use `minid` to assign this same distance to the
+                # counterpart of `unique_label`.
+                # Nevertheless, the overheads of maintaining the required data structure
+                # would most likely exceed any potential gains.
+                # We use `unique_label - 1` to obtain the corresponding 0-based index
                 enn[unique_label - 1] = min(mindist)
             # end KDTree
 
@@ -515,11 +506,10 @@ class Landscape:
 
             return patch_perimeter_cells / min_p
         else:
-            # this is rare and not even supported in FRAGSTATS. We could
-            # calculate the perimeter in terms of cell counts in a
-            # dedicated function and then adjust for a square standard,
-            # but I believe it is not worth the effort. So we will just
-            # return the base formula without adjusting for the square
+            # this is rare and not even supported in FRAGSTATS. We could calculate the
+            # perimeter in terms of cell counts in a dedicated function and then adjust
+            # for a square standard, but I believe it is not worth the effort. So we
+            # will just return the base formula without adjusting for the square
             # standard
             return 0.25 * patch_perimeters / np.sqrt(patch_areas)
 
@@ -628,9 +618,9 @@ class Landscape:
             return self._cached_adjacency_df
         except AttributeError:
             num_classes = len(self.classes)
-            # first create a reclassified array with the landscape's shape
-            # where each class value will be an int from 0 to `num_classes - 1`
-            # and the nodata value will be an int of value `num_classes`
+            # first create a reclassified array with the landscape's shape where each
+            # class value will be an int from 0 to `num_classes - 1` and the nodata
+            # value will be an int of value `num_classes`
             # reclassified_arr = np.copy(self.landscape_arr)
             reclassified_arr = np.full_like(
                 self.landscape_arr, num_classes, dtype=ADJ_ARR_DTYPE
@@ -639,10 +629,9 @@ class Landscape:
                 reclassified_arr[self.landscape_arr == class_val] = i
                 # reclassified_arr[self.landscape_arr == self.nodata] = num_classes
 
-            # pad the reclassified array with the nodata value (i.e.,
-            # `num_classes` see comment above). Set dtype to `np.uint32` to
-            # match the numba method signature of
-            # `pylandstats_compute.compute_adjacency_arr`
+            # pad the reclassified array with the nodata value (i.e., `num_classes` see
+            # comment above). Set dtype to `np.uint32` to match the numba method
+            # signature of `pylandstats_compute.compute_adjacency_arr`
             padded_arr = np.pad(
                 reclassified_arr,
                 pad_width=1,
@@ -693,9 +682,9 @@ class Landscape:
         else:
             patch_area_ser = self._patch_area_ser[self._patch_class_ser == class_val]
 
-        # TODO: return a copy? even when `class_val` is set and thus
-        # `patch_area_ser` is a slice: although we would not have alias
-        # problems, we would get a `SettingWithCopyWarning` form `pandas`
+        # TODO: return a copy? even when `class_val` is set and thus `patch_area_ser` is
+        # a slice: although we would not have alias problems, we would get a
+        # `SettingWithCopyWarning` form `pandas`
         return patch_area_ser
 
     def _get_patch_perimeter_ser(self, *, class_val=None, copy=False):
@@ -707,8 +696,8 @@ class Landscape:
             ]
 
         # TODO: return a copy? even when `class_val` is set and thus
-        # `patch_perimeter_ser` is a slice: although we would not have alias
-        # problems, we would get a `SettingWithCopyWarning` form `pandas`
+        # `patch_perimeter_ser` is a slice: although we would not have alias problems,
+        # we would get a `SettingWithCopyWarning` form `pandas`
         return patch_perimeter_ser
 
     def _get_patch_euclidean_nearest_neighbor_ser(self, *, class_val=None, copy=False):
@@ -724,8 +713,8 @@ class Landscape:
             )
 
         # TODO: return a copy? even when `class_val` is set and thus
-        # `patch_perimeter_ser` is a slice: although we would not have alias
-        # problems, we would get a `SettingWithCopyWarning` form `pandas`
+        # `patch_perimeter_ser` is a slice: although we would not have alias problems,
+        # we would get a `SettingWithCopyWarning` form `pandas`
         return patch_euclidean_nearest_neighbor_ser
 
     # metric distribution statistics
@@ -744,9 +733,9 @@ class Landscape:
                 class_val=class_val, **patch_metric_method_kws
             )
         if class_val is None:
-            # ACHTUNG: dropping columns from a `pd.DataFrame` until leaving it
-            # with only one column will still return a `pd.DataFrame`, so we
-            # must convert to `pd.Series` manually (e.g., with `iloc`)
+            # ACHTUNG: dropping columns from a `pd.DataFrame` until leaving it with only
+            # one column will still return a `pd.DataFrame`, so we must convert to
+            # `pd.Series` manually (e.g., with `iloc`)
             patch_metrics = patch_metrics.drop("class_val", axis=1).iloc[:, 0]
 
         return reduce_method(patch_metrics)
@@ -847,9 +836,9 @@ class Landscape:
         area_ser = self._get_patch_area_ser(class_val=class_val)
 
         if hectares:
-            # ACHTUNG: very important to copy to ensure that we do not modify
-            # the 'area' values if converting to hectares nor we return a
-            # variable with the reference to the property
+            # ACHTUNG: very important to copy to ensure that we do not modify the 'area'
+            # values if converting to hectares nor we return a variable with the
+            # reference to the property
             # `self._patch_areas_ser`
             area_ser = area_ser.copy()
             area_ser /= 10000
@@ -921,10 +910,9 @@ class Landscape:
         perimeter_ser = self._get_patch_perimeter_ser(class_val=class_val)
 
         if hectares:
-            # ACHTUNG: very important to copy to ensure that we do not modify
-            # the 'area' values if converting to hectares nor we return a
-            # variable with the reference to the property
-            # `self._patch_areas_ser`
+            # ACHTUNG: very important to copy to ensure that we do not modify the 'area'
+            # values if converting to hectares nor we return a variable with the
+            # reference to the property `self._patch_areas_ser`
             area_ser = area_ser.copy()
             area_ser /= 10000
 
@@ -938,8 +926,8 @@ class Landscape:
                 }
             )
         else:
-            # ensure that the returned `pd.Series` has a name (so `seaborn`
-            # plots can automatically label the axes)
+            # ensure that the returned `pd.Series` has a name (so `seaborn` plots can
+            # automatically label the axes)
             perimeter_area_ratio_ser.name = "perimeter_area_ratio"
             return perimeter_area_ratio_ser
 
@@ -977,8 +965,8 @@ class Landscape:
                 }
             )
         else:
-            # ensure that the returned `pd.Series` has a name (so `seaborn`
-            # plots can automatically label the axes)
+            # ensure that the returned `pd.Series` has a name (so `seaborn` plots can
+            # automatically label the axes)
             shape_index_ser.name = "shape_index"
             return shape_index_ser
 
@@ -1015,8 +1003,8 @@ class Landscape:
                 }
             )
         else:
-            # ensure that the returned `pd.Series` has a name (so `seaborn`
-            # plots can automatically label the axes)
+            # ensure that the returned `pd.Series` has a name (so `seaborn` plots can
+            # automatically label the axes)
             fractal_dimension_ser.name = "fractal_dimension"
             return fractal_dimension_ser
 
@@ -1363,15 +1351,15 @@ class Landscape:
                             .drop(self.nodata)
                             .drop(self.nodata, axis=1)
                         )
-                        # `np.fill_diagonal` acts inplace, however `np.triu`
-                        # returns a copy so we do not need to worry about
-                        # inadvently modfying `self._adjacency_df`
+                        # `np.fill_diagonal` acts inplace, however `np.triu` returns a
+                        # copy so we do not need to worry about inadvently modfying
+                        # `self._adjacency_df`
                         np.fill_diagonal(adjacency_arr, 0)
                         total_edge += np.sum(adjacency_arr) * length
         else:
             if count_boundary:
-                # then the total edge is just the sum of the perimeters of all
-                # the patches of the corresponding class
+                # then the total edge is just the sum of the perimeters of all the
+                # patches of the corresponding class
                 perimeter_ser = self._get_patch_perimeter_ser(class_val=class_val)
                 total_edge = np.sum(perimeter_ser)
             else:
@@ -1433,9 +1421,9 @@ class Landscape:
             ED >= 0, without limit ; ED equals 0 when the entire landscape and its
             border consist of the corresponding patch class.
         """
-        # TODO: we make an exception here of the "not reusing other metric's
-        # methods within metric's methods" policy, since `total_edge` is a bit
-        # puzzling to compute
+        # TODO: we make an exception here of the "not reusing other metric's methods
+        # within metric's methods" policy, since `total_edge` is a bit puzzling to
+        # compute
         numerator = self.total_edge(class_val=class_val, count_boundary=count_boundary)
 
         if hectares:
@@ -2392,14 +2380,13 @@ class Landscape:
         else:
             area = np.sum(self._get_patch_area_ser(class_val=class_val))
 
-        # TODO: we make an exception here of the "not reusing other metric's
-        # methods within metric's methods" policy, since `total_edge` is a bit
-        # puzzling to compute
+        # TODO: we make an exception here of the "not reusing other metric's methods
+        # within metric's methods" policy, since `total_edge` is a bit puzzling to
+        # compute
         perimeter = self.total_edge(class_val=class_val, count_boundary=True)
 
-        # `compute shape index` works on vectors, so we need to pass arrays as
-        # arguments and then extract its first (and only element) in order to
-        # return a scalar
+        # `compute shape index` works on vectors, so we need to pass arrays as arguments
+        # and then extract its first (and only element) in order to return a scalar
         # TODO: use np.vectorize
         return self.compute_shape_index(np.array([area]), np.array([perimeter]))[0]
 
@@ -2774,13 +2761,12 @@ class Landscape:
         if metrics is None:
             metrics = Landscape.CLASS_METRICS
         else:
-            # here and only here we need to check manually that none of the
-            # provided metrics is a patch-level metric. Why? because the
-            # methods to compute patch-level metrics and class-level metrics
-            # have the same signature, so calling them would not raise any
-            # `TypeError` - instead, since the methods to compute patch-level
-            # metrics return series/data frames instead of scalar values, we
-            # would obtain a malformed dataframe.
+            # here and only here we need to check manually that none of the provided
+            # metrics is a patch-level metric. Why? because the methods to compute
+            # patch-level metrics and class-level metrics have the same signature, so
+            # calling them would not raise any `TypeError` - instead, since the methods
+            # to compute patch-level metrics return series/data frames instead of scalar
+            # values, we would obtain a malformed dataframe.
             for metric in metrics:
                 if metric in Landscape.PATCH_METRICS:
                     raise ValueError(
@@ -2942,8 +2928,7 @@ class Landscape:
 
         if legend:
             im = ax.get_images()[0]
-            # get the colors of the values, according to the
-            # colormap used by imshow
+            # get the colors of the values, according to the colormap used by imshow
             colors = [im.cmap(im.norm(class_val)) for class_val in self.classes]
             # create a patch (proxy artist) for every color
             patches = [
