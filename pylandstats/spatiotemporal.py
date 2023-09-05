@@ -605,7 +605,7 @@ class SpatioTemporalZonalGridAnalysis(SpatioTemporalZonalAnalysis):
 
         Parameters
         ----------
-        landscape_filepath : str, file-like object or pathlib.Path object
+        landscape_filepaths : str, file-like object or pathlib.Path object
             A string/file-like object/pathlib.Path object with the landscape data.
         num_zone_cols, num_zone_rows : int, optional
             The number of zone columns/rows into which the landscape will be separated.
