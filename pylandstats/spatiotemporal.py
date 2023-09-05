@@ -7,8 +7,8 @@ import pandas as pd
 import rasterio as rio
 from rasterio import mask
 
-from . import landscape as pls_landscape
 from . import multilandscape, zonal
+from .landscape import Landscape
 
 __all__ = [
     "SpatioTemporalAnalysis",
@@ -213,7 +213,7 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
                 with rio.open(landscape) as src:
                     zone_arr, zone_transform = mask.mask(src, [zone_geom], crop=True)
                     zone_landscapes.append(
-                        pls_landscape.Landscape(
+                        Landscape(
                             zone_arr[0],
                             res=src.res,
                             transform=zone_transform,
@@ -246,7 +246,7 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
 
         # get the columns to init the data frame
         if metrics is None:
-            columns = pls_landscape.Landscape.CLASS_METRICS
+            columns = Landscape.CLASS_METRICS
         else:
             columns = metrics
 

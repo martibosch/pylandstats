@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from . import landscape as pls_landscape
 from . import settings
+from .landscape import Landscape
 
 _compute_class_metrics_df_doc = """
 Compute the data frame of class-level metrics, which is {index_descr}.
@@ -83,12 +83,11 @@ class MultiLandscape(abc.ABC):
             `pylandstats.Landscape` for each element of `landscapes`. Ignored if the
             elements of `landscapes` are already instances of `pylandstats.Landcape`.
         """
-        if isinstance(landscapes[0], pls_landscape.Landscape):
+        if isinstance(landscapes[0], Landscape):
             self.landscapes = landscapes
         else:
             self.landscapes = [
-                pls_landscape.Landscape(landscape, **landscape_kws)
-                for landscape in landscapes
+                Landscape(landscape, **landscape_kws) for landscape in landscapes
             ]
 
         if len(self.landscapes) != len(attribute_values):
@@ -150,7 +149,7 @@ class MultiLandscape(abc.ABC):
 
         # get the columns to init the data frame
         if metrics is None:
-            columns = pls_landscape.Landscape.CLASS_METRICS
+            columns = Landscape.CLASS_METRICS
         else:
             columns = metrics
         # if the classes kwarg is not provided, get the classes present in the
@@ -216,7 +215,7 @@ class MultiLandscape(abc.ABC):
 
         # get the columns to init the data frame
         if metrics is None:
-            columns = pls_landscape.Landscape.LANDSCAPE_METRICS
+            columns = Landscape.LANDSCAPE_METRICS
         else:
             columns = metrics
         # to avoid issues with mutable defaults
