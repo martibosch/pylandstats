@@ -111,11 +111,11 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                     zone_index = zones.set_index(zone_index).index
                     # we now take just the "geometry" column and treat `zones` as
                     # GeoSeries.
-                    zones = zones["geometry"]
+                    zones = zones.geometry
                 else:
                     # take just the "geometry" column, treat `zones` as GeoSeries but
                     # rename it to "zone"
-                    zones = zones["geometry"].rename("zone")
+                    zones = zones.geometry.rename("zone")
 
             # at this point, `zones` must be a geo-series or a list-like of shapely
             # geometries
@@ -245,7 +245,7 @@ class BufferAnalysis(ZonalAnalysis):
         base_geom : shapely geometry, geopandas.GeoSeries or geopandas.GeoDataFrame
             Geometry that will serve as a base to buffer around.
         buffer_dists : list-like
-            Buffer distances.
+            Buffer distances, in units of the landscape CRS.
         buffer_rings : bool, default Falsenn
             If `False`, each buffer zone will consist of the whole region that lies
             within the respective buffer distance around the base geometry. If `True`,

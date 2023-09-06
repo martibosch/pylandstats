@@ -484,7 +484,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalZonalAnalysis):
         base_geom : shapely geometry, geopandas.GeoSeries or geopandas.GeoDataFrame
             Geometry that will serve as a base to buffer around.
         buffer_dists : list-like
-            Buffer distances.
+            Buffer distances, in units of the landscape CRS.
         buffer_rings : bool, default False
             If `False`, each buffer zone will consist of the whole region that lies
             within the respective buffer distance around the base geometry. If `True`,
