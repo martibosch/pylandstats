@@ -481,7 +481,7 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalZonalAnalysis):
         landscape_filepaths : list-like
             A list-like of strings/file-like/pathlib.Path objects so that each is passed
             as the `landscape` argument of `Landscape.__init__`.
-        base_geom : shapely geometry or geopandas.GeoSeries
+        base_geom : shapely geometry, geopandas.GeoSeries or geopandas.GeoDataFrame
             Geometry that will serve as a base to buffer around.
         buffer_dists : list-like
             Buffer distances.

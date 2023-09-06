@@ -242,7 +242,7 @@ class BufferAnalysis(ZonalAnalysis):
         ----------
         landscape_filepath : str, file-like object or pathlib.Path object
             A string/file-like object/pathlib.Path object with the landscape data.
-        base_geom : shapely geometry or geopandas.GeoSeries
+        base_geom : shapely geometry, geopandas.GeoSeries or geopandas.GeoDataFrame
             Geometry that will serve as a base to buffer around.
         buffer_dists : list-like
             Buffer distances.
@@ -269,12 +269,16 @@ class BufferAnalysis(ZonalAnalysis):
                 )
             base_gser = gpd.GeoSeries(base_geom, crs=base_geom_crs)
         else:
-            # we assume that `base_geom` is a geopandas GeoSeries
+            # we assume that `base_geom` is a geopandas GeoSeries/GeoDataFrame
+            if isinstance(base_geom, gpd.GeoDataFrame):
+                # in this case, we just select the geometry column and then treat it
+                # like a geo series
+                base_geom = base_geom.geometry
             if base_geom.crs is None:
                 if base_geom_crs is None:
                     raise ValueError(
-                        "If `base_geom` is a naive geopandas GeoSeries (with no crs"
-                        " set), `base_geom_crs` must be provided."
+                        "If `base_geom` is a naive geopandas GeoSeries/GeoDataFrame"
+                        " (with no crs set), `base_geom_crs` must be provided."
                     )
 
                 base_gser = base_geom.copy()  # avoid alias/ref problems

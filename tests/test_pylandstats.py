@@ -945,6 +945,8 @@ class TestZonaAlnalysis(unittest.TestCase):
     def test_buffer_init(self):
         naive_gser = gpd.GeoSeries([self.geom])
         gser = gpd.GeoSeries([self.geom], crs=geom_crs)
+        naive_gdf = gpd.GeoDataFrame(geometry=naive_gser)
+        gdf = gpd.GeoDataFrame(geometry=gser)
 
         # test that we cannot init from a shapely geometry without providing its crs
         self.assertRaises(
@@ -957,11 +959,11 @@ class TestZonaAlnalysis(unittest.TestCase):
 
         # test that we can properly instantiate it from:
         # 1. a landscape filepath, shapely geometry, and its crs
-        # 2. a landscape filepath, naive geopandas GeoSeries (with no crs set) and its
-        #    crs
-        # 3. a landscape filepath, geopandas GeoSeries with crs set
-        # 4. a landscape filepath, geopandas GeoSeries with crs set and a crs (which
-        #    will override the crs of the GeoSeries)
+        # 2. a landscape filepath, naive geopandas GeoSeries/GeoDataFrame (with no crs
+        #    set) and its crs
+        # 3. a landscape filepath, geopandas GeoSeries/GeoDataFrame with crs set
+        # 4. a landscape filepath, geopandas GeoSeries/GeoDataFrame with crs set and a
+        #    crs (which will override the crs of the GeoSeries)
         for ba in [
             pls.BufferAnalysis(
                 self.landscape_fp,
@@ -979,6 +981,19 @@ class TestZonaAlnalysis(unittest.TestCase):
             pls.BufferAnalysis(
                 self.landscape_fp,
                 gser,
+                self.buffer_dists,
+                base_geom_crs=geom_crs,
+            ),
+            pls.BufferAnalysis(
+                self.landscape_fp,
+                naive_gdf,
+                self.buffer_dists,
+                base_geom_crs=geom_crs,
+            ),
+            pls.BufferAnalysis(self.landscape_fp, gdf, self.buffer_dists),
+            pls.BufferAnalysis(
+                self.landscape_fp,
+                gdf,
                 self.buffer_dists,
                 base_geom_crs=geom_crs,
             ),
