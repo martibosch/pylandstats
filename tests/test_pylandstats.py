@@ -784,8 +784,8 @@ class TestZonaAlnalysis(unittest.TestCase):
             self.landscape_crs = src.crs
         self.zones_fp = path.join(tests_data_dir, "gmb-lausanne.gpkg")
         self.zone_gdf = gpd.read_file(self.zones_fp)
-        self.masks_arr = np.load(
-            path.join(tests_data_dir, "masks_arr.npy"), allow_pickle=True
+        self.label_arr = np.load(
+            path.join(tests_data_dir, "label_arr.npy"), allow_pickle=True
         )
         # for buffer analysis
         self.geom = geometry.Point(6.6327025, 46.5218269)
@@ -855,43 +855,41 @@ class TestZonaAlnalysis(unittest.TestCase):
                 )
             )
 
-        # test that we can still pass a raster masks array
+        # test that we can still pass a raster labelled array
         # test that the attribute names and values are consistent with the provided
-        # `masks_arr`
-        za = pls.ZonalAnalysis(self.landscape_fp, self.masks_arr)
+        # `label_arr`
+        za = pls.ZonalAnalysis(self.landscape_fp, self.label_arr)
         self.assertEqual(za.attribute_name, "zone")
-        self.assertEqual(len(za), len(self.masks_arr))
+        # the number of zones must be equal to the number of unique labels (excluding
+        # the nodata value)
+        zone_nodata = 0
+        zones = list(set(np.unique(self.label_arr)).difference({zone_nodata}))
+        self.assertEqual(len(za), len(zones))
         # test that Landscape instances are automaticaly built
         for landscape in za.landscapes:
             self.assertIsInstance(landscape, pls.Landscape)
+        # test that the zone index corresponds to the zone labels
+        self.assertTrue(np.all(np.isin(zones, za.zone_gser.index)))
         # test that we can override the zone index
-        zone_index = pd.Series(range(1, len(self.masks_arr) + 1), name="foo")
-        za = pls.ZonalAnalysis(self.landscape_fp, self.masks_arr, zone_index=zone_index)
+        zone_index = pd.Series(range(1, len(zones) + 1), name="foo")
+        za = pls.ZonalAnalysis(self.landscape_fp, self.label_arr, zone_index=zone_index)
         self.assertEqual(za.attribute_name, "foo")
         self.assertTrue(np.all(za.zone_gser.index == zone_index))
 
-        # test raster masks array with unique zone labels
-        # use list so that we can iterate it multiple times
-        iterator = list(enumerate(self.masks_arr, start=1))
-        masks_arr = np.array(
-            [mask_arr.astype(np.uint8) * i for i, mask_arr in iterator]
+        # test that we can override the nodata value
+        zone_nodata = 255
+        label_arr = np.where(self.label_arr != 0, self.label_arr, zone_nodata)
+        # in this case, if we do not specify the nodata value, we will have another zone
+        # (since by default, 0 are considered nodata)
+        self.assertEqual(
+            len(pls.ZonalAnalysis(self.landscape_fp, label_arr)), len(zones) + 1
         )
-        zone_index = pd.Series([i for i, _ in iterator])
-        za = pls.ZonalAnalysis(self.landscape_fp, masks_arr)
-        self.assertEqual(za.attribute_name, "zone")
-        self.assertEqual(len(za), len(masks_arr))
-        self.assertTrue(np.all(za.zone_gser.index == zone_index))
-        # test that we can still override the index when masks have unique zone labels
-        zone_index = pd.Series(zone_index + 1, name="foo")
-        za = pls.ZonalAnalysis(self.landscape_fp, masks_arr, zone_index=zone_index)
-        self.assertEqual(za.attribute_name, "foo")
-        self.assertEqual(len(za), len(masks_arr))
-        self.assertTrue(np.all(za.zone_gser.index == zone_index))
-        # test that we can override the nodata value of the masks
-        nodata_val = 255
-        masks_arr = np.where(masks_arr == 0, masks_arr, nodata_val)
-        za = pls.ZonalAnalysis(self.landscape_fp, masks_arr)
-        self.assertEqual(len(za), len(masks_arr))
+        self.assertEqual(
+            len(
+                pls.ZonalAnalysis(self.landscape_fp, label_arr, zone_nodata=zone_nodata)
+            ),
+            len(zones),
+        )
 
         # test the `neighborhood_rule` argument
         neighborhood_rule = "4"
@@ -903,7 +901,7 @@ class TestZonaAlnalysis(unittest.TestCase):
         ).landscapes:
             self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
         # test that if not provided, the default value is taken
-        for ls in pls.ZonalAnalysis(self.landscape_fp, self.masks_arr).landscapes:
+        for ls in pls.ZonalAnalysis(self.landscape_fp, self.label_arr).landscapes:
             self.assertEqual(
                 ls.neighborhood_rule, pls.settings.DEFAULT_NEIGHBORHOOD_RULE
             )
@@ -1099,7 +1097,7 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
         # zonal
         self.zone_gser = pls.ZonalAnalysis(
             self.landscape_fps[0],
-            np.load(path.join(tests_data_dir, "masks_arr.npy"), allow_pickle=True),
+            np.load(path.join(tests_data_dir, "label_arr.npy"), allow_pickle=True),
         ).zone_gser
         # buffer
         self.base_geom = gpd.GeoSeries(

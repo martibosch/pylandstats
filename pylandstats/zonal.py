@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import rasterio as rio
-from pandas.api import types
 from rasterio import features, mask
 from shapely import geometry
 from shapely.geometry import base as geometry_base
@@ -42,14 +41,10 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             * A list-like of shapely geometries, in the CRS of the landscape.
             * A filename or URL, a file-like object opened in binary ('rb') mode, or a
               Path object that will be passed to `geopandas.read_file`.
-            * A list-like of numpy arrays of shape (width, height), i.e., of the same
-              shape as the landscape raster image. Each array will serve to mask the
-              base landscape and define a region of study for which the metrics will be
-              computed separately. The arrays can be of boolean or integer types. For
-              integer arrays, if each zone is labeled by a unique integer, it will be
-              used to identify the zone (i.e., as index) - unless a different
-              `zone_index` is provided. The masks can also be provided as a single array
-              of shape (num_zones, width, height).
+            * A numpy array of the same shape as the landscape raster image, where each
+              zone is labelled by a unique integer value. The values will be used to
+              identify the zones (i.e., as index) - unless a different `zone_index` is
+              provided.
         zone_index : list-like or str, optional
             Index used to identify zones (i.e., index of the metrics data frames). This
             can either be:
@@ -83,38 +78,22 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             pass
 
         with rio.open(landscape_filepath) as src:
-            if types.is_list_like(zones):
-                if not isinstance(zones, np.ndarray):
-                    # if this is a list-like of 2d ndarrays, transform it into a 3d
-                    # ndarray
-                    for zone in zones:
-                        break
-                    if isinstance(zone, np.ndarray):
-                        zones = np.array(zones)
             if isinstance(zones, np.ndarray):
-                # zones is a 3d ndarray, transform it into a geo-series
-                if zones.dtype == bool:
-                    # transform it into uint8 array (rasterio requires int/float dtypes
-                    # in `features.shapes` below), so False and True values become zeros
-                    # and ones respectively.
-                    zones = zones.astype(np.uint8)
-                    zone_nodata = 0
-                # we first instantiate a geo-data frame because if a int-labelled
-                # ndarray has been provided, we will try to use the labels as zone ids
+                # zones is an ndarray labelling each zone by a unique integer value
+                # we first instantiate a geo-data frame because we will use the labels
+                # as zone ids
                 zones = gpd.GeoDataFrame(
                     [
                         (val, geometry.shape(geom))
-                        for zone in zones
-                        for geom, val in features.shapes(zone, transform=src.transform)
+                        for geom, val in features.shapes(zones, transform=src.transform)
                         if val != zone_nodata
                     ],
                     columns=["zone", "geometry"],
                     crs=src.crs,
                 )
-                if zone_index is None and not zones["zone"].duplicated().any():
-                    # if no zone indexing is provided and there are no duplicates (i.e.,
-                    # in the arrays, each zone is labeled by a unique integer), we will
-                    # use them as index
+                if zone_index is None:
+                    # if no zone indexing is provided, we will use the zone labels as
+                    # index
                     # zones = zones.set_index("zone")
                     # instead of using `set_index`, we will just set `zone_index` to the
                     # column name "zone", so that the `set_index` is called when
@@ -267,7 +246,7 @@ class BufferAnalysis(ZonalAnalysis):
             Geometry that will serve as a base to buffer around.
         buffer_dists : list-like
             Buffer distances.
-        buffer_rings : bool, default False
+        buffer_rings : bool, default Falsenn
             If `False`, each buffer zone will consist of the whole region that lies
             within the respective buffer distance around the base geometry. If `True`,
             buffer zones will take the form of rings around the base geometry.

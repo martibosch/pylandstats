@@ -163,14 +163,10 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
             * A list-like of shapely geometries, in the CRS of the landscape.
             * A filename or URL, a file-like object opened in binary ('rb') mode, or a
               Path object that will be passed to `geopandas.read_file`.
-            * A list-like of numpy arrays of shape (width, height), i.e., of the same
-              shape as the landscape raster image. Each array will serve to mask the
-              base landscape and define a region of study for which the metrics will be
-              computed separately. The arrays can be of boolean or integer types. For
-              integer arrays, if each zone is labeled by a unique integer, it will be
-              used to identify the zone (i.e., as index) - unless a different
-              `zone_index` is provided. The masks can also be provided as a single array
-              of shape (num_zones, width, height).
+            * A numpy array of the same shape as the landscape raster image, where each
+              zone is labelled by a unique integer value. The values will be used to
+              identify the zones (i.e., as index) - unless a different `zone_index` is
+              provided.
         zone_index : list-like or str, optional
             Index used to identify zones (i.e., index of the metrics data frames). This
             can either be:
