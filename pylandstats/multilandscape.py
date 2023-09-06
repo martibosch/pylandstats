@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from . import landscape as pls_landscape
 from . import settings
+from .landscape import Landscape
 
 _compute_class_metrics_df_doc = """
 Compute the data frame of class-level metrics, which is {index_descr}.
@@ -83,12 +83,11 @@ class MultiLandscape(abc.ABC):
             `pylandstats.Landscape` for each element of `landscapes`. Ignored if the
             elements of `landscapes` are already instances of `pylandstats.Landcape`.
         """
-        if isinstance(landscapes[0], pls_landscape.Landscape):
+        if isinstance(landscapes[0], Landscape):
             self.landscapes = landscapes
         else:
             self.landscapes = [
-                pls_landscape.Landscape(landscape, **landscape_kws)
-                for landscape in landscapes
+                Landscape(landscape, **landscape_kws) for landscape in landscapes
             ]
 
         if len(self.landscapes) != len(attribute_values):
@@ -98,15 +97,13 @@ class MultiLandscape(abc.ABC):
                 )
             )
 
-        # set a `attribute_name` attribute with the value `attribute_values`,
-        # so that children classes can access it (e.g., for
-        # `SpatioTemporalAnalysis`, `attribute_name` will be 'dates' and
-        # `attribute_values` will be a list of dates that will therefore be
-        # accessible as an attribute as in `instance.dates`
+        # set a `attribute_name` attribute with the value `attribute_values`, so that
+        # children classes can access it (e.g., for `SpatioTemporalAnalysis`,
+        # `attribute_name` will be 'dates' and `attribute_values` will be a list of
+        # dates that will therefore be accessible as an attribute as in `instance.dates`
         setattr(self, attribute_name, attribute_values)
-        # also set a `attribute_name` attribute so that the methods of this
-        # class know how to access such attribute, i.e., as in
-        # `getattr(self, self.attribute_name)`
+        # also set a `attribute_name` attribute so that the methods of this class know
+        # how to access such attribute, i.e., as in `getattr(self, self.attribute_name)`
         setattr(self, "attribute_name", attribute_name)
 
         # get the all classes present in the provided landscapes
@@ -115,13 +112,12 @@ class MultiLandscape(abc.ABC):
             tuple(landscape.classes for landscape in self.landscapes),
         )
 
-    # fillna for metrics in class metrics dataframes. Since some classes might
-    # not apprear in some of the landscapes (e.g., zones or temporal snapshots
-    # without any pixel of a particular class type), they will appear as `NaN`
-    # in the data frame. We can, however, infer the meaning of this situation
-    # for certain metrics, e.g, non-occurence of a given class in a landscape
-    # means a number of patches, total area, proportion of landscape, total
-    # edge... of the class of 0
+    # fillna for metrics in class metrics dataframes. Since some classes might not
+    # apprear in some of the landscapes (e.g., zones or temporal snapshots without any
+    # pixel of a particular class type), they will appear as `NaN` in the data frame. We
+    # can, however, infer the meaning of this situation for certain metrics, e.g,
+    # non-occurence of a given class in a landscape means a number of patches, total
+    # area, proportion of landscape, total edge... of the class of 0
     METRIC_FILLNA_DICT = {
         metric: 0
         for metric in [
@@ -144,13 +140,13 @@ class MultiLandscape(abc.ABC):
         return len(self.landscapes)
 
     def compute_class_metrics_df(  # noqa: D102
-        self, metrics=None, classes=None, metrics_kws=None, fillna=None
+        self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
     ):
         attribute_values = getattr(self, self.attribute_name)
 
         # get the columns to init the data frame
         if metrics is None:
-            columns = pls_landscape.Landscape.CLASS_METRICS
+            columns = Landscape.CLASS_METRICS
         else:
             columns = metrics
         # if the classes kwarg is not provided, get the classes present in the
@@ -160,19 +156,18 @@ class MultiLandscape(abc.ABC):
         # to avoid issues with mutable defaults
         if metrics_kws is None:
             metrics_kws = {}
-        # to avoid setting the same default keyword argument in multiple
-        # methods, use the settings module
+        # to avoid setting the same default keyword argument in multiple methods, use
+        # the settings module
         if fillna is None:
             fillna = settings.CLASS_METRICS_DF_FILLNA
 
         # IMPORTANT: here we need this approach (uglier when compared to the
-        # `compute_landscape_metrics_df` method below) because we need to
-        # filter each class metrics data frame so that we only include the
-        # classes considered in this `MultiLandscape` instance. We need to do
-        # it like this because the `Landcape.compute_class_metrics_df` does
-        # not have a `classes` argument that allows computing the data frame
-        # only for a custom set of classes. Should such `classes` argument be
-        # added at some point, we could use the approach of the
+        # `compute_landscape_metrics_df` method below) because we need to filter each
+        # class metrics data frame so that we only include the classes considered in
+        # this `MultiLandscape` instance. We need to do it like this because the
+        # `Landcape.compute_class_metrics_df` does not have a `classes` argument that
+        # allows computing the data frame only for a custom set of classes. Should such
+        # `classes` argument be added at some point, we could use the approach of the
         # `compute_landscape_metrics_df` method below.
         # TODO: one-level index if only one class?
         class_metrics_df = pd.DataFrame(
@@ -184,16 +179,15 @@ class MultiLandscape(abc.ABC):
         class_metrics_df.columns.name = "metric"
 
         for attribute_value, landscape in zip(attribute_values, self.landscapes):
-            # get the class metrics DataFrame for the landscape that
-            # corresponds to this attribute value
+            # get the class metrics DataFrame for the landscape that corresponds to this
+            # attribute value
             df = landscape.compute_class_metrics_df(
                 metrics=metrics, metrics_kws=metrics_kws
             )
-            # filter so we only check the classes considered in this
-            # `MultiLandscape` instance
+            # filter so we only check the classes considered in this `MultiLandscape`
+            # instance
             df = df.loc[df.index.intersection(classes)]
-            # put every row of the filtered DataFrame of this particular
-            # attribute value
+            # put every row of the filtered DataFrame of this particular attribute value
             for class_val, row in df.iterrows():
                 class_metrics_df.loc[(class_val, attribute_value), columns] = row
 
@@ -210,13 +204,13 @@ class MultiLandscape(abc.ABC):
     )
 
     def compute_landscape_metrics_df(  # noqa: D102
-        self, metrics=None, metrics_kws=None
+        self, *, metrics=None, metrics_kws=None
     ):
         attribute_values = getattr(self, self.attribute_name)
 
         # get the columns to init the data frame
         if metrics is None:
-            columns = pls_landscape.Landscape.LANDSCAPE_METRICS
+            columns = Landscape.LANDSCAPE_METRICS
         else:
             columns = metrics
         # to avoid issues with mutable defaults
@@ -236,7 +230,7 @@ class MultiLandscape(abc.ABC):
             landscape_metrics_df.loc[
                 attribute_value, columns
             ] = landscape.compute_landscape_metrics_df(
-                metrics, metrics_kws=metrics_kws
+                metrics=metrics, metrics_kws=metrics_kws
             ).iloc[
                 0
             ]
@@ -251,6 +245,7 @@ class MultiLandscape(abc.ABC):
     def plot_metric(
         self,
         metric,
+        *,
         class_val=None,
         ax=None,
         metric_legend=True,
@@ -294,60 +289,34 @@ class MultiLandscape(abc.ABC):
         ax : matplotlib.axes.Axes
             Returns the `Axes` object with the plot drawn onto it.
         """
-        # TODO: metric_legend parameter acepting a set of str values
-        # indicating, e.g., whether the metric label should appear as legend
-        # or as yaxis label
-        # TODO: if we use seaborn in the future, we can use the pd.Series
-        # directly, since its index corresponds to this SpatioTemporalAnalysis
-        # dates
+        # TODO: metric_legend parameter acepting a set of str values indicating, e.g.,
+        # whether the metric label should appear as legend or as yaxis label
+        # TODO: if we use seaborn in the future, we can use the pd.Series directly,
+        # since its index corresponds to this SpatioTemporalAnalysis dates
         if metric_kws is None:
             metric_kws = {}
+        # since we are using the compute data frame methods even though we are just
+        # computing a single metric (so that error management regarding the computation
+        # of metrics is defined in a single place), we need to provide the `metrics_kws`
+        # (mapping a metric to its keyword-arguments `metric_kws`).
+        metrics_kws = {metric: metric_kws}
+        metrics = [metric]
         if class_val is None:
-            try:
-                metric_values = [
-                    getattr(landscape, metric)(**metric_kws)
-                    for landscape in self.landscapes
-                ]
-            except AttributeError:
-                raise ValueError(
-                    "{metric} is not among {metrics}".format(
-                        metric=metric,
-                        metrics=pls_landscape.Landscape.CLASS_METRICS,
-                    )
-                )
-            except TypeError:
-                raise ValueError(
-                    "{metric} cannot be computed at the landscape level".format(
-                        metric=metric
-                    )
-                )
+            metric_values = self.compute_landscape_metrics_df(
+                metrics=metrics, metrics_kws=metrics_kws
+            ).values
         else:
-            try:
-                metric_values = [
-                    getattr(landscape, metric)(class_val=class_val, **metric_kws)
-                    for landscape in self.landscapes
-                ]
-            except AttributeError:
-                raise ValueError(
-                    "{metric} is not among {metrics}".format(
-                        metric=metric,
-                        metrics=pls_landscape.Landscape.LANDSCAPE_METRICS,
-                    )
-                )
-            except TypeError:
-                raise ValueError(
-                    "{metric} cannot be computed at the class level".format(
-                        metric=metric
-                    )
-                )
+            metric_values = self.compute_class_metrics_df(
+                metrics=metrics, classes=[class_val], metrics_kws=metrics_kws
+            ).values
 
         if ax is None:
             if subplots_kws is None:
                 subplots_kws = {}
             fig, ax = plt.subplots(**subplots_kws)
 
-        # for `SpatioTemporalAnalysis`, `attribute_values` will be `dates`;
-        # for `BufferAnalysis`, `attribute_values` will be `buffer_dists`
+        # for `SpatioTemporalAnalysis`, `attribute_values` will be `dates`; for
+        # `BufferAnalysis`, `attribute_values` will be `buffer_dists`
         attribute_values = getattr(self, self.attribute_name)
 
         if plot_kws is None:
@@ -357,8 +326,8 @@ class MultiLandscape(abc.ABC):
 
         if metric_legend:
             if metric_label is None:
-                # get the metric label from the settings, otherwise use the
-                # metric method name, i.e., metric name in camel-case
+                # get the metric label from the settings, otherwise use the metric
+                # method name, i.e., metric name in camel-case
                 metric_label = settings.metric_label_dict.get(metric, metric)
 
             ax.set_ylabel(metric_label)
@@ -367,6 +336,7 @@ class MultiLandscape(abc.ABC):
 
     def plot_landscapes(
         self,
+        *,
         cmap=None,
         legend=True,
         subplots_kws=None,

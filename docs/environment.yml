@@ -6,6 +6,6 @@ dependencies:
   - m2r2=0.3.3
   - pip=23.0.1
   - pip:
-    - pydata_sphinx_theme==0.13.3
+    - pydata-sphinx-theme==0.13.3
   - python=3.10
   - sphinx=6.1.3
