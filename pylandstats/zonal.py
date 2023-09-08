@@ -231,6 +231,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             geometry=zonal_metrics_df.reset_index()[self.attribute_name]
             .map(self.zone_gser)
             .values,
+            crs=self.zone_gser.crs,
         )
 
 

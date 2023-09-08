@@ -931,6 +931,8 @@ class TestZonaAlnalysis(unittest.TestCase):
             metrics = ["patch_density"]
             zs_gdf = za.compute_zonal_statistics_gdf(metrics, class_val=class_val)
             self.assertEqual(zs_gdf.shape, (len(self.zone_gdf), len(metrics) + 1))
+            # test that the crs is set correctly
+            self.assertEqual(zs_gdf.crs, self.zone_gdf.crs)
             # test that the geometry column is not None
             self.assertFalse(zs_gdf.geometry.isna().any())
 
