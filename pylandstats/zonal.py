@@ -107,7 +107,13 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                 if zone_index is not None:
                     # we get the index after calling `set_index` because this will give
                     # us the right index both when `zone_index` is a column name or a
-                    # list-like
+                    # list-like.
+                    # note that if zone_index is a list, pandas will try to interpret
+                    # its values as column names, so we need to convert it to a numpy
+                    # array/pandas series first so that the values are set as index.
+                    # we will convert it to a pandas series so that we can set a name.
+                    if isinstance(zone_index, list):
+                        zone_index = pd.Series(zone_index, name="zone")
                     zone_index = zones.set_index(zone_index).index
                     # we now take just the "geometry" column and treat `zones` as
                     # GeoSeries.
