@@ -220,7 +220,12 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         # ensure that we have numeric types (not strings)
         # metric_ser = pd.to_numeric(metric_ser)
 
-        return gpd.GeoDataFrame(zonal_metrics_df, geometry=self.zone_gser)
+        return gpd.GeoDataFrame(
+            zonal_metrics_df,
+            geometry=zonal_metrics_df.reset_index()[self.attribute_name]
+            .map(self.zone_gser)
+            .values,
+        )
 
 
 class BufferAnalysis(ZonalAnalysis):
