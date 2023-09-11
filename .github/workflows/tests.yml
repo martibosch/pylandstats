@@ -43,5 +43,15 @@ jobs:
       - name: upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
 
+      - name: Test notebooks
+        run: |
+          git clone https://github.com/martibosch/pylandstats-notebooks
+          cd pylandstats-notebooks
+          mamba env update -f environment.yml
+          snakemake -c1 register_ipykernel
+          snakemake -c1 lulc_tifs elev_zones
+          snakemake -c1 run_notebooks
+          cd ..
+
       - name: list files
         run: ls -l .

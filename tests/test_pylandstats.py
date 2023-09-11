@@ -927,20 +927,27 @@ class TestZonaAlnalysis(unittest.TestCase):
 
         # test that the gdf has the proper shape (number of zones, number of metrics +
         # geometry column)
-        metrics = ["patch_density"]
-        zs_gdf = za.compute_zonal_statistics_gdf(metrics)
-        self.assertEqual(zs_gdf.shape, (len(self.zone_gdf), len(metrics) + 1))
+        for class_val in [None, za.present_classes[0]]:
+            metrics = ["patch_density"]
+            zs_gdf = za.compute_zonal_statistics_gdf(metrics, class_val=class_val)
+            self.assertEqual(zs_gdf.shape, (len(self.zone_gdf), len(metrics) + 1))
+            # test that the crs is set correctly
+            self.assertEqual(zs_gdf.crs, self.zone_gdf.crs)
+            # test that the geometry column is not None
+            self.assertFalse(zs_gdf.geometry.isna().any())
 
-        # test that the zonal statistics when excluding boundaries should be less or
-        # equal than including them
-        metric = "total_edge"
-        metric_kws = {"count_boundary": True}
-        self.assertLessEqual(
-            za.compute_zonal_statistics_gdf([metric])[metric].sum(),
-            za.compute_zonal_statistics_gdf([metric], metrics_kws={metric: metric_kws})[
-                metric
-            ].sum(),
-        )
+            # test that the zonal statistics when excluding boundaries should be less or
+            # equal than including them
+            metric = "total_edge"
+            metric_kws = {"count_boundary": True}
+            self.assertLessEqual(
+                za.compute_zonal_statistics_gdf([metric], class_val=class_val)[
+                    metric
+                ].sum(),
+                za.compute_zonal_statistics_gdf(
+                    [metric], class_val=class_val, metrics_kws={metric: metric_kws}
+                )[metric].sum(),
+            )
 
     def test_buffer_init(self):
         naive_gser = gpd.GeoSeries([self.geom])
@@ -1222,6 +1229,36 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
                     == pd.MultiIndex.from_product([zone_index, stza.dates])
                 )
             )
+
+    def test_compute_zonal_statistics_gdf(self):
+        for _class, init_args, init_kws, _ in self.init_combinations:
+            stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
+            # test that the gdf has the proper shape (number of zones, number of metrics
+            # + geometry column)
+            for class_val in [None, stza.present_classes[0]]:
+                metrics = ["patch_density"]
+                zs_gdf = stza.compute_zonal_statistics_gdf(metrics, class_val=class_val)
+                self.assertEqual(
+                    zs_gdf.shape,
+                    (len(stza.zone_gser) * len(self.dates), len(metrics) + 1),
+                )
+                # test that the crs is set correctly
+                self.assertEqual(zs_gdf.crs, self.zone_gser.crs)
+                # test that the geometry column is not None
+                self.assertFalse(zs_gdf.geometry.isna().any())
+
+                # test that the zonal statistics when excluding boundaries should be
+                # less or equal than including them
+                metric = "total_edge"
+                metric_kws = {"count_boundary": True}
+                self.assertLessEqual(
+                    stza.compute_zonal_statistics_gdf([metric], class_val=class_val)[
+                        metric
+                    ].sum(),
+                    stza.compute_zonal_statistics_gdf(
+                        [metric], class_val=class_val, metrics_kws={metric: metric_kws}
+                    )[metric].sum(),
+                )
 
     def test_plot_metric(self):
         for _class, init_args, init_kws, _ in self.init_combinations:
