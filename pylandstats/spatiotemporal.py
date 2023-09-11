@@ -1,6 +1,7 @@
 """Spatio-temporal analysis."""
 import functools
 
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -324,6 +325,63 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
             index_return="buffer distance, date (multi-index)",
         )
     )
+
+    def compute_zonal_statistics_gdf(
+        self, metrics, *, class_val=None, metrics_kws=None
+    ):
+        """Compute the zonal statistics geo-data frame over the landscape raster.
+
+        Parameters
+        ----------
+        metrics : list-like, optional
+            A list-like of strings with the names of the metrics that should be
+            computed. If `None`, all the implemented class-level metrics will be
+            computed.
+        class_val : int, optional
+            If provided, the zonal statistics will be computed at the level of the
+            corresponding class, otherwise they will be computed at the landscape level.
+        metrics_kws : dict, optional
+            Dictionary mapping the keyword arguments (values) that should be passed to
+            each metric method (key), e.g., to exclude the boundary from the computation
+            of `total_edge`, metric_kws should map the string 'total_edge' (method name)
+            to {'count_boundary': False}. If `None`, each metric will be computed
+            according to FRAGSTATS defaults.
+
+        Returns
+        -------
+        zonal_statistics_gdf : geopandas.GeoDataFrame
+            Geo-data frame with the computed zonal statistics.
+        """
+
+        # TODO: DRY with `ZonalAnalysis.compute_zonal_statistics_gdf`?
+        def _compute_zonal_metrics_df(sta):
+            if class_val is None:
+                zonal_metrics_df = sta.compute_landscape_metrics_df(
+                    metrics=metrics, metrics_kws=metrics_kws
+                )
+            else:
+                zonal_metrics_df = sta.compute_class_metrics_df(
+                    metrics=metrics, classes=[class_val], metrics_kws=metrics_kws
+                )
+            return zonal_metrics_df
+
+        zonal_metrics_df = pd.concat(
+            [
+                _compute_zonal_metrics_df(sta).assign(**{self.attribute_name: zone})
+                for zone, sta in zip(self.zone_gser.index, self.stas)
+            ]
+        )
+
+        return gpd.GeoDataFrame(
+            # first set zone as outermost index
+            zonal_metrics_df.reset_index().set_index(
+                [self.attribute_name] + zonal_metrics_df.index.names
+            ),
+            geometry=zonal_metrics_df.reset_index()[self.attribute_name]
+            .map(self.zone_gser)
+            .values,
+            crs=self.zone_gser.crs,
+        )
 
     def plot_metric(  # noqa: D102
         self,
