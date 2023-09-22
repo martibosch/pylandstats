@@ -2,8 +2,6 @@ name: release
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
 
@@ -87,9 +85,7 @@ jobs:
           skip-existing: true
 
   release:
-    if: startsWith(github.event.ref, 'refs/tags/v')
     needs: [publish_dev_build]
-    name: create release
     runs-on: ubuntu-latest
     environment:
       name: pypi
