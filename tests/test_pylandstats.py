@@ -194,6 +194,11 @@ class TestLandscape(unittest.TestCase):
         # ACHTUNG: ugly hardcoded tolerance to correct for misterious errors in GitHub
         # Actions with some Python versions
         self.assertTrue((_fractal_dimension_ser >= 1 - 1e-3).all())
+        self.assertTrue((ls.core_area()["core_area"] >= 0).all())
+        self.assertTrue((ls.number_of_core_areas()["number_of_core_areas"] >= 0).all())
+        _core_area_index_ser = ls.core_area_index()["core_area_index"]
+        self.assertTrue((_core_area_index_ser >= 0).all())
+        self.assertTrue((_core_area_index_ser < 100).all())
         # TODO: assert 0 <= ls.contiguity_index(patch_arr) <= 1
         # ACHTUNG: euclidean nearest neighbor can be nan for classes with less than two
         # patches
@@ -212,6 +217,13 @@ class TestLandscape(unittest.TestCase):
         self.assertTrue(0 < ls.largest_patch_index(class_val=class_val) < 100)
         self.assertGreaterEqual(ls.total_edge(class_val=class_val), 0)
         self.assertGreaterEqual(ls.edge_density(class_val=class_val), 0)
+        self.assertGreaterEqual(ls.total_core_area(class_val=class_val), 0)
+        self.assertGreaterEqual(
+            ls.core_area_proportion_of_landscape(class_val=class_val), 0
+        )
+        self.assertGreaterEqual(
+            ls.number_of_disjunct_core_areas(class_val=class_val), 0
+        )
 
         # the value ranges of mean, area-weighted mean and median aggregations are going
         # to be the same as their respective original metrics
@@ -237,6 +249,17 @@ class TestLandscape(unittest.TestCase):
                 <= getattr(ls, "fractal_dimension" + mean_suffix)(class_val=class_val)
                 <= 2
             )
+            self.assertGreaterEqual(
+                getattr(ls, "core_area" + mean_suffix)(class_val=class_val), 0
+            )
+            # self.assertGreaterEqual(
+            #     getattr(ls, "number_of_core_areas" + mean_suffix)(
+            #         class_val=class_val),
+            #     0,
+            # )
+            cai = getattr(ls, "core_area_index" + mean_suffix)(class_val=class_val)
+            self.assertGreaterEqual(cai, 0)
+            self.assertLess(cai, 100)
             # assert 0 <= getattr(
             #     ls, 'contiguity_index' + mean_suffix)(class_val) <= 1
             # assert getattr(ls, 'proximity' + mean_suffix)(class_val) >= 0

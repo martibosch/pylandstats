@@ -17,6 +17,9 @@ fragstats_abbrev_dict = {
     "perimeter_area_ratio": "PARA",
     "shape_index": "SHAPE",
     "fractal_dimension": "FRAC",
+    "core_area": "CORE",
+    "number_of_core_areas": "NCORE",
+    "core_area_index": "CAI",
     "euclidean_nearest_neighbor": "ENN",
     # class-level metrics (can also be landscape-level except for PLAND)
     # ACHTUNG: the 'total_area' metric might be 'CA' or 'TA' in FRAGSTATS (depending on
