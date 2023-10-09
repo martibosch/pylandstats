@@ -42,7 +42,7 @@ class TestLandscape(unittest.TestCase):
         # test that if we provide a ndarray, we also need to provide the resolution
         with self.assertRaises(ValueError) as cm:
             ls = pls.Landscape(self.ls_arr)
-            self.assertIn("must be provided", str(cm.exception))
+        self.assertIn("must be provided", str(cm.exception))
 
         ls = pls.Landscape(self.landscape_fp)
         # resolutions are not exactly 250, they are between [249, 251], so we need to
@@ -77,7 +77,7 @@ class TestLandscape(unittest.TestCase):
         # test that providing a value different than 8 or 4 raises a `ValueError`
         with self.assertRaises(ValueError) as cm:
             pls.Landscape(self.landscape_fp, neighborhood_rule="2")
-            self.assertIn("is not among", str(cm.exception))
+        self.assertIn("is not among", str(cm.exception))
         # test that we can provide the argument as int as long as it is 8 or 4
         for neighborhood_rule in (8, 4):
             self.assertEqual(
@@ -137,11 +137,11 @@ class TestLandscape(unittest.TestCase):
         # context
         with self.assertRaises(ValueError) as cm:
             ls.compute_patch_metrics_df(metrics=["foo"])
-            self.assertIn("is not among", str(cm.exception))
+        self.assertIn("is not among", str(cm.exception))
         for metric in class_metrics.union(landscape_metrics):
             with self.assertRaises(ValueError) as cm:
                 ls.compute_patch_metrics_df(metrics=[metric])
-                self.assertIn("cannot be computed", str(cm.exception))
+            self.assertIn("cannot be computed", str(cm.exception))
 
         class_df = ls.compute_class_metrics_df()
         self.assertEqual(
@@ -152,11 +152,11 @@ class TestLandscape(unittest.TestCase):
         # context
         with self.assertRaises(ValueError) as cm:
             ls.compute_class_metrics_df(metrics=["foo"])
-            self.assertIn("is not among", str(cm.exception))
+        self.assertIn("is not among", str(cm.exception))
         for metric in patch_metrics.union(landscape_metrics.difference(class_metrics)):
             with self.assertRaises(ValueError) as cm:
                 ls.compute_class_metrics_df(metrics=[metric])
-                self.assertIn("cannot be computed", str(cm.exception))
+            self.assertIn("cannot be computed", str(cm.exception))
 
         landscape_df = ls.compute_landscape_metrics_df()
         self.assertEqual(
@@ -168,11 +168,11 @@ class TestLandscape(unittest.TestCase):
         # context
         with self.assertRaises(ValueError) as cm:
             ls.compute_landscape_metrics_df(metrics=["foo"])
-            self.assertIn("is not among", str(cm.exception))
+        self.assertIn("is not among", str(cm.exception))
         for metric in patch_metrics.union(class_metrics.difference(landscape_metrics)):
             with self.assertRaises(ValueError) as cm:
                 ls.compute_landscape_metrics_df(metrics=[metric])
-                self.assertIn("cannot be computed", str(cm.exception))
+            self.assertIn("cannot be computed", str(cm.exception))
 
     def test_metrics_value_ranges(self):
         ls = self.ls
@@ -655,13 +655,13 @@ class TestMultiLandscape(unittest.TestCase):
         # raised ValueErrors have different error messages depending on the context
         with self.assertRaises(ValueError) as cm:
             ml.plot_metric("foo")
-            self.assertIn("is not among", str(cm.exception))
+        self.assertIn("is not among", str(cm.exception))
         with self.assertRaises(ValueError) as cm:
             ml.plot_metric("proportion_of_landscape")
-            self.assertIn("cannot be computed", str(cm.exception))
+        self.assertIn("cannot be computed", str(cm.exception))
         with self.assertRaises(ValueError) as cm:
             ml.plot_metric("contagion", class_val=1)
-            self.assertIn("cannot be computed", str(cm.exception))
+        self.assertIn("cannot be computed", str(cm.exception))
 
     def test_plot_landscapes(self):
         ml = self.InstantiableMultiLandscape(
@@ -1109,7 +1109,7 @@ class TestZonaAlnalysis(unittest.TestCase):
         ]:
             with self.assertRaises(ValueError) as cm:
                 zga = pls.ZonalGridAnalysis(self.landscape_fp, **kws)
-                self.assertIn("must be provided", str(cm.exception))
+            self.assertIn("must be provided", str(cm.exception))
 
         # test the `neighborhood_rule` argument
         neighborhood_rule = "4"
