@@ -47,6 +47,13 @@ Shape
 .. automethod:: pylandstats.Landscape.shape_index
 .. automethod:: pylandstats.Landscape.fractal_dimension
 
+Core
+----
+
+.. automethod:: pylandstats.Landscape.core_area
+.. automethod:: pylandstats.Landscape.number_of_core_areas
+.. automethod:: pylandstats.Landscape.core_area_index
+
 Aggregation
 -----------
 
@@ -65,6 +72,14 @@ Area, density, edge
 .. automethod:: pylandstats.Landscape.largest_patch_index
 .. automethod:: pylandstats.Landscape.total_edge
 .. automethod:: pylandstats.Landscape.edge_density
+
+Core
+----
+
+.. automethod:: pylandstats.Landscape.total_core_area
+.. automethod:: pylandstats.Landscape.core_area_proportion_of_landscape
+.. automethod:: pylandstats.Landscape.number_of_disjunct_core_areas
+.. automethod:: pylandstats.Landscape.disjunct_core_area_density
 
 Aggregation
 -----------

@@ -90,6 +90,40 @@ def compute_adjacency_arr(padded_arr: AdjacencyArray, num_classes: "int"):
     )
 
 
+def compute_core_label_arr(label_arr, count_boundary, edge_depth):
+    """Compute patch core label array.
+
+    Parameters
+    ----------
+    label_arr : numpy.ndarray
+        An integer raster where each patch has a unique label.
+    count_boundary : bool
+        Whether cells that only neighbour the landscape boundary should be considered as
+        core.
+    edge_depth : int
+        Number of cells considered as edge.
+
+    Returns
+    -------
+    core_label_arr : numpy.ndarray
+        An integer raster of core areas only where each patch has a unique label.
+    """
+    if not count_boundary:
+        label_arr = np.pad(label_arr, 1, mode="constant", constant_values=0)
+
+    # ACHTUNG: we use the 4-neighborhood kernel to compute the core areas (this is how
+    # it is done in FRAGSTATS/landscapemetrics)
+    return np.where(
+        ndimage.binary_erosion(
+            label_arr,
+            structure=NEIGHBORHOOD_KERNEL_DICT["4"],
+            iterations=edge_depth,
+        ),
+        label_arr,
+        0,
+    )
+
+
 def compute_entropy(counts, base=None):
     """Compute the entropy for a set of category count values.
 
@@ -216,12 +250,18 @@ class Landscape:
         "perimeter_area_ratio",
         "shape_index",
         "fractal_dimension",
+        "core_area",
+        "number_of_core_areas",
+        "core_area_index",
         "euclidean_nearest_neighbor",
     ]  # 'contiguity_index', 'proximity'
 
+    # iterate all patch metrics except "number_of_core_areas"
+    _PATCH_METRICS = PATCH_METRICS.copy()
+    _PATCH_METRICS.remove("number_of_core_areas")
     DISTR_METRICS = [
         patch_metric + "_" + suffix
-        for patch_metric in PATCH_METRICS
+        for patch_metric in _PATCH_METRICS
         for suffix in ["mn", "am", "md", "ra", "sd", "cv"]
     ]
 
@@ -233,6 +273,9 @@ class Landscape:
         "largest_patch_index",
         "total_edge",
         "edge_density",
+        "total_core_area",
+        "core_area_proportion_of_landscape",
+        "number_of_disjunct_core_areas",
         "landscape_shape_index",
         "effective_mesh_size",
     ] + DISTR_METRICS
@@ -254,6 +297,8 @@ class Landscape:
             "largest_patch_index",
             "total_edge",
             "edge_density",
+            "total_core_area",
+            "number_of_disjunct_core_areas",
             "landscape_shape_index",
             "effective_mesh_size",
         ]
@@ -1025,6 +1070,221 @@ class Landscape:
         """
         # TODO
         raise NotImplementedError
+
+    # core area metrics
+
+    def core_area(
+        self, *, class_val=None, hectares=True, count_boundary=False, edge_depth=1
+    ):
+        r"""Core area of each patch of the landscape.
+
+        .. math::
+           CORE = a_{i,j}^{core} \quad [hec] \; or \; [m^2]
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CORE : pandas.Series if `class_val` is provided, pandas.DataFrame otherwise
+            CORE >= 0 ; core area equals zero when every cell of the patch is within the
+            specified depth distance from its edge, and approaches the value of AREA as
+            patch shapes are simplified.
+        """
+
+        def compute_patch_core_areas(label_arr):
+            """Compute patch core area, in number of cells."""
+            # we cannot use `self.compute_patch_areas` as in the commented lines below
+            # because it would return the areas of the core patches only, which are not
+            # necessarily aligned with the original patches, therefore we would have no
+            # way of matching the core areas with the original patches
+            # core_label_arr = compute_core_label_arr(
+            #     label_arr, count_boundary, edge_depth
+            # )
+            # return self.compute_patch_areas(core_label_arr)
+            # instead, we use the labels of `label_arr` to identify the core patches and
+            # ACHTUNG: important to drop the 0 label as it corresponds to the background
+            core_area_ser = (
+                pd.Series(
+                    compute_core_label_arr(
+                        label_arr, count_boundary, edge_depth
+                    ).ravel()
+                )
+                .value_counts()
+                .drop(0)
+            )
+            core_areas = np.zeros(label_arr.max(), dtype=core_area_ser.dtype)
+            core_areas[core_area_ser.index - 1] = core_area_ser.values
+            return core_areas
+
+        cell_area = self.cell_area
+
+        if hectares:
+            cell_area /= 10000
+
+        if class_val is None:
+            return pd.DataFrame(
+                {
+                    "class_val": self._patch_class_ser,
+                    "core_area": np.concatenate(
+                        [
+                            compute_patch_core_areas(self.class_label(class_val)[0])
+                            for class_val in self.classes
+                        ]
+                    )
+                    * cell_area,
+                }
+            )
+        else:
+            return pd.Series(
+                compute_patch_core_areas(self.class_label(class_val)[0]) * cell_area,
+                name="core_area",
+            )
+
+    def number_of_core_areas(
+        self, *, class_val=None, count_boundary=False, edge_depth=1
+    ):
+        r"""Number of disjunct core areas of each patch of the landscape.
+
+        .. math::
+           NCORE = n_{i,j}^{core}
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        NCORE : pandas.Series if `class_val` is provided, pandas.DataFrame otherwise
+            CORE >= 0 ; core area equals zero when every cell of the patch is within the
+            specified depth distance from its edge, and approaches the value of AREA
+            when patches are mostly composed of core area.
+        """
+        structure = NEIGHBORHOOD_KERNEL_DICT[self.neighborhood_rule]
+
+        def _class_ncore_areas(class_val):
+            label_arr = self.class_label(class_val)[0]
+            core_label_arr = compute_core_label_arr(
+                label_arr,
+                count_boundary,
+                edge_depth,
+            )
+
+            def _num_patches(i, patch_slice):
+                try:
+                    return ndimage.label(
+                        core_label_arr[patch_slice] == i,
+                        structure=structure,
+                    )[1]
+                except RuntimeError:
+                    return 0
+
+            # ACHTUNG: note that we need to find the objects in the label array (not the
+            # core label array) because the core label array is not necessarily aligned
+            return [
+                _num_patches(i, patch_slice)
+                for i, patch_slice in enumerate(
+                    ndimage.find_objects(label_arr), start=1
+                )
+            ]
+
+        if class_val is None:
+            return pd.DataFrame(
+                {
+                    "class_val": self._patch_class_ser,
+                    "number_of_core_areas": np.concatenate(
+                        [_class_ncore_areas(class_val) for class_val in self.classes]
+                    ),
+                }
+            )
+        else:
+            return pd.Series(
+                _class_ncore_areas(class_val),
+                name="number_of_core_areas",
+            )
+
+    def core_area_index(
+        self, *, class_val=None, count_boundary=False, edge_depth=1, percent=True
+    ):
+        r"""Ratio between the core area and patch area of each patch of the landscape.
+
+        .. math::
+           CAI = \frac{a_{i,j}^{core}}{a_{i,j}}
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+        percent : bool, default True
+            Whether the index should be expressed as proportion or converted to
+            percentage.
+
+        Returns
+        -------
+        CAI : pandas.Series if `class_val` is provided, pandas.DataFrame otherwise
+            0 <= CAI < 100 ; core area index equals zero when every cell of the patch is
+            within the specified depth distance from its edge, and approaches 100 when
+            patches are mostly composed of core area.
+        """
+        # ACHTUNG: important to pass `hectares=False`
+        core_area = self.core_area(
+            class_val=class_val,
+            hectares=False,
+            count_boundary=count_boundary,
+            edge_depth=edge_depth,
+        )
+        area_ser = self._get_patch_area_ser(class_val=class_val)
+
+        if percent:
+            # instead of multiplying the numerator by 100, we will divide the
+            # deonminator by 100
+            # ACHTUNG: very important to copy to ensure that we do not modify the 'area'
+            # values if converting to hectares nor we return a variable with the
+            # reference to the property
+            # `self._patch_areas_ser`
+            area_ser = area_ser.copy()
+            area_ser /= 100
+
+        if class_val is None:
+            # core_area is a DataFrame
+            return pd.DataFrame(
+                {
+                    "class_val": core_area["class_val"],
+                    "core_area_index": core_area["core_area"] / area_ser,
+                }
+            )
+        else:
+            # core_area is a Series
+            # we need to use `.values` because the index of `core_area` is not
+            # necessarily aligned
+            return pd.Series(
+                core_area.values / area_ser.values,
+                name="core_area_index",
+            )
 
     # aggregation metrics (formerly isolation, proximity)
 
@@ -2125,6 +2385,832 @@ class Landscape:
         # TODO
         raise NotImplementedError
 
+    # core area metrics
+
+    def total_core_area(
+        self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
+    ):
+        r"""Total core area.
+
+        If `class_val` is provided, the metric is computed at the class level as in:
+
+        .. math::
+           TCA_i = \sum_{j=1}^{n_i} a_{i,j}^{core} \quad [hec] \; or \; [m^2] \quad
+           (class \; i)
+
+        otherwise, the metric is computed at the landscape level as in:
+
+        .. math::
+           TCA = \sum_{i=1}^{m} \sum_{j=1}^{n_i} a_{i,j}^{core} \quad [hec] \; or \;
+           [m^2] \quad (landscape)
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
+        hectares : bool, default True
+            Whether the area should be converted to hectares (tends to yield more
+            legible values for the metric).
+        count_boundary : bool, default False
+            Whether the boundary of the landscape should be considered.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        TCA : numeric
+            TCA >= 0, without limit. TCA approaches 0 when every cell of the patch of
+            the class/landscape is within the specified depth distance from its edge,
+            and approaches CA when patches are mostly composed of core area.
+        """
+        core_area = self.core_area(
+            class_val=class_val,
+            hectares=hectares,
+            count_boundary=count_boundary,
+            edge_depth=edge_depth,
+        )
+        if class_val is None:
+            return core_area["core_area"].sum()
+        else:
+            return core_area.sum()
+
+    def core_area_proportion_of_landscape(
+        self, class_val, *, count_boundary=True, percent=True, edge_depth=1
+    ):
+        r"""Proportional core area abundance of a particular class within the landscape.
+
+        Computed at the class level as in:
+
+        .. math::
+           CPLAND_i = \frac{1}{A} \sum_j^{n_i} a_{i,j}^{core} \quad (class \; i)
+
+        Parameters
+        ----------
+        class_val : int
+            Class for which the metric should be computed.
+        count_boundary : bool, default False
+            Whether the boundary of the landscape should be considered.
+        percent : bool, default True
+            Whether the index should be expressed as proportion or converted to
+            percentage. If True, this method returns FRAGSTATS' core area percentage of
+            landscape (CPLAND).
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CPLAND : numeric
+            0 <= CPLAND < 100 ; CPLAND approaches 0 when core area of the corresponding
+            class becomes increasingly rare, and approaches 100 when the entire
+            landscape consists of a single patch of such class.
+        """
+        # set hectares to True in all method calls, just to ensure that we use the same
+        # units and get a proportion over 1
+        hectares = True
+        numerator = self.total_core_area(
+            class_val=class_val,
+            hectares=hectares,
+            count_boundary=count_boundary,
+            edge_depth=edge_depth,
+        )
+        if percent:
+            numerator *= 100
+
+        return numerator / self.total_area(hectares=hectares)
+
+    def number_of_disjunct_core_areas(
+        self, *, class_val=None, count_boundary=True, edge_depth=1
+    ):
+        r"""Number of disjunct core areas.
+
+        If `class_val` is provided, the metric is computed at the class level as in:
+
+        .. math::
+           NDCA_i = \sum_j^{n_i} n_{i,j}^{core} \quad (class \; i)
+
+        otherwise, the metric is computed at the landscape level as in:
+
+        .. math::
+           NDCA = \sum_{i=1}^{m} \sum_{j=1}^{n_i} n_{i,j}^{core} \quad (landscape)
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
+        count_boundary : bool, default False
+            Whether the boundary of the landscape should be considered.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        NDCA : int
+            NDCA >= 0, without limit. NDCA approaches 0 when every cell of the patch of
+            the class/landscape is within the specified depth distance from its edge,
+            and increases over 1 when due to patch shape complexity, patches contain
+            more than one core area.
+        """
+        num_core_areas = self.number_of_core_areas(
+            class_val=class_val, count_boundary=count_boundary, edge_depth=edge_depth
+        )
+        if class_val is None:
+            return num_core_areas["number_of_core_areas"].sum()
+        else:
+            return num_core_areas.sum()
+
+    def disjunct_core_area_density(
+        self,
+        *,
+        class_val=None,
+        count_boundary=True,
+        edge_depth=1,
+        percent=True,
+        hectares=True,
+    ):
+        r"""Density of disjunct core areas.
+
+        If `class_val` is provided, the metric is computed at the class level as in:
+
+        .. math::
+           DCAD_i = \frac{1}{A} \sum_j^{n_i} n_{i,j}^{core} [1/hec] \; or \; [1/m^2]
+           \quad (class \; i)
+
+        otherwise, the metric is computed at the landscape level as in:
+
+        .. math::
+           DCAD = \frac{1}{A} \sum_{i=1}^{m} \sum_{j=1}^{n_i} n_{i,j}^{core} \quad
+           [1/hec] \; or \; [1/m^2] \quad (landscape)
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed at the level of the corresponding
+            class, otherwise it will be computed at the landscape level.
+        count_boundary : bool, default False
+            Whether the boundary of the landscape should be considered.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+        percent : bool, default True
+            Whether the index should be expressed as proportion or converted to
+            percentage.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+
+        Returns
+        -------
+        DCAD : int
+            DCAD >= 0, without limit. DCAD approaches 0 when every cell of the patch of
+            the class/landscape is within the specified depth distance from its edge,
+            and increases with the number of patch core area.
+        """
+        numerator = self.number_of_disjunct_core_areas(
+            class_val=class_val, count_boundary=count_boundary, edge_depth=edge_depth
+        )
+
+        if percent:
+            numerator *= 100
+        if hectares:
+            numerator *= 10000
+
+        return numerator / self.landscape_area
+
+    def core_area_mn(
+        self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
+    ):
+        """Mean of the core area distribution.
+
+        See also the documentation of `Landscape.core_area`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CORE_MN : numeric
+        """
+        return self._metric_mn(
+            class_val,
+            self.core_area,
+            patch_metric_method_kws={
+                "hectares": hectares,
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def core_area_am(
+        self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
+    ):
+        """Area-weighted mean of the core area distribution.
+
+        See also the documentation of `Landscape.core_area`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CORE_AM : numeric
+        """
+        return self._metric_am(
+            class_val,
+            self.core_area,
+            patch_metric_method_kws={
+                "hectares": hectares,
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def core_area_md(
+        self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
+    ):
+        """Median of the core area distribution.
+
+        See also the documentation of `Landscape.core_area`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CORE_MD : numeric
+        """
+        return self._metric_md(
+            class_val,
+            self.core_area,
+            patch_metric_method_kws={
+                "hectares": hectares,
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def core_area_ra(
+        self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
+    ):
+        """Range of the core area distribution.
+
+        See also the documentation of `Landscape.core_area`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CORE_RA : numeric
+        """
+        return self._metric_ra(
+            class_val,
+            self.core_area,
+            patch_metric_method_kws={
+                "hectares": hectares,
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def core_area_sd(
+        self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
+    ):
+        """Standard deviation of the core area distribution.
+
+        See also the documentation of `Landscape.core_area`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CORE_SD : numeric
+        """
+        return self._metric_sd(
+            class_val,
+            self.core_area,
+            patch_metric_method_kws={
+                "hectares": hectares,
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def core_area_cv(
+        self, *, class_val=None, count_boundary=True, edge_depth=1, percent=True
+    ):
+        """Coefficient of variation of the core area distribution.
+
+        See also the documentation of `Landscape.core_area`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+        percent : bool, default True
+            Whether the index should be expressed as proportion or converted to
+            percentage.
+
+        Returns
+        -------
+        CORE_CV : numeric
+        """
+        return self._metric_cv(
+            class_val,
+            self.core_area,
+            patch_metric_method_kws={
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+            percent=percent,
+        )
+
+    def _disjunct_core_area(
+        self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
+    ):
+        """Helper method to compute the disjunct core area distribution metrics."""
+
+        def _compute_patch_core_areas(class_val):
+            core_areas = self.compute_patch_areas(
+                ndimage.label(
+                    compute_core_label_arr(
+                        self.landscape_arr == class_val, count_boundary, edge_depth
+                    )
+                    != 0,
+                    structure=NEIGHBORHOOD_KERNEL_DICT[self.neighborhood_rule],
+                )[0]
+            )
+            if hectares:
+                # do not use "/=" operator to avoid in-place modification (which can be
+                # problematic if the operation changes the dtype of the array, e.g. from
+                # int to float)
+                core_areas = core_areas / 10000
+            return core_areas
+
+        if class_val is None:
+            return pd.concat(
+                [
+                    pd.DataFrame(
+                        {"core_area": _compute_patch_core_areas(class_val)}
+                    ).assign(**{"class_val": class_val})
+                    for class_val in self.classes
+                ]
+            )
+        else:
+            return pd.Series(_compute_patch_core_areas(class_val), name="core_area")
+
+    def disjunct_core_area_mn(
+        self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
+    ):
+        """Mean of the core area distribution.
+
+        See also the documentation of `Landscape.core_area`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CORE_MN : numeric
+        """
+        return self._metric_mn(
+            class_val,
+            self._disjunct_core_area,
+            patch_metric_method_kws={
+                "hectares": hectares,
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def disjunct_core_area_am(
+        self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
+    ):
+        """Area-weighted mean of the core area distribution.
+
+        See also the documentation of `Landscape.core_area`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CORE_AM : numeric
+        """
+        # this is a bit different because we need to weight the average using the
+        # disjunct core area rather than the patch area, so we will not use `_metric_am`
+        disjunct_core_area = self._disjunct_core_area(
+            class_val=class_val,
+            hectares=hectares,
+            count_boundary=count_boundary,
+            edge_depth=edge_depth,
+        )
+        return np.average(disjunct_core_area, weights=disjunct_core_area)
+
+    def disjunct_core_area_md(
+        self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
+    ):
+        """Median of the core area distribution.
+
+        See also the documentation of `Landscape.core_area`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CORE_MD : numeric
+        """
+        return self._metric_md(
+            class_val,
+            self._disjunct_core_area,
+            patch_metric_method_kws={
+                "hectares": hectares,
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def disjunct_core_area_ra(
+        self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
+    ):
+        """Range of the core area distribution.
+
+        See also the documentation of `Landscape.core_area`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CORE_RA : numeric
+        """
+        return self._metric_ra(
+            class_val,
+            self._disjunct_core_area,
+            patch_metric_method_kws={
+                "hectares": hectares,
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def disjunct_core_area_sd(
+        self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
+    ):
+        """Standard deviation of the core area distribution.
+
+        See also the documentation of `Landscape.core_area`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        hectares : bool, default True
+            Whether the landscape area should be converted to hectares (tends to yield
+            more legible values).
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CORE_SD : numeric
+        """
+        return self._metric_sd(
+            class_val,
+            self._disjunct_core_area,
+            patch_metric_method_kws={
+                "hectares": hectares,
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def disjunct_core_area_cv(
+        self, *, class_val=None, count_boundary=True, edge_depth=1, percent=True
+    ):
+        """Coefficient of variation of the core area distribution.
+
+        See also the documentation of `Landscape.core_area`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+        percent : bool, default True
+            Whether the index should be expressed as proportion or converted to
+            percentage.
+
+        Returns
+        -------
+        CORE_CV : numeric
+        """
+        return self._metric_cv(
+            class_val,
+            self._disjunct_core_area,
+            patch_metric_method_kws={
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+            percent=percent,
+        )
+
+    def core_area_index_mn(self, *, class_val=None, count_boundary=True, edge_depth=1):
+        """Mean of the core area index distribution.
+
+        See also the documentation of `Landscape.core_area_index`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CAI_MN : numeric
+        """
+        return self._metric_mn(
+            class_val,
+            self.core_area_index,
+            patch_metric_method_kws={
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def core_area_index_am(self, *, class_val=None, count_boundary=True, edge_depth=1):
+        """Area-weighted mean of the core area index distribution.
+
+        See also the documentation of `Landscape.core_area_index`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CAI_AM : numeric
+        """
+        return self._metric_am(
+            class_val,
+            self.core_area_index,
+            patch_metric_method_kws={
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def core_area_index_md(self, *, class_val=None, count_boundary=True, edge_depth=1):
+        """Median of the core area index distribution.
+
+        See also the documentation of `Landscape.core_area_index`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CAI_MD : numeric
+        """
+        return self._metric_md(
+            class_val,
+            self.core_area_index,
+            patch_metric_method_kws={
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def core_area_index_ra(self, *, class_val=None, count_boundary=True, edge_depth=1):
+        """Range of the core area index distribution.
+
+        See also the documentation of `Landscape.core_area_index`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CAI_RA : numeric
+        """
+        return self._metric_ra(
+            class_val,
+            self.core_area_index,
+            patch_metric_method_kws={
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def core_area_index_sd(self, *, class_val=None, count_boundary=True, edge_depth=1):
+        """Standard deviation of the core area index distribution.
+
+        See also the documentation of `Landscape.core_area_index`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+
+        Returns
+        -------
+        CAI_SD : numeric
+        """
+        return self._metric_sd(
+            class_val,
+            self.core_area_index,
+            patch_metric_method_kws={
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+        )
+
+    def core_area_index_cv(
+        self, *, class_val=None, count_boundary=True, edge_depth=1, percent=True
+    ):
+        """Coefficient of variation of the core area index distribution.
+
+        See also the documentation of `Landscape.core_area_index`.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the metric will be computed for the corresponding class only,
+            otherwise it will be computed for all the classes of the landscape.
+        count_boundary : bool, default False
+            Whether cells that only neighbour the landscape boundary should be
+            considered as core.
+        edge_depth : int, default 1
+            Number of cells considered as edge.
+        percent : bool, default True
+            Whether the index should be expressed as proportion or converted to
+            percentage.
+
+        Returns
+        -------
+        CAI_CV : numeric
+        """
+        return self._metric_cv(
+            class_val,
+            self.core_area_index,
+            patch_metric_method_kws={
+                "count_boundary": count_boundary,
+                "edge_depth": edge_depth,
+            },
+            percent=percent,
+        )
+
     # isolation, proximity
 
     def proximity_mn(self, *, class_val=None):
@@ -2868,7 +3954,20 @@ class Landscape:
                 )
             )
 
-        return pd.DataFrame(metrics_dict, index=[0])
+        try:
+            return pd.DataFrame(metrics_dict, index=[0])
+        except ValueError:
+            # calling patch-level metrics at the landscape level returns a data frame,
+            # so at this point `metrics_dict` is a dictionary of data frames, so we will
+            # get a pandas ValueError of the form "Data must be 1-dimensional, got
+            # ndarray of shape (x, 2) instead". We will raise a more informative error.
+            for metric in metrics_dict:
+                if isinstance(metrics_dict[metric], pd.DataFrame):
+                    raise ValueError(
+                        "{metric} cannot be computed at the landscape level".format(
+                            metric=metric
+                        )
+                    )
 
     def plot_landscape(
         self,
