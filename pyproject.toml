@@ -25,7 +25,6 @@ dependencies = [
     "black",
     "geopandas",
     "matplotlib >= 2.2",
-    "numba ; platform_system == 'Windows'",
     "numpy >= 1.15",
     "pandas >= 0.23",
     "rasterio >= 1.0.0",
