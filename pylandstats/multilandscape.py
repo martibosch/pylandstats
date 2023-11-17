@@ -122,7 +122,7 @@ class MultiLandscape(abc.ABC):
         metric: 0
         for metric in [
             patch_metric + "_" + suffix
-            for patch_metric in ["area", "perimeter"]
+            for patch_metric in ["area", "perimeter", "core_area"]
             for suffix in ["mn", "am", "md", "ra", "sd"]
         ]
         + [
@@ -133,6 +133,7 @@ class MultiLandscape(abc.ABC):
             "largest_patch_index",
             "total_edge",
             "edge_density",
+            "total_core_area",
         ]
     }
 
