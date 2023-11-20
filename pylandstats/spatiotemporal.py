@@ -288,7 +288,7 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
                     # as nan
                     pass
 
-        return class_metrics_df
+        return class_metrics_df.apply(pd.to_numeric)
 
     compute_class_metrics_df.__doc__ = (
         multilandscape._compute_class_metrics_df_doc.format(
