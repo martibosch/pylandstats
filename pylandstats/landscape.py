@@ -2824,7 +2824,7 @@ class Landscape:
     def disjunct_core_area_mn(
         self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
     ):
-        """Mean of the core area distribution.
+        """Mean of the core area per disjunct core distribution.
 
         See also the documentation of `Landscape.core_area`.
 
@@ -2859,7 +2859,7 @@ class Landscape:
     def disjunct_core_area_am(
         self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
     ):
-        """Area-weighted mean of the core area distribution.
+        """Area-weighted mean of the core area per disjunct core distribution.
 
         See also the documentation of `Landscape.core_area`.
 
@@ -2894,7 +2894,7 @@ class Landscape:
     def disjunct_core_area_md(
         self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
     ):
-        """Median of the core area distribution.
+        """Median of the core area per disjunct core distribution.
 
         See also the documentation of `Landscape.core_area`.
 
@@ -2929,7 +2929,7 @@ class Landscape:
     def disjunct_core_area_ra(
         self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
     ):
-        """Range of the core area distribution.
+        """Range of the core area per disjunct core distribution.
 
         See also the documentation of `Landscape.core_area`.
 
@@ -2964,7 +2964,7 @@ class Landscape:
     def disjunct_core_area_sd(
         self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
     ):
-        """Standard deviation of the core area distribution.
+        """Standard deviation of the core area per disjunct core distribution.
 
         See also the documentation of `Landscape.core_area`.
 
@@ -2999,7 +2999,7 @@ class Landscape:
     def disjunct_core_area_cv(
         self, *, class_val=None, count_boundary=True, edge_depth=1, percent=True
     ):
-        """Coefficient of variation of the core area distribution.
+        """Coefficient of variation of the core area per disjunct core distribution.
 
         See also the documentation of `Landscape.core_area`.
 
