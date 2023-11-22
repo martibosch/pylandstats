@@ -42,18 +42,23 @@ fragstats_abbrev_dict = {
 }
 # add the class/landscape distribution statistics metrics to the fragstats abbreviation
 # dictionary
+
 for metric in [
     "area",
     "perimeter",
     "perimeter_area_ratio",
     "shape_index",
     "fractal_dimension",
+    "core_area",
+    "core_area_index",
     "euclidean_nearest_neighbor",
 ]:
     for suffix in ["mn", "am", "md", "ra", "sd", "cv"]:
-        fragstats_abbrev_dict["{}_{}".format(metric, suffix)] = "{}_{}".format(
-            fragstats_abbrev_dict[metric], suffix.upper()
-        )
+        fragstats_abbrev_dict[
+            f"{metric}_{suffix}"
+        ] = f"{fragstats_abbrev_dict[metric]}_{suffix.upper()}"
+for suffix in ["mn", "am", "md", "ra", "sd", "cv"]:
+    fragstats_abbrev_dict[f"disjunct_core_area_{suffix}"] = f"DCORE_{suffix}"
 
 # SETTINGS
 # TODO: is it worth integrating `metrics` and `metrics_kws` into the settings scheme?

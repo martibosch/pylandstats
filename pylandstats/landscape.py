@@ -256,11 +256,15 @@ class Landscape:
         "euclidean_nearest_neighbor",
     ]  # 'contiguity_index', 'proximity'
 
-    # iterate all patch metrics except "number_of_core_areas"
+    # iterate all patch metrics except "number_of_core_areas", and add
+    # "disjunct_core_area"
     _PATCH_METRICS = PATCH_METRICS.copy()
     _PATCH_METRICS.remove("number_of_core_areas")
+    _PATCH_METRICS.append("disjunct_core_area")
+    # we could define the list of suffixes as a class-constant but using it in settings
+    # would cause a singular import
     DISTR_METRICS = [
-        patch_metric + "_" + suffix
+        f"{patch_metric}_{suffix}"
         for patch_metric in _PATCH_METRICS
         for suffix in ["mn", "am", "md", "ra", "sd", "cv"]
     ]
