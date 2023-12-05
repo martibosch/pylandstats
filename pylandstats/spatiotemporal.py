@@ -234,6 +234,9 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
         # `dates` argument
         self.dates = self.stas[0].dates
 
+    def __len__(self):  # noqa: D105
+        return sum([len(sta) for sta in self.stas])
+
     def compute_class_metrics_df(  # noqa: D102
         self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
     ):
