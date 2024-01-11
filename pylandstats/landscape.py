@@ -3581,8 +3581,8 @@ class Landscape:
         """
         if len(self.classes) < 2:
             warnings.warn(
-                "Entropy-based metrics can only be computed in landscapes with more "
-                "than two classes of patches. Returning nan",
+                "Entropy-based metrics can only be computed in landscapes with at least"
+                " two classes of patches. Returning nan",
                 RuntimeWarning,
             )
             return np.nan
@@ -3645,8 +3645,8 @@ class Landscape:
         """
         if len(self.classes) < 2:
             warnings.warn(
-                "Entropy-based metrics can only be computed in landscapes with more "
-                "than two classes of patches. Returning nan",
+                "Entropy-based metrics can only be computed in landscapes with at least"
+                " two classes of patches. Returning nan",
                 RuntimeWarning,
             )
             return np.nan
