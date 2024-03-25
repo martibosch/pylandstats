@@ -1,4 +1,5 @@
 """Multi-landscape analysis."""
+
 import abc
 import functools
 
@@ -228,13 +229,11 @@ class MultiLandscape(abc.ABC):
         landscape_metrics_df.columns.name = "metric"
 
         for attribute_value, landscape in zip(attribute_values, self.landscapes):
-            landscape_metrics_df.loc[
-                attribute_value, columns
-            ] = landscape.compute_landscape_metrics_df(
-                metrics=metrics, metrics_kws=metrics_kws
-            ).iloc[
-                0
-            ]
+            landscape_metrics_df.loc[attribute_value, columns] = (
+                landscape.compute_landscape_metrics_df(
+                    metrics=metrics, metrics_kws=metrics_kws
+                ).iloc[0]
+            )
 
         return landscape_metrics_df.apply(pd.to_numeric)
 

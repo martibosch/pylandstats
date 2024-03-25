@@ -1,4 +1,5 @@
 """pylandstats settings."""
+
 from os import environ
 
 try:
@@ -54,9 +55,9 @@ for metric in [
     "euclidean_nearest_neighbor",
 ]:
     for suffix in ["mn", "am", "md", "ra", "sd", "cv"]:
-        fragstats_abbrev_dict[
-            f"{metric}_{suffix}"
-        ] = f"{fragstats_abbrev_dict[metric]}_{suffix.upper()}"
+        fragstats_abbrev_dict[f"{metric}_{suffix}"] = (
+            f"{fragstats_abbrev_dict[metric]}_{suffix.upper()}"
+        )
 for suffix in ["mn", "am", "md", "ra", "sd", "cv"]:
     fragstats_abbrev_dict[f"disjunct_core_area_{suffix}"] = f"DCORE_{suffix}"
 
