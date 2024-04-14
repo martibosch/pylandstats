@@ -23,6 +23,7 @@ classifiers = [
 requires-python = ">=3.8"
 dependencies = [
     "black",
+    "dask",
     "geopandas",
     "matplotlib >= 2.2",
     "numba ; platform_system == 'Windows'",
