@@ -8,7 +8,7 @@ import pandas as pd
 import rasterio as rio
 from rasterio import mask
 
-from . import multilandscape, zonal
+from . import multilandscape, settings, zonal
 from .landscape import Landscape
 
 __all__ = [
@@ -187,6 +187,8 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
             Ignored if `landscape` is a `Landscape` instance. If no value is provided,
             the default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         """
+        # we first instantiate only a zonal analysis to use its (after initialization)
+        # attributes
         za = zonal.ZonalAnalysis(
             landscape_filepaths[0],
             zones,
@@ -199,16 +201,14 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
         # instantiated object (stored in the variable `ba`), it will not set it to the
         # current `SpatioTemporalZonalAnalysis`, so we need to do it here
         self.zone_gser = za.zone_gser
-        self.attribute_name = za.attribute_name
 
-        # init the `SpatioTemporalAnalysis` instances
-        self.stas = []
+        # init the landscape instances
+        landscapes = []
         for _, zone_geom in za.zone_gser.items():
-            zone_landscapes = []
             for landscape in landscape_filepaths:
                 with rio.open(landscape) as src:
                     zone_arr, zone_transform = mask.mask(src, [zone_geom], crop=True)
-                    zone_landscapes.append(
+                    landscapes.append(
                         Landscape(
                             zone_arr[0],
                             res=src.res,
@@ -216,82 +216,36 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
                             neighborhood_rule=neighborhood_rule,
                         )
                     )
-            self.stas.append(SpatioTemporalAnalysis(zone_landscapes, dates=dates))
 
-        # We need to get the union of the classes found at the spatio-temporal analysis
-        # instance of each zone
-        self.present_classes = functools.reduce(
-            np.union1d, tuple(sta.present_classes for sta in self.stas)
+        # TODO: DRY this from `SpatioTemporalAnalysis.__init__`
+        if dates is None:
+            dates = ["t{}".format(i) for i in range(len(landscape_filepaths))]
+
+        # instantiate the series of landscapes but using a multi-index
+        self.landscape_ser = pd.Series(
+            landscapes,
+            index=pd.MultiIndex.from_product(
+                [self.zone_gser.index, dates],
+                names=[self.zone_gser.index.name, "date"],
+            ),
         )
 
-        # the dates will be the same for all the `SpatioTemporalAnalysis` instances
-        # stored in `self.stas`. We will just take them from the first instance and
-        # store them as attribute of this `SpatioTemporalZonalAnalysis` so that it can
-        # be used more conveniently below.
-        # ACHTUNG: we do it AFTER instantiating the `SpatioTemporalAnalysis` instances
-        # of `self.stats` so that we let the `__init__` method of
-        # `SpatioTemporalAnalysis.__init__` deal with the logic of what to do with the
-        # `dates` argument
-        self.dates = self.stas[0].dates
-
-    def __len__(self):  # noqa: D105
-        return sum([len(sta) for sta in self.stas])
+        # get the all classes present in the provided landscapes
+        # TODO: DRY this from `MultiLandscape.__init__`
+        self.present_classes = functools.reduce(
+            np.union1d,
+            tuple(landscape.classes for landscape in self.landscape_ser),
+        )
 
     def compute_class_metrics_df(  # noqa: D102
         self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
     ):
-        if classes is None:
-            classes = self.present_classes
-
-        # get the columns to init the data frame
-        if metrics is None:
-            columns = Landscape.CLASS_METRICS
-        else:
-            columns = metrics
-
-        # IMPORTANT: since some classes might not be present for each date and/or zone,
-        # we will init the MultiIndex manually to ensure that every class is present in
-        # the resulting data frame. If some class does not appear for some date/zone,
-        # the corresponding row will be nan. This probably preferable than having a
-        # MultiIndex that can have different levels (i.e., the second level `class_val`)
-        # for each zone. Note that this approach is likely slower since for each zone,
-        # we have to iterate as in (see below):
-        # `for class_val, date in class_metrics_df.loc[zone].index`
-        class_metrics_df = pd.DataFrame(
-            index=pd.MultiIndex.from_product(
-                [self.zone_gser.index, classes, self.dates]
-            ),
-            columns=columns,
+        return super().compute_class_metrics_df(
+            metrics=metrics,
+            classes=classes,
+            metrics_kws=metrics_kws,
+            fillna=fillna,
         )
-        class_metrics_df.index.names = self.attribute_name, "class_val", "dates"
-        class_metrics_df.columns.name = "metric"
-
-        for zone, sta in zip(self.zone_gser.index, self.stas):
-            # get the class metrics data frame for the `SpatioTemporalAnalysis` instance
-            # that corresponds to this zone
-            df = sta.compute_class_metrics_df(
-                metrics=metrics,
-                classes=classes,
-                metrics_kws=metrics_kws,
-                fillna=fillna,
-            )
-            # put the metrics data frame of the `SpatioTemporalAnalysis` of this zone
-            # into the global metrics data frame of the `SpatioTemporalZoneAnalysis`
-            for class_val, date in class_metrics_df.loc[zone].index:
-                # use `class_metrics_df.loc` for the first level (i.e., zone) again (we
-                # have already used it in the iterator above) to avoid
-                # `SettingWithCopyWarning`
-                try:
-                    class_metrics_df.loc[zone, class_val, date] = df.loc[
-                        class_val, date
-                    ]
-                except KeyError:
-                    # this means that `class_val` is not in `df`, therefore we do
-                    # nothing and the corresponding row of `class_metrics_df` will stay
-                    # as nan
-                    pass
-
-        return class_metrics_df.apply(pd.to_numeric)
 
     compute_class_metrics_df.__doc__ = (
         multilandscape._compute_class_metrics_df_doc.format(
@@ -303,24 +257,9 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
     def compute_landscape_metrics_df(  # noqa: D102
         self, *, metrics=None, metrics_kws=None
     ):
-        # we will create a dict where each key is a zone id, and its value is the
-        # corresponding metrics data frame of the `SpatioTemporalAnalysis` instance
-        df_dict = {
-            zone: sta.compute_landscape_metrics_df(
-                metrics=metrics, metrics_kws=metrics_kws
-            )
-            for zone, sta in zip(self.zone_gser.index, self.stas)
-        }
-
-        # we concatenate each value of the dict dataframe using its respective
-        # `buffer_dist` key to create an extra index level (i.e., using the `keys`
-        # argument of `pd.concat`)
-        landscape_metrics_df = pd.concat(df_dict.values(), keys=df_dict.keys())
-        # now we set the name of each index and column level
-        landscape_metrics_df.index.names = self.attribute_name, "dates"
-        landscape_metrics_df.columns.name = "metric"
-
-        return landscape_metrics_df
+        return super().compute_landscape_metrics_df(
+            metrics=metrics, metrics_kws=metrics_kws
+        )
 
     compute_landscape_metrics_df.__doc__ = (
         multilandscape._compute_landscape_metrics_df_doc.format(
@@ -355,34 +294,22 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
         zonal_statistics_gdf : geopandas.GeoDataFrame
             Geo-data frame with the computed zonal statistics.
         """
+        if class_val is None:
+            metrics_df = self.compute_landscape_metrics_df(
+                metrics=metrics, metrics_kws=metrics_kws
+            )
+        else:
+            metrics_df = self.compute_class_metrics_df(
+                metrics=metrics, classes=[class_val], metrics_kws=metrics_kws
+            )
 
-        # TODO: DRY with `ZonalAnalysis.compute_zonal_statistics_gdf`?
-        def _compute_zonal_metrics_df(sta):
-            if class_val is None:
-                zonal_metrics_df = sta.compute_landscape_metrics_df(
-                    metrics=metrics, metrics_kws=metrics_kws
-                )
-            else:
-                zonal_metrics_df = sta.compute_class_metrics_df(
-                    metrics=metrics, classes=[class_val], metrics_kws=metrics_kws
-                )
-            return zonal_metrics_df
-
-        zonal_metrics_df = pd.concat(
-            [
-                _compute_zonal_metrics_df(sta).assign(**{self.attribute_name: zone})
-                for zone, sta in zip(self.zone_gser.index, self.stas)
-            ]
-        )
-
+        zone_col = self.zone_gser.index.name
         return gpd.GeoDataFrame(
             # first set zone as outermost index
-            zonal_metrics_df.reset_index().set_index(
-                [self.attribute_name] + zonal_metrics_df.index.names
+            metrics_df.reset_index().set_index(
+                [zone_col] + metrics_df.index.names.difference([zone_col])
             ),
-            geometry=zonal_metrics_df.reset_index()[self.attribute_name]
-            .map(self.zone_gser)
-            .values,
+            geometry=metrics_df.reset_index()[zone_col].map(self.zone_gser).values,
             crs=self.zone_gser.crs,
         )
 
@@ -410,33 +337,40 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
         if plot_kws is None:
             plot_kws = {}
 
+        # start: compute metrics - TODO: DRY from multilandscape.plot_metric?
+        if metric_kws is None:
+            metric_kws = {}
+        metrics_kws = {metric: metric_kws}
+        metrics = [metric]
+        if class_val is None:
+            metric_df = self.compute_landscape_metrics_df(
+                metrics=metrics, metrics_kws=metrics_kws
+            )
+        else:
+            metric_df = self.compute_class_metrics_df(
+                metrics=metrics, classes=[class_val], metrics_kws=metrics_kws
+            ).loc[class_val]
+        # end: compute metrics
+
         if "label" not in plot_kws:
             # avoid alias/refrence issues
             _plot_kws = plot_kws.copy()
-            for zone, sta in zip(self.zone_gser.index, self.stas):
+            for zone, zone_df in metric_df.groupby(level=0):
                 _plot_kws["label"] = zone
-                ax = sta.plot_metric(
-                    metric,
-                    class_val=class_val,
-                    ax=ax,
-                    metric_legend=metric_legend,
-                    metric_label=metric_label,
-                    fmt=fmt,
-                    plot_kws=_plot_kws,
-                    metric_kws=metric_kws,
-                )
+                ax.plot(zone_df.loc[zone].index, zone_df.values, fmt, **_plot_kws)
         else:
-            for sta in self.stas:
-                ax = sta.plot_metric(
-                    metric,
-                    class_val=class_val,
-                    ax=ax,
-                    metric_legend=metric_legend,
-                    metric_label=metric_label,
-                    fmt=fmt,
-                    plot_kws=plot_kws,
-                    metric_kws=metric_kws,
-                )
+            for zone, zone_df in metric_df.groupby(level=0):
+                ax.plot(zone_df.loc[zone].index, zone_df.values, fmt, **plot_kws)
+
+        # start: metric legend - TODO: DRY from multilandscape
+        if metric_legend:
+            if metric_label is None:
+                # get the metric label from the settings, otherwise use the metric
+                # method name, i.e., metric name in camel-case
+                metric_label = settings.metric_label_dict.get(metric, metric)
+
+            ax.set_ylabel(metric_label)
+        # end metric legend
 
         if zone_legend:
             ax.legend()
@@ -477,16 +411,13 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
         fig : matplotlib.figure.Figure
             The figure with its corresponding plots drawn into its axes.
         """
-        # the number of rows is the number of dates, which will be the same for all the
-        # `SpatioTemporalAnalysis` instances of `self.stas`
-        dates = self.stas[0].dates
-
         # avoid alias/refrence issues
         if subplots_kws is None:
             _subplots_kws = {}
         else:
             _subplots_kws = subplots_kws.copy()
         figsize = _subplots_kws.pop("figsize", None)
+        dates = self.landscape_ser.index.get_level_values("date").unique()
         if figsize is None:
             figwidth, figheight = plt.rcParams["figure.figsize"]
             figsize = (
@@ -501,11 +432,10 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis):
         if show_kws is None:
             show_kws = {}
         flat_axes = axes.flat
-        for _, sta in zip(self.zone_gser.index, self.stas):
-            for date, landscape in zip(sta.dates, sta.landscapes):
-                ax = landscape.plot_landscape(
-                    cmap=cmap, ax=next(flat_axes), legend=legend, **show_kws
-                )
+        for landscape in self.landscape_ser:
+            ax = landscape.plot_landscape(
+                cmap=cmap, ax=next(flat_axes), legend=legend, **show_kws
+            )
 
         # labels in first row and column only
         for date, ax in zip(dates, axes[0]):

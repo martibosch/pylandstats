@@ -85,33 +85,27 @@ class MultiLandscape(abc.ABC):
             `pylandstats.Landscape` for each element of `landscapes`. Ignored if the
             elements of `landscapes` are already instances of `pylandstats.Landcape`.
         """
-        if isinstance(landscapes[0], Landscape):
-            self.landscapes = landscapes
-        else:
-            self.landscapes = [
+        if not isinstance(landscapes[0], Landscape):
+            # we assume that landscapes is a list of strings/file-like/path-like objects
+            landscapes = [
                 Landscape(landscape, **landscape_kws) for landscape in landscapes
             ]
-
-        if len(self.landscapes) != len(attribute_values):
+        if len(landscapes) != len(attribute_values):
             raise ValueError(
                 "The lengths of `landscapes` and `{}` must coincide".format(
                     attribute_name
                 )
             )
 
-        # set a `attribute_name` attribute with the value `attribute_values`, so that
-        # children classes can access it (e.g., for `SpatioTemporalAnalysis`,
-        # `attribute_name` will be 'dates' and `attribute_values` will be a list of
-        # dates that will therefore be accessible as an attribute as in `instance.dates`
-        setattr(self, attribute_name, attribute_values)
-        # also set a `attribute_name` attribute so that the methods of this class know
-        # how to access such attribute, i.e., as in `getattr(self, self.attribute_name)`
-        setattr(self, "attribute_name", attribute_name)
+        # at this point, landscapes is a list of pylandstats.Landscape instances
+        self.landscape_ser = pd.Series(landscapes, index=attribute_values).rename_axis(
+            attribute_name
+        )
 
         # get the all classes present in the provided landscapes
         self.present_classes = functools.reduce(
             np.union1d,
-            tuple(landscape.classes for landscape in self.landscapes),
+            tuple(landscape.classes for landscape in self.landscape_ser),
         )
 
     # fillna for metrics in class metrics dataframes. Since some classes might not
@@ -140,18 +134,11 @@ class MultiLandscape(abc.ABC):
     }
 
     def __len__(self):  # noqa: D105
-        return len(self.landscapes)
+        return len(self.landscape_ser)
 
     def compute_class_metrics_df(  # noqa: D102
         self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
     ):
-        attribute_values = getattr(self, self.attribute_name)
-
-        # get the columns to init the data frame
-        if metrics is None:
-            columns = Landscape.CLASS_METRICS
-        else:
-            columns = metrics
         # if the classes kwarg is not provided, get the classes present in the
         # landscapes
         if classes is None:
@@ -164,46 +151,49 @@ class MultiLandscape(abc.ABC):
         if fillna is None:
             fillna = settings.CLASS_METRICS_DF_FILLNA
 
-        # IMPORTANT: here we need this approach (uglier when compared to the
-        # `compute_landscape_metrics_df` method below) because we need to filter each
-        # class metrics data frame so that we only include the classes considered in
-        # this `MultiLandscape` instance. We need to do it like this because the
-        # `Landcape.compute_class_metrics_df` does not have a `classes` argument that
-        # allows computing the data frame only for a custom set of classes. Should such
-        # `classes` argument be added at some point, we could use the approach of the
-        # `compute_landscape_metrics_df` method below.
-        # TODO: one-level index if only one class?
-        class_metrics_df = pd.DataFrame(
-            index=pd.MultiIndex.from_product([classes, attribute_values]),
-            columns=columns,
-        )
-
-        class_metrics_df.index.names = "class_val", self.attribute_name
-        class_metrics_df.columns.name = "metric"
-
         tasks = [
             dask.delayed(landscape.compute_class_metrics_df)(
-                metrics=metrics, metrics_kws=metrics_kws
+                metrics=metrics,
+                classes=np.intersect1d(classes, landscape.classes),
+                metrics_kws=metrics_kws,
             )
-            for landscape in self.landscapes
+            for landscape in self.landscape_ser
         ]
         with diagnostics.ProgressBar():
             dfs = dask.compute(*tasks)
 
-        for attribute_value, df in zip(attribute_values, dfs):
-            # get the class metrics DataFrame for the landscape that corresponds to this
-            # attribute value
-            # df = landscape.compute_class_metrics_df(
-            #     metrics=metrics, metrics_kws=metrics_kws
-            # )
-            # filter so we only check the classes considered in this `MultiLandscape`
-            # instance
-            # df = df.loc[df.index.intersection(classes)]
-            # put every row of the filtered DataFrame of this particular attribute value
-            # for class_val, row in df.iterrows():
-            for class_val, row in df.loc[df.index.intersection(classes)].iterrows():
-                class_metrics_df.loc[(class_val, attribute_value), columns] = row
+        names = self.landscape_ser.index.names
+        # get the landscape series index and if not a multi-index, reshape it so that it
+        # the list comprehensions below work for both one-dimensional and multi index
+        landscape_index = self.landscape_ser.index.values
+        if len(names) == 1:
+            landscape_index = landscape_index.reshape(-1, 1)
+        class_metrics_df = (
+            pd.concat(
+                [
+                    df.assign(
+                        **{
+                            name: val if isinstance(i, tuple) else i[0]
+                            for name, val in zip(names, i)
+                        }
+                    )
+                    for i, df in zip(landscape_index, dfs)
+                ]
+            ).set_index(names, append=True)
+            # only sort the first level, i.e., class val
+            .sort_index(level="class_val")
+        )
+        # then reindex to sort the other indices as they were originally sorted
+        # TODO: this is probably only needed for "zones" - not for dates, since we
+        # probably do not want to alphabetically sort zone labels but we probably want
+        # to sort dates. In any case, avoid premature optimization: we assume that the
+        # costs of sorting the metrics data frames are negligible
+        for name in self.landscape_ser.index.names:
+            class_metrics_df = class_metrics_df.reindex(
+                self.landscape_ser.index.get_level_values(name).unique(), level=name
+            )
 
+        # ensure numeric types and fillna
         class_metrics_df = class_metrics_df.apply(pd.to_numeric)
         if fillna:
             class_metrics_df = class_metrics_df.fillna(
@@ -219,44 +209,40 @@ class MultiLandscape(abc.ABC):
     def compute_landscape_metrics_df(  # noqa: D102
         self, *, metrics=None, metrics_kws=None
     ):
-        attribute_values = getattr(self, self.attribute_name)
-
-        # get the columns to init the data frame
-        if metrics is None:
-            columns = Landscape.LANDSCAPE_METRICS
-        else:
-            columns = metrics
         # to avoid issues with mutable defaults
         if metrics_kws is None:
             metrics_kws = {}
-
-        if isinstance(attribute_values[0], tuple):
-            # for the zonal statistics analysis mainly
-            index = pd.MultiIndex.from_tuples(attribute_values)
-        else:
-            index = attribute_values
-        landscape_metrics_df = pd.DataFrame(index=index, columns=columns)
-        landscape_metrics_df.index.name = self.attribute_name
-        landscape_metrics_df.columns.name = "metric"
 
         tasks = [
             dask.delayed(landscape.compute_landscape_metrics_df)(
                 metrics=metrics, metrics_kws=metrics_kws
             )
-            for landscape in self.landscapes
+            for landscape in self.landscape_ser
         ]
         with diagnostics.ProgressBar():
             dfs = dask.compute(*tasks)
 
-        for attribute_value, df in zip(attribute_values, dfs):
-            # landscape_metrics_df.loc[
-            #     attribute_value, columns
-            # ] = landscape.compute_landscape_metrics_df(
-            #     metrics=metrics, metrics_kws=metrics_kws
-            # ).iloc[
-            #     0
-            # ]
-            landscape_metrics_df.loc[attribute_value, columns] = df.iloc[0]
+        names = self.landscape_ser.index.names
+        # get the landscape series index and if not a multi-index, reshape it so that it
+        # the list comprehensions below work for both one-dimensional and multi index
+        landscape_index = self.landscape_ser.index.values
+        if len(names) == 1:
+            landscape_index = landscape_index.reshape(-1, 1)
+        landscape_metrics_df = (
+            pd.concat(
+                [
+                    df.assign(
+                        **{
+                            name: val if isinstance(i, tuple) else i[0]
+                            for name, val in zip(names, i)
+                        }
+                    )
+                    for i, df in zip(landscape_index, dfs)
+                ]
+            ).set_index(names)
+            # there is no need to sort here
+            # .sort_index()
+        )
 
         return landscape_metrics_df.apply(pd.to_numeric)
 
@@ -338,14 +324,10 @@ class MultiLandscape(abc.ABC):
                 subplots_kws = {}
             fig, ax = plt.subplots(**subplots_kws)
 
-        # for `SpatioTemporalAnalysis`, `attribute_values` will be `dates`; for
-        # `BufferAnalysis`, `attribute_values` will be `buffer_dists`
-        attribute_values = getattr(self, self.attribute_name)
-
         if plot_kws is None:
             plot_kws = {}
 
-        ax.plot(attribute_values, metric_values, fmt, **plot_kws)
+        ax.plot(self.landscape_ser.index, metric_values, fmt, **plot_kws)
 
         if metric_legend:
             if metric_label is None:
@@ -388,7 +370,7 @@ class MultiLandscape(abc.ABC):
         fig : matplotlib.figure.Figure
             The figure with its corresponding plots drawn into its axes.
         """
-        attribute_values = getattr(self, self.attribute_name)
+        num_landscapes = len(self.landscape_ser)
 
         # avoid alias/refrence issues
         if subplots_kws is None:
@@ -398,18 +380,14 @@ class MultiLandscape(abc.ABC):
         figsize = _subplots_kws.pop("figsize", None)
         if figsize is None:
             figwidth, figheight = plt.rcParams["figure.figsize"]
-            figsize = (figwidth * len(attribute_values), figheight)
+            figsize = (figwidth * num_landscapes, figheight)
 
-        fig, axes = plt.subplots(
-            1, len(attribute_values), figsize=figsize, **_subplots_kws
-        )
+        fig, axes = plt.subplots(1, num_landscapes, figsize=figsize, **_subplots_kws)
         if len(axes) == 1:  # len(attribute_values) == 1
             axes = [axes]
         if show_kws is None:
             show_kws = {}
-        for attribute_value, landscape, ax in zip(
-            attribute_values, self.landscapes, axes
-        ):
+        for (attribute_value, landscape), ax in zip(self.landscape_ser.items(), axes):
             ax = landscape.plot_landscape(cmap=cmap, ax=ax, legend=legend, **show_kws)
             ax.set_title(attribute_value)
 

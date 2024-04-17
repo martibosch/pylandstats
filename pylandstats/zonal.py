@@ -228,7 +228,7 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
 
         return gpd.GeoDataFrame(
             zonal_metrics_df,
-            geometry=zonal_metrics_df.reset_index()[self.attribute_name]
+            geometry=zonal_metrics_df.reset_index()[self.landscape_ser.index.name]
             .map(self.zone_gser)
             .values,
             crs=self.zone_gser.crs,

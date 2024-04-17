@@ -437,7 +437,7 @@ class TestMultiLandscape(unittest.TestCase):
         ml = self.InstantiableMultiLandscape(
             self.landscape_fps, self.attribute_name, self.attribute_values
         )
-        for landscape in ml.landscapes:
+        for landscape in ml.landscape_ser:
             self.assertIsInstance(landscape, pls.Landscape)
         # test that we can pass keyword arguments to the `Landscape` instantiation when
         # providing filepaths
@@ -448,7 +448,7 @@ class TestMultiLandscape(unittest.TestCase):
             self.attribute_values,
             **landscape_kws,
         )
-        for landscape in ml.landscapes:
+        for landscape in ml.landscape_ser:
             self.assertEqual(
                 landscape.neighborhood_rule, landscape_kws["neighborhood_rule"]
             )
@@ -457,7 +457,7 @@ class TestMultiLandscape(unittest.TestCase):
         ml = self.InstantiableMultiLandscape(
             self.landscapes, self.attribute_name, self.attribute_values, **landscape_kws
         )
-        for landscape in ml.landscapes:
+        for landscape in ml.landscape_ser:
             self.assertNotEqual(
                 landscape.neighborhood_rule, landscape_kws["neighborhood_rule"]
             )
@@ -483,7 +483,7 @@ class TestMultiLandscape(unittest.TestCase):
         # test that the data frames that result from `compute_class_metrics_df` and
         # `compute_landscape_metrics_df` are well constructed
         class_metrics_df = ml.compute_class_metrics_df()
-        attribute_values = getattr(ml, ml.attribute_name)
+        attribute_values = ml.landscape_ser.index
         self.assertTrue(np.all(class_metrics_df.columns == pls.Landscape.CLASS_METRICS))
         self.assertTrue(
             np.all(
@@ -500,10 +500,10 @@ class TestMultiLandscape(unittest.TestCase):
         # now test the same but with an analysis that only considers a subset of metrics
         # and a subset of classes
         metrics = ["total_area", "edge_density", "proportion_of_landscape"]
-        classes = self.landscapes[0].classes[:2]
+        classes = ml.landscape_ser.iloc[0].classes[:2]
 
         class_metrics_df = ml.compute_class_metrics_df(metrics=metrics, classes=classes)
-        attribute_values = getattr(ml, ml.attribute_name)
+        attribute_values = ml.landscape_ser.index
         self.assertTrue(np.all(class_metrics_df.columns == metrics))
         self.assertTrue(
             np.all(
@@ -567,7 +567,7 @@ class TestMultiLandscape(unittest.TestCase):
         landscape_metrics_kws_df = ml.compute_landscape_metrics_df(
             metrics_kws=metrics_kws
         )
-        for attribute_value in getattr(ml, ml.attribute_name):
+        for attribute_value in ml.landscape_ser.index:
             # For all attribute values and all classes, metric values in hectares should
             # be less than in meters, and excluding boundaries should be less or equal
             # than including them
@@ -633,7 +633,7 @@ class TestMultiLandscape(unittest.TestCase):
         self.assertEqual(len(ax.lines), 2)
         # test that the x data of any line corresponds to the attribute values
         for line in ax.lines:
-            self.assertTrue(np.all(line.get_xdata() == getattr(ml, ml.attribute_name)))
+            self.assertTrue(np.all(line.get_xdata() == ml.landscape_ser.index))
 
         # test metric label arguments/settings
         # when passing default arguments, the axis ylabel must be the one set within the
@@ -710,12 +710,12 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
         self.inexistent_class_val = 999
 
     def test_spatiotemporalanalysis_init(self):
-        # test that the `attribute_name` is dates, and that if the `dates` argument is
-        # not provided when instantiating a `SpatioTemporalAnalysis`, the dates
+        # test that the landscape index name is dates, and that if the `dates` argument
+        # is not provided when instantiating a `SpatioTemporalAnalysis`, the dates
         # attribute is properly and automatically generated
         sta = pls.SpatioTemporalAnalysis(self.landscape_fps)
-        self.assertEqual(sta.attribute_name, "dates")
-        self.assertEqual(len(sta), len(sta.dates))
+        self.assertEqual(sta.landscape_ser.index.name, "dates")
+        self.assertEqual(len(sta), len(sta.landscape_ser))
 
         # test the `neighborhood_rule` argument
         neighborhood_rule = "4"
@@ -726,7 +726,7 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
             self.landscape_fps,
             dates=self.dates,
             neighborhood_rule=neighborhood_rule,
-        ).landscapes:
+        ).landscape_ser:
             self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
         # test that if provided and the elements of `landscapes` are `Landscape`
         # instances, the value is ignored
@@ -737,13 +737,13 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
             ],
             dates=self.dates,
             neighborhood_rule=neighborhood_rule,
-        ).landscapes:
+        ).landscape_ser:
             self.assertEqual(ls.neighborhood_rule, other_neighborhood_rule)
         # test that if not provided and the elements of `landscapes` are filepaths, the
         # default value is taken
         for ls in pls.SpatioTemporalAnalysis(
             self.landscape_fps, dates=self.dates
-        ).landscapes:
+        ).landscape_ser:
             self.assertEqual(
                 ls.neighborhood_rule, pls.settings.DEFAULT_NEIGHBORHOOD_RULE
             )
@@ -758,11 +758,13 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
         self.assertTrue(
             np.all(
                 class_metrics_df.index
-                == pd.MultiIndex.from_product([sta.present_classes, sta.dates])
+                == pd.MultiIndex.from_product(
+                    [sta.present_classes, sta.landscape_ser.index]
+                )
             )
         )
         landscape_metrics_df = sta.compute_landscape_metrics_df()
-        self.assertTrue(np.all(landscape_metrics_df.index == sta.dates))
+        self.assertTrue(np.all(landscape_metrics_df.index == sta.landscape_ser.index))
 
         # now test the same but with an analysis that only considers a subset of metrics
         # and a subset of classes
@@ -775,7 +777,7 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
         self.assertTrue(
             np.all(
                 class_metrics_df.index
-                == pd.MultiIndex.from_product([classes, sta.dates])
+                == pd.MultiIndex.from_product([classes, sta.landscape_ser.index])
             )
         )
         # 'proportion_of_landscape' cannot be computed at the landscape level (TODO:
@@ -784,7 +786,7 @@ class TestSpatioTemporalAnalysis(unittest.TestCase):
         landscape_metrics_df = sta.compute_landscape_metrics_df(
             metrics=landscape_metrics
         )
-        self.assertTrue(np.all(landscape_metrics_df.index == sta.dates))
+        self.assertTrue(np.all(landscape_metrics_df.index == sta.landscape_ser.index))
 
     def test_spatiotemporalanalysis_plot_metrics(self):
         sta = pls.SpatioTemporalAnalysis(self.landscape_fps, dates=self.dates)
@@ -832,21 +834,21 @@ class TestZonaAlnalysis(unittest.TestCase):
         za = pls.ZonalAnalysis(self.landscape_fp, zone_gser)
         self.assertLessEqual(len(za), len(self.zone_gdf))
         self.assertTrue(np.all(za.zone_gser.index == zone_gser.index))
-        # also test that attribute name is properly set when using geoseries as `zones`
-        # first test for a geoseries with name and unnamed index
+        # also test that landscape index name is properly set when using geoseries as
+        # `zones` first test for a geoseries with name and unnamed index
         zone_gser.name = "bar"
         za = pls.ZonalAnalysis(self.landscape_fp, zone_gser)
-        self.assertEqual(za.attribute_name, zone_gser.name)
+        self.assertEqual(za.landscape_ser.index.name, zone_gser.name)
         # now test that for a named geoseries with a named index, the geoseries index
         # name takes precedence
         zone_gser.index.name = "name"
         za = pls.ZonalAnalysis(self.landscape_fp, zone_gser)
-        self.assertEqual(za.attribute_name, zone_gser.index.name)
+        self.assertEqual(za.landscape_ser.index.name, zone_gser.index.name)
         # test that for an named geoseries with an unnamed index, the geoseries name is
         # taken
         zone_gser.index.name = None
         za = pls.ZonalAnalysis(self.landscape_fp, zone_gser)
-        self.assertEqual(za.attribute_name, zone_gser.name)
+        self.assertEqual(za.landscape_ser.index.name, zone_gser.name)
         # test overriding the zone index
         zone_index = zone_gser.index + 1
         za = pls.ZonalAnalysis(self.landscape_fp, zone_gser, zone_index=zone_index)
@@ -854,7 +856,7 @@ class TestZonaAlnalysis(unittest.TestCase):
         # test overriding the zone index with a named index
         zone_index = zone_index.rename("foo")
         za = pls.ZonalAnalysis(self.landscape_fp, zone_gser, zone_index=zone_index)
-        self.assertEqual(za.attribute_name, zone_index.name)
+        self.assertEqual(za.landscape_ser.index.name, zone_index.name)
         # test that for a list-like of shapely geometries, the CRS of the landscape is
         # taken
         zones = list(zone_gser)
@@ -868,38 +870,38 @@ class TestZonaAlnalysis(unittest.TestCase):
             za = pls.ZonalAnalysis(self.landscape_fp, zones)
             self.assertLessEqual(len(za), len(self.zone_gdf))
             self.assertTrue(
-                np.all(np.isin(getattr(za, za.attribute_name), self.zone_gdf.index))
+                np.all(np.isin(za.landscape_ser.index, self.zone_gdf.index))
             )
             # test that we can set a column as the zone index
             za = pls.ZonalAnalysis(self.landscape_fp, zones, zone_index=zone_index_col)
             self.assertTrue(
                 np.all(
                     np.isin(
-                        getattr(za, zone_index_col),
+                        za.zone_gser.index,
                         self.zone_gdf[zone_index_col],
                     )
                 )
             )
 
         # test that we can still pass a raster labelled array
-        # test that the attribute names and values are consistent with the provided
+        # test that the landscape index name and values are consistent with the provided
         # `label_arr`
         za = pls.ZonalAnalysis(self.landscape_fp, self.label_arr)
-        self.assertEqual(za.attribute_name, "zone")
+        self.assertEqual(za.landscape_ser.index.name, "zone")
         # the number of zones must be equal to the number of unique labels (excluding
         # the nodata value)
         zone_nodata = 0
         zones = list(set(np.unique(self.label_arr)).difference({zone_nodata}))
         self.assertEqual(len(za), len(zones))
         # test that Landscape instances are automaticaly built
-        for landscape in za.landscapes:
+        for landscape in za.landscape_ser:
             self.assertIsInstance(landscape, pls.Landscape)
         # test that the zone index corresponds to the zone labels
         self.assertTrue(np.all(np.isin(zones, za.zone_gser.index)))
         # test that we can override the zone index
         zone_index = pd.Series(range(1, len(zones) + 1), name="foo")
         za = pls.ZonalAnalysis(self.landscape_fp, self.label_arr, zone_index=zone_index)
-        self.assertEqual(za.attribute_name, "foo")
+        self.assertEqual(za.landscape_ser.index.name, "foo")
         self.assertTrue(np.all(za.zone_gser.index == zone_index))
 
         # test that we can override the nodata value
@@ -924,10 +926,10 @@ class TestZonaAlnalysis(unittest.TestCase):
             self.landscape_fp,
             zone_gser,
             neighborhood_rule=neighborhood_rule,
-        ).landscapes:
+        ).landscape_ser:
             self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
         # test that if not provided, the default value is taken
-        for ls in pls.ZonalAnalysis(self.landscape_fp, self.label_arr).landscapes:
+        for ls in pls.ZonalAnalysis(self.landscape_fp, self.label_arr).landscape_ser:
             self.assertEqual(
                 ls.neighborhood_rule, pls.settings.DEFAULT_NEIGHBORHOOD_RULE
             )
@@ -1031,7 +1033,7 @@ class TestZonaAlnalysis(unittest.TestCase):
                 base_geom_crs=geom_crs,
             ),
         ]:
-            self.assertEqual(ba.attribute_name, "buffer_dist")
+            self.assertEqual(ba.landscape_ser.index.name, "buffer_dist")
             self.assertEqual(len(ba), len(ba.zone_gser))
 
         # test that we cannot instantiate a `BufferAnalysis` with `buffer_rings=True` if
@@ -1122,14 +1124,14 @@ class TestZonaAlnalysis(unittest.TestCase):
             zone_width=zone_width,
             zone_height=zone_height,
             neighborhood_rule=neighborhood_rule,
-        ).landscapes:
+        ).landscape_ser:
             self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
         # test that if not provided, the default value is taken
         for ls in pls.ZonalGridAnalysis(
             self.landscape_fp,
             zone_width=zone_width,
             zone_height=zone_height,
-        ).landscapes:
+        ).landscape_ser:
             self.assertEqual(
                 ls.neighborhood_rule, pls.settings.DEFAULT_NEIGHBORHOOD_RULE
             )
@@ -1179,20 +1181,32 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
         for _class, init_args, init_kws, attr_name in self.init_combinations:
             # test zones and dates
             stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
-            self.assertEqual(len(stza.zone_gser), len(stza.stas))
-            self.assertEqual(stza.attribute_name, attr_name)
-
-            for sta in stza.stas:
-                self.assertEqual(sta.dates, self.dates)
+            # test that we have the same zone labels in `zone_gser` and `landscape_ser`
+            self.assertTrue(
+                (
+                    stza.zone_gser.index
+                    == stza.landscape_ser.index.get_level_values(
+                        stza.zone_gser.index.name
+                    ).unique()
+                ).all()
+            )
+            # test the `zone_gser` index name
+            self.assertEqual(stza.zone_gser.index.name, attr_name)
+            # test that we have the same date labels in `dates` and `landscape_ser`
+            self.assertTrue(
+                (
+                    self.dates
+                    == stza.landscape_ser.index.get_level_values("date").unique()
+                ).all()
+            )
 
             # test the `neighborhood_rule` argument
             # test that if not provided, the default value is taken
-            for sta in stza.stas:
-                for ls in sta.landscapes:
-                    self.assertEqual(
-                        ls.neighborhood_rule,
-                        pls.settings.DEFAULT_NEIGHBORHOOD_RULE,
-                    )
+            for ls in stza.landscape_ser:
+                self.assertEqual(
+                    ls.neighborhood_rule,
+                    pls.settings.DEFAULT_NEIGHBORHOOD_RULE,
+                )
             neighborhood_rule = "4"
             # test that if provided, the value is passed to each landscape
             stza = _class(
@@ -1201,32 +1215,31 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
                 neighborhood_rule=neighborhood_rule,
                 **init_kws,
             )
-            for sta in stza.stas:
-                for ls in sta.landscapes:
-                    self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
+            for ls in stza.landscape_ser:
+                self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
 
     def test_dataframes(self):
         for _class, init_args, init_kws, _ in self.init_combinations:
             stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
             zone_index = stza.zone_gser.index
+            dates = stza.landscape_ser.index.get_level_values("date").unique()
 
             # test that the data frames that result from `compute_class_metrics_df` and
-            # `compute_landscape_metrics_df` are well constructed
+            # `compute_landscape_metrics_df` are well constructed, i.e., they are a
+            # subset of all class/zone/date combinations
             class_metrics_df = stza.compute_class_metrics_df()
             self.assertTrue(
-                np.all(
-                    class_metrics_df.index
-                    == pd.MultiIndex.from_product(
-                        [zone_index, stza.present_classes, stza.dates]
+                class_metrics_df.index.isin(
+                    pd.MultiIndex.from_product(
+                        [stza.present_classes, zone_index, dates]
                     )
-                )
+                ).all()
             )
             landscape_metrics_df = stza.compute_landscape_metrics_df()
             self.assertTrue(
-                np.all(
-                    landscape_metrics_df.index
-                    == pd.MultiIndex.from_product([zone_index, stza.dates])
-                )
+                landscape_metrics_df.index.isin(
+                    pd.MultiIndex.from_product([zone_index, dates])
+                ).all()
             )
 
             # now test the same but with an analysis that only considers a subset of
@@ -1238,10 +1251,9 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
                 metrics=metrics, classes=classes
             )
             self.assertTrue(
-                np.all(
-                    class_metrics_df.index
-                    == pd.MultiIndex.from_product([zone_index, classes, stza.dates])
-                )
+                class_metrics_df.index.isin(
+                    pd.MultiIndex.from_product([classes, zone_index, dates])
+                ).all()
             )
             # 'proportion_of_landscape' cannot be computed at the landscape level (TODO:
             # test for that elsewhere)
@@ -1250,10 +1262,9 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
                 metrics=landscape_metrics
             )
             self.assertTrue(
-                np.all(
-                    landscape_metrics_df.index
-                    == pd.MultiIndex.from_product([zone_index, stza.dates])
-                )
+                landscape_metrics_df.index.isin(
+                    pd.MultiIndex.from_product([zone_index, dates])
+                ).all()
             )
 
     def test_compute_zonal_statistics_gdf(self):
@@ -1290,22 +1301,41 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
         for _class, init_args, init_kws, _ in self.init_combinations:
             stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
             # test for `None` (landscape-level) and an existing class (class-level)
-            for class_val in [None, stza.stas[0].present_classes[0]]:
-                ax = stza.plot_metric("patch_density", class_val=class_val)
-                # test that there is a line for each zone
-                self.assertEqual(len(ax.lines), len(stza.zone_gser))
+            metric = "patch_density"
+            for class_val in [None, stza.present_classes[0]]:
+                ax = stza.plot_metric(metric, class_val=class_val)
+                # test that there is a line for each zone with that metric
+                if class_val is None:
+                    metric_ser = stza.compute_landscape_metrics_df(metrics=[metric])[
+                        metric
+                    ]
+                else:
+                    metric_ser = stza.compute_class_metrics_df(
+                        metrics=[metric], classes=[class_val]
+                    )[metric]
+                num_lines = len(
+                    metric_ser.index.get_level_values(
+                        stza.zone_gser.index.name
+                    ).unique()
+                )
+                self.assertEqual(
+                    len(ax.lines),
+                    num_lines,
+                )
                 # test that there is a legend label for each zone
-                handles, labels = ax.get_legend_handles_labels()
-                self.assertEqual(len(labels), len(stza.zone_gser))
+                _, labels = ax.get_legend_handles_labels()
+                self.assertEqual(len(labels), num_lines)
 
     def test_plot_landscapes(self):
         for _class, init_args, init_kws, _ in self.init_combinations:
             stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
+            dates = stza.landscape_ser.index.get_level_values("date").unique()
+
             fig = stza.plot_landscapes()
 
             # there must be one column for each buffer distance and one row for each
             # date
-            self.assertEqual(len(fig.axes), len(stza.zone_gser) * len(stza.dates))
+            self.assertEqual(len(fig.axes), len(stza.zone_gser) * len(dates))
 
             # returned axes must be instances of matplotlib axes
             for ax in fig.axes:
@@ -1318,7 +1348,7 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
             # the actual `figwidth` must be `len(stba.buffer_dists) * rc_figwidth` and
             # `figheight` must be `len(stba.dates) * rc_figheight`
             self.assertAlmostEqual(figwidth, len(stza.zone_gser) * rc_figwidth)
-            self.assertAlmostEqual(figheight, len(stza.dates) * rc_figheight)
+            self.assertAlmostEqual(figheight, len(dates) * rc_figheight)
             # if instead, we customize the figure size, the dimensions of the resulting
             # figure must be the customized ones
             custom_figsize = (10, 10)
@@ -1328,10 +1358,10 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
             self.assertAlmostEqual(custom_figsize[1], figheight)
 
             # first row has the date as title
-            for date, ax in zip(stza.dates, fig.axes):
+            for date, ax in zip(dates, fig.axes):
                 self.assertEqual(str(date), ax.get_title())
             # first column has the buffer distance as `ylabel`
             for zone, i in zip(
-                stza.zone_gser.index, range(0, len(fig.axes), len(stza.dates))
+                stza.zone_gser.index, range(0, len(fig.axes), len(dates))
             ):
                 self.assertEqual(str(zone), fig.axes[i].get_ylabel())
