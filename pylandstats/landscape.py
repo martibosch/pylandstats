@@ -2893,7 +2893,10 @@ class Landscape:
             count_boundary=count_boundary,
             edge_depth=edge_depth,
         )
-        return np.average(disjunct_core_area, weights=disjunct_core_area)
+        try:
+            return np.average(disjunct_core_area, weights=disjunct_core_area)
+        except ZeroDivisionError:
+            return np.nan
 
     def disjunct_core_area_md(
         self, *, class_val=None, hectares=True, count_boundary=True, edge_depth=1
