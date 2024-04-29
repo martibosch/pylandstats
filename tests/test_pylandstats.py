@@ -957,7 +957,9 @@ class TestZonaAlnalysis(unittest.TestCase):
         # geometry column)
         for class_val in [None, za.present_classes[0]]:
             metrics = ["patch_density"]
-            zs_gdf = za.compute_zonal_statistics_gdf(metrics, class_val=class_val)
+            zs_gdf = za.compute_zonal_statistics_gdf(
+                metrics=metrics, class_val=class_val
+            )
             self.assertEqual(zs_gdf.shape, (len(self.zone_gdf), len(metrics) + 1))
             # test that the crs is set correctly
             self.assertEqual(zs_gdf.crs, self.zone_gdf.crs)
@@ -969,11 +971,13 @@ class TestZonaAlnalysis(unittest.TestCase):
             metric = "total_edge"
             metric_kws = {"count_boundary": True}
             self.assertLessEqual(
-                za.compute_zonal_statistics_gdf([metric], class_val=class_val)[
+                za.compute_zonal_statistics_gdf(metrics=[metric], class_val=class_val)[
                     metric
                 ].sum(),
                 za.compute_zonal_statistics_gdf(
-                    [metric], class_val=class_val, metrics_kws={metric: metric_kws}
+                    metrics=[metric],
+                    class_val=class_val,
+                    metrics_kws={metric: metric_kws},
                 )[metric].sum(),
             )
 
@@ -1274,11 +1278,14 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
             # + geometry column)
             for class_val in [None, stza.present_classes[0]]:
                 metrics = ["patch_density"]
-                zs_gdf = stza.compute_zonal_statistics_gdf(metrics, class_val=class_val)
-                self.assertEqual(
-                    zs_gdf.shape,
-                    (len(stza.zone_gser) * len(self.dates), len(metrics) + 1),
+                zs_gdf = stza.compute_zonal_statistics_gdf(
+                    metrics=metrics, class_val=class_val
                 )
+                self.assertLessEqual(
+                    zs_gdf.shape[0],
+                    len(stza.zone_gser),
+                )
+                self.assertEqual(zs_gdf.shape[1], len(metrics) * len(self.dates) + 1)
                 # test that the crs is set correctly
                 self.assertEqual(zs_gdf.crs, self.zone_gser.crs)
                 # test that the geometry column is not None
@@ -1289,12 +1296,18 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
                 metric = "total_edge"
                 metric_kws = {"count_boundary": True}
                 self.assertLessEqual(
-                    stza.compute_zonal_statistics_gdf([metric], class_val=class_val)[
-                        metric
-                    ].sum(),
                     stza.compute_zonal_statistics_gdf(
-                        [metric], class_val=class_val, metrics_kws={metric: metric_kws}
-                    )[metric].sum(),
+                        metrics=[metric], class_val=class_val
+                    )[metric]
+                    .sum()
+                    .sum(),
+                    stza.compute_zonal_statistics_gdf(
+                        metrics=[metric],
+                        class_val=class_val,
+                        metrics_kws={metric: metric_kws},
+                    )[metric]
+                    .sum()
+                    .sum(),
                 )
 
     def test_plot_metric(self):

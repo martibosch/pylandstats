@@ -14,6 +14,35 @@ from .landscape import Landscape
 
 __all__ = ["ZonalAnalysis", "BufferAnalysis", "ZonalGridAnalysis"]
 
+_compute_zonal_statistics_gdf_doc = """
+Compute the zonal statistics geo-data frame over the landscape raster.
+
+Parameters
+----------
+metrics : list-like, optional
+    A list-like of strings with the names of the metrics that should be computed. If
+    `None`, all the implemented metrics at the specified level will be computed.
+level : {{'class', 'landscape'}}, optional
+    Whether the metrics should be computed at the class or landscape level. If `None`,
+    the metrics will be computed (a) at the class level when a non-None `classes` is
+    provided, otherwise (b) at the landscape level.
+class_val : int, optional
+    If provided, the metric will be computed at the level of the corresponding class,
+    otherwise it will be computed at the landscape level.
+metrics_kws : dict, optional
+    Dictionary mapping the keyword arguments (values) that should be passed to
+    each metric method (key), e.g., to exclude the boundary from the computation
+    of `total_edge`, metric_kws should map the string 'total_edge' (method name)
+    to {{'count_boundary': False}}. If `None`, each metric will be computed
+    according to FRAGSTATS defaults.
+
+Returns
+-------
+zonal_statistics_gdf : geopandas.GeoDataFrame
+    Geo-data frame with the computed zonal statistics, with the zones as rows and
+    {col_return} as columns.
+"""
+
 
 class ZonalAnalysis(multilandscape.MultiLandscape):
     """Zonal analysis."""
@@ -120,8 +149,8 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
                     zones = zones.geometry
                 else:
                     # take just the "geometry" column, treat `zones` as GeoSeries but
-                    # rename it to "zone"
-                    zones = zones.geometry.rename("zone")
+                    # rename the index to "zone"
+                    zones = zones.geometry.rename_axis("zone")
 
             # at this point, `zones` must be a geo-series or a list-like of shapely
             # geometries
@@ -189,50 +218,38 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
             self.zone_gser.index.values,
         )
 
-    def compute_zonal_statistics_gdf(
-        self, metrics, *, class_val=None, metrics_kws=None
+    def compute_zonal_statistics_gdf(  # noqa: D102
+        self,
+        *,
+        metrics=None,
+        class_val=None,
+        metrics_kws=None,
     ):
-        """Compute the zonal statistics geo-data frame over the landscape raster.
-
-        Parameters
-        ----------
-        metrics : list-like, optional
-            A list-like of strings with the names of the metrics that should be
-            computed. If `None`, all the implemented class-level metrics will be
-            computed.
-        class_val : int, optional
-            If provided, the zonal statistics will be computed at the level of the
-            corresponding class, otherwise they will be computed at the landscape level.
-        metrics_kws : dict, optional
-            Dictionary mapping the keyword arguments (values) that should be passed to
-            each metric method (key), e.g., to exclude the boundary from the computation
-            of `total_edge`, metric_kws should map the string 'total_edge' (method name)
-            to {'count_boundary': False}. If `None`, each metric will be computed
-            according to FRAGSTATS defaults.
-
-        Returns
-        -------
-        zonal_statistics_gdf : geopandas.GeoDataFrame
-            Geo-data frame with the computed zonal statistics.
-        """
-        if class_val is None:
+        if class_val is not None:
+            zonal_metrics_df = self.compute_class_metrics_df(
+                metrics=metrics, classes=[class_val], metrics_kws=metrics_kws
+            ).loc[class_val]
+        else:
             zonal_metrics_df = self.compute_landscape_metrics_df(
                 metrics=metrics, metrics_kws=metrics_kws
             )
-        else:
-            zonal_metrics_df = self.compute_class_metrics_df(
-                metrics=metrics, classes=[class_val], metrics_kws=metrics_kws
-            )
+
         # ensure that we have numeric types (not strings)
         # metric_ser = pd.to_numeric(metric_ser)
 
+        # return a geo-data frame
+        zone_name = self.zone_gser.index.name
         return gpd.GeoDataFrame(
-            zonal_metrics_df,
-            geometry=zonal_metrics_df.reset_index()[self.landscape_ser.index.name]
-            .map(self.zone_gser)
-            .values,
-            crs=self.zone_gser.crs,
+            zonal_metrics_df.pivot_table(
+                index=zone_name,
+                columns=zonal_metrics_df.index.names.difference([zone_name]),
+            ),
+            geometry=self.zone_gser,
         )
+
+    compute_zonal_statistics_gdf.__doc__ = _compute_zonal_statistics_gdf_doc.format(
+        col_return="metrics"
+    )
 
 
 class BufferAnalysis(ZonalAnalysis):
