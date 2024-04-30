@@ -39,12 +39,12 @@ metric_label : str, optional
     within the plot.
 fmt : str, default '--o'
     A format string for `matplotlib.pyplot.plot`.
-plot_kws : dict, default None
+plot_kwargs : dict, default None
     Keyword arguments to be passed to `matplotlib.pyplot.plot`.
-subplots_kws : dict, default None
+subplots_kwargs : dict, default None
     Keyword arguments to be passed to `matplotlib.pyplot.subplots` only if no axis is
     given (through the `ax` argument).
-metric_kws : dict, default None
+metric_kwargs : dict, default None
     Keyword arguments to be passed to the method that computes the metric (specified in
     the `metric` argument) for each landscape.
 
@@ -59,7 +59,7 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
     """Spatio-temporal analysis."""
 
     def __init__(
-        self, landscapes, *, dates=None, neighborhood_rule=None, **landscape_kws
+        self, landscapes, *, dates=None, neighborhood_rule=None, **landscape_kwargs
     ):
         """Initialize the spatio-temporal analysis.
 
@@ -78,7 +78,7 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
             Ignored if the passed-in landscapes are `Landscape` instances. If no value
             is provided and the passed-in landscapes are file-like objects or paths, the
             default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
-        landscape_kws : dict, optional
+        landscape_kwargs : dict, optional
             Other keyword arguments to be passed to the instantiation of
            `pylandstats.Landscape` for each element of `landscapes`. Ignored if the
             elements of `landscapes` are already instances of `pylandstats.Landcape`.
@@ -86,26 +86,26 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
         if dates is None:
             dates = ["t{}".format(i) for i in range(len(landscapes))]
 
-        # pop the `neighborhood_rule` from `landscape_kws` (this is merely done so that
-        # the `neighborhood_rule` argument is explicitly documented in this method
-        _ = landscape_kws.pop("neighborhood_rule", None)
+        # pop the `neighborhood_rule` from `landscape_kwargs` (this is merely done so
+        # that the `neighborhood_rule` argument is explicitly documented in this method
+        _ = landscape_kwargs.pop("neighborhood_rule", None)
         # call the parent's init
         super().__init__(
             landscapes,
             "dates",
             dates,
             neighborhood_rule=neighborhood_rule,
-            **landscape_kws,
+            **landscape_kwargs,
         )
 
     # override docs
     def compute_class_metrics_df(  # noqa: D102
-        self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
+        self, *, metrics=None, classes=None, metrics_kwargs=None, fillna=None
     ):
         return super().compute_class_metrics_df(
             metrics=metrics,
             classes=classes,
-            metrics_kws=metrics_kws,
+            metrics_kwargs=metrics_kwargs,
             fillna=fillna,
         )
 
@@ -117,10 +117,10 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
     )
 
     def compute_landscape_metrics_df(  # noqa: D102
-        self, *, metrics=None, metrics_kws=None
+        self, *, metrics=None, metrics_kwargs=None
     ):
         return super().compute_landscape_metrics_df(
-            metrics=metrics, metrics_kws=metrics_kws
+            metrics=metrics, metrics_kwargs=metrics_kwargs
         )
 
     compute_landscape_metrics_df.__doc__ = (
@@ -237,12 +237,12 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis, zonal.ZonalAnalysis):
         )
 
     def compute_class_metrics_df(  # noqa: D102
-        self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
+        self, *, metrics=None, classes=None, metrics_kwargs=None, fillna=None
     ):
         return super().compute_class_metrics_df(
             metrics=metrics,
             classes=classes,
-            metrics_kws=metrics_kws,
+            metrics_kwargs=metrics_kwargs,
             fillna=fillna,
         )
 
@@ -254,10 +254,10 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis, zonal.ZonalAnalysis):
     )
 
     def compute_landscape_metrics_df(  # noqa: D102
-        self, *, metrics=None, metrics_kws=None
+        self, *, metrics=None, metrics_kwargs=None
     ):
         return super().compute_landscape_metrics_df(
-            metrics=metrics, metrics_kws=metrics_kws
+            metrics=metrics, metrics_kwargs=metrics_kwargs
         )
 
     compute_landscape_metrics_df.__doc__ = (
@@ -268,10 +268,10 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis, zonal.ZonalAnalysis):
     )
 
     def compute_zonal_statistics_gdf(  # noqa: D102
-        self, *, metrics=None, class_val=None, metrics_kws=None
+        self, *, metrics=None, class_val=None, metrics_kwargs=None
     ):
         return super().compute_zonal_statistics_gdf(
-            metrics=metrics, class_val=class_val, metrics_kws=metrics_kws
+            metrics=metrics, class_val=class_val, metrics_kwargs=metrics_kwargs
         )
 
     compute_zonal_statistics_gdf.__doc__ = (
@@ -290,44 +290,44 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis, zonal.ZonalAnalysis):
         metric_label=None,
         zone_legend=True,
         fmt="--o",
-        plot_kws=None,
-        subplots_kws=None,
-        metric_kws=None,
+        plot_kwargs=None,
+        subplots_kwargs=None,
+        metric_kwargs=None,
     ):
         # TODO: refactor this method so that it uses `class_metrics_df` and
         # `landscape_metrics_df` properties?
         if ax is None:
-            if subplots_kws is None:
-                subplots_kws = {}
-            fig, ax = plt.subplots(**subplots_kws)
+            if subplots_kwargs is None:
+                subplots_kwargs = {}
+            fig, ax = plt.subplots(**subplots_kwargs)
 
-        if plot_kws is None:
-            plot_kws = {}
+        if plot_kwargs is None:
+            plot_kwargs = {}
 
         # start: compute metrics - TODO: DRY from multilandscape.plot_metric?
-        if metric_kws is None:
-            metric_kws = {}
-        metrics_kws = {metric: metric_kws}
+        if metric_kwargs is None:
+            metric_kwargs = {}
+        metrics_kwargs = {metric: metric_kwargs}
         metrics = [metric]
         if class_val is None:
             metric_df = self.compute_landscape_metrics_df(
-                metrics=metrics, metrics_kws=metrics_kws
+                metrics=metrics, metrics_kwargs=metrics_kwargs
             )
         else:
             metric_df = self.compute_class_metrics_df(
-                metrics=metrics, classes=[class_val], metrics_kws=metrics_kws
+                metrics=metrics, classes=[class_val], metrics_kwargs=metrics_kwargs
             ).loc[class_val]
         # end: compute metrics
 
-        if "label" not in plot_kws:
+        if "label" not in plot_kwargs:
             # avoid alias/reference issues
-            _plot_kws = plot_kws.copy()
+            _plot_kwargs = plot_kwargs.copy()
             for zone, zone_df in metric_df.groupby(level=0):
-                _plot_kws["label"] = zone
-                ax.plot(zone_df.loc[zone].index, zone_df.values, fmt, **_plot_kws)
+                _plot_kwargs["label"] = zone
+                ax.plot(zone_df.loc[zone].index, zone_df.values, fmt, **_plot_kwargs)
         else:
             for zone, zone_df in metric_df.groupby(level=0):
-                ax.plot(zone_df.loc[zone].index, zone_df.values, fmt, **plot_kws)
+                ax.plot(zone_df.loc[zone].index, zone_df.values, fmt, **plot_kwargs)
 
         # start: metric legend - TODO: DRY from multilandscape
         if metric_legend:
@@ -354,9 +354,9 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis, zonal.ZonalAnalysis):
         *,
         cmap=None,
         legend=True,
-        subplots_kws=None,
-        show_kws=None,
-        subplots_adjust_kws=None,
+        subplots_kwargs=None,
+        show_kwargs=None,
+        subplots_adjust_kwargs=None,
     ):
         """Plot each landscape snapshot in a dedicated matplotlib axis.
 
@@ -366,11 +366,11 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis, zonal.ZonalAnalysis):
             A Colormap instance.
         legend : bool, optional
             If ``True``, display the legend of the land use/cover color codes.
-        subplots_kws : dict, default None
+        subplots_kwargs : dict, default None
             Keyword arguments to be passed to `matplotlib.pyplot.subplots`.
-        show_kws : dict, default None
+        show_kwargs : dict, default None
             Keyword arguments to be passed to `rasterio.plot.show`.
-        subplots_adjust_kws : dict, default None
+        subplots_adjust_kwargs : dict, default None
             Keyword arguments to be passed to `matplotlib.pyplot.subplots_adjust`.
 
         Returns
@@ -379,11 +379,11 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis, zonal.ZonalAnalysis):
             The figure with its corresponding plots drawn into its axes.
         """
         # avoid alias/reference issues
-        if subplots_kws is None:
-            _subplots_kws = {}
+        if subplots_kwargs is None:
+            _subplots_kwargs = {}
         else:
-            _subplots_kws = subplots_kws.copy()
-        figsize = _subplots_kws.pop("figsize", None)
+            _subplots_kwargs = subplots_kwargs.copy()
+        figsize = _subplots_kwargs.pop("figsize", None)
         dates = self.landscape_ser.index.get_level_values("date").unique()
         if figsize is None:
             figwidth, figheight = plt.rcParams["figure.figsize"]
@@ -393,15 +393,15 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis, zonal.ZonalAnalysis):
             )
 
         fig, axes = plt.subplots(
-            len(self.zone_gser), len(dates), figsize=figsize, **_subplots_kws
+            len(self.zone_gser), len(dates), figsize=figsize, **_subplots_kwargs
         )
 
-        if show_kws is None:
-            show_kws = {}
+        if show_kwargs is None:
+            show_kwargs = {}
         flat_axes = axes.flat
         for landscape in self.landscape_ser:
             ax = landscape.plot_landscape(
-                cmap=cmap, ax=next(flat_axes), legend=legend, **show_kws
+                cmap=cmap, ax=next(flat_axes), legend=legend, **show_kwargs
             )
 
         # labels in first row and column only
@@ -412,8 +412,8 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis, zonal.ZonalAnalysis):
             ax.set_ylabel(zone)
 
         # adjust spacing between axes
-        if subplots_adjust_kws is not None:
-            fig.subplots_adjust(**subplots_adjust_kws)
+        if subplots_adjust_kwargs is not None:
+            fig.subplots_adjust(**subplots_adjust_kwargs)
 
         return fig
 
@@ -478,12 +478,12 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalZonalAnalysis):
         )
 
     def compute_class_metrics_df(  # noqa: D102
-        self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
+        self, *, metrics=None, classes=None, metrics_kwargs=None, fillna=None
     ):
         return super().compute_class_metrics_df(
             metrics=metrics,
             classes=classes,
-            metrics_kws=metrics_kws,
+            metrics_kwargs=metrics_kwargs,
             fillna=fillna,
         )
 
@@ -495,10 +495,10 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalZonalAnalysis):
     )
 
     def compute_landscape_metrics_df(  # noqa: D102
-        self, *, metrics=None, metrics_kws=None
+        self, *, metrics=None, metrics_kwargs=None
     ):
         return super().compute_landscape_metrics_df(
-            metrics=metrics, metrics_kws=metrics_kws
+            metrics=metrics, metrics_kwargs=metrics_kwargs
         )
 
     compute_landscape_metrics_df.__doc__ = (
@@ -518,9 +518,9 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalZonalAnalysis):
         metric_label=None,
         buffer_dist_legend=True,
         fmt="--o",
-        plot_kws=None,
-        subplots_kws=None,
-        metric_kws=None,
+        plot_kwargs=None,
+        subplots_kwargs=None,
+        metric_kwargs=None,
     ):
         return super().plot_metric(
             metric,
@@ -530,9 +530,9 @@ class SpatioTemporalBufferAnalysis(SpatioTemporalZonalAnalysis):
             metric_label=metric_label,
             zone_legend=buffer_dist_legend,
             fmt=fmt,
-            plot_kws=plot_kws,
-            subplots_kws=subplots_kws,
-            metric_kws=metric_kws,
+            plot_kwargs=plot_kwargs,
+            subplots_kwargs=subplots_kwargs,
+            metric_kwargs=metric_kwargs,
         )
 
     plot_metric.__doc__ = _plot_metric_doc.format(
@@ -605,12 +605,12 @@ class SpatioTemporalZonalGridAnalysis(SpatioTemporalZonalAnalysis):
         )
 
     def compute_class_metrics_df(  # noqa: D102
-        self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
+        self, *, metrics=None, classes=None, metrics_kwargs=None, fillna=None
     ):
         return super().compute_class_metrics_df(
             metrics=metrics,
             classes=classes,
-            metrics_kws=metrics_kws,
+            metrics_kwargs=metrics_kwargs,
             fillna=fillna,
         )
 
@@ -622,10 +622,10 @@ class SpatioTemporalZonalGridAnalysis(SpatioTemporalZonalAnalysis):
     )
 
     def compute_landscape_metrics_df(  # noqa: D102
-        self, *, metrics=None, metrics_kws=None
+        self, *, metrics=None, metrics_kwargs=None
     ):
         return super().compute_landscape_metrics_df(
-            metrics=metrics, metrics_kws=metrics_kws
+            metrics=metrics, metrics_kwargs=metrics_kwargs
         )
 
     compute_landscape_metrics_df.__doc__ = (
@@ -645,9 +645,9 @@ class SpatioTemporalZonalGridAnalysis(SpatioTemporalZonalAnalysis):
         metric_label=None,
         grid_cell_legend=True,
         fmt="--o",
-        plot_kws=None,
-        subplots_kws=None,
-        metric_kws=None,
+        plot_kwargs=None,
+        subplots_kwargs=None,
+        metric_kwargs=None,
     ):
         return super().plot_metric(
             metric,
@@ -657,9 +657,9 @@ class SpatioTemporalZonalGridAnalysis(SpatioTemporalZonalAnalysis):
             metric_label=metric_label,
             zone_legend=grid_cell_legend,
             fmt=fmt,
-            plot_kws=plot_kws,
-            subplots_kws=subplots_kws,
-            metric_kws=metric_kws,
+            plot_kwargs=plot_kwargs,
+            subplots_kwargs=subplots_kwargs,
+            metric_kwargs=metric_kwargs,
         )
 
     plot_metric.__doc__ = _plot_metric_doc.format(

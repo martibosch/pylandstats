@@ -393,7 +393,7 @@ class TestLandscape(unittest.TestCase):
         self.assertIsNone(ls.plot_landscape(legend=False).get_legend())
         self.assertIsNotNone(ls.plot_landscape(legend=True))
         self.assertIsNotNone(
-            ls.plot_landscape(legend=True, legend_kws=dict(loc="center right"))
+            ls.plot_landscape(legend=True, legend_kwargs=dict(loc="center right"))
         )
 
 
@@ -441,25 +441,28 @@ class TestMultiLandscape(unittest.TestCase):
             self.assertIsInstance(landscape, pls.Landscape)
         # test that we can pass keyword arguments to the `Landscape` instantiation when
         # providing filepaths
-        landscape_kws = {"neighborhood_rule": "4"}
+        landscape_kwargs = {"neighborhood_rule": "4"}
         ml = self.InstantiableMultiLandscape(
             self.landscape_fps,
             self.attribute_name,
             self.attribute_values,
-            **landscape_kws,
+            **landscape_kwargs,
         )
         for landscape in ml.landscape_ser:
             self.assertEqual(
-                landscape.neighborhood_rule, landscape_kws["neighborhood_rule"]
+                landscape.neighborhood_rule, landscape_kwargs["neighborhood_rule"]
             )
         # test that if we instantiate providing `Landscape` instances, the provided
         # keyword arguments are ignored
         ml = self.InstantiableMultiLandscape(
-            self.landscapes, self.attribute_name, self.attribute_values, **landscape_kws
+            self.landscapes,
+            self.attribute_name,
+            self.attribute_values,
+            **landscape_kwargs,
         )
         for landscape in ml.landscape_ser:
             self.assertNotEqual(
-                landscape.neighborhood_rule, landscape_kws["neighborhood_rule"]
+                landscape.neighborhood_rule, landscape_kwargs["neighborhood_rule"]
             )
 
         # from this point on, always instantiate from filepaths
@@ -539,7 +542,7 @@ class TestMultiLandscape(unittest.TestCase):
                 # the columns for this metric should be identical in both data frames
                 self.assertTrue(fillna_df[metric].equals(nofillna_df[metric]))
 
-    def test_multilandscape_metrics_kws(self):
+    def test_multilandscape_metrics_kwargs(self):
         # Instantiate two multilandscape analyses, one with FRAGSTATS' defaults and the
         # other with keyword arguments specifying the total area in meters and including
         # the boundary in the computation of the total edge.
@@ -554,7 +557,7 @@ class TestMultiLandscape(unittest.TestCase):
             "conditional_entropy",
             "mutual_information",
         ]
-        metrics_kws = {
+        metrics_kwargs = {
             "total_area": {"hectares": False},
             "perimeter_area_ratio_mn": {"hectares": True},
             "total_edge": {"count_boundary": True},
@@ -562,29 +565,33 @@ class TestMultiLandscape(unittest.TestCase):
         }
 
         class_metrics_df = ml.compute_class_metrics_df()
-        class_metrics_kws_df = ml.compute_class_metrics_df(metrics_kws=metrics_kws)
+        class_metrics_kwargs_df = ml.compute_class_metrics_df(
+            metrics_kwargs=metrics_kwargs
+        )
         landscape_metrics_df = ml.compute_landscape_metrics_df()
-        landscape_metrics_kws_df = ml.compute_landscape_metrics_df(
-            metrics_kws=metrics_kws
+        landscape_metrics_kwargs_df = ml.compute_landscape_metrics_df(
+            metrics_kwargs=metrics_kwargs
         )
         for attribute_value in ml.landscape_ser.index:
             # For all attribute values and all classes, metric values in hectares should
             # be less than in meters, and excluding boundaries should be less or equal
             # than including them
             landscape_metrics = landscape_metrics_df.loc[attribute_value]
-            landscape_metrics_kws = landscape_metrics_kws_df.loc[attribute_value]
+            landscape_metrics_kwargs = landscape_metrics_kwargs_df.loc[attribute_value]
             self.assertLess(
                 landscape_metrics["total_area"],
-                landscape_metrics_kws["total_area"],
+                landscape_metrics_kwargs["total_area"],
             )
             self.assertLessEqual(
                 landscape_metrics["total_edge"],
-                landscape_metrics_kws["total_edge"],
+                landscape_metrics_kwargs["total_edge"],
             )
 
             for class_val in ml.present_classes:
                 class_metrics = class_metrics_df.loc[class_val, attribute_value]
-                class_metrics_kws = class_metrics_kws_df.loc[class_val, attribute_value]
+                class_metrics_kwargs = class_metrics_kwargs_df.loc[
+                    class_val, attribute_value
+                ]
 
                 # It could be that for some attribute values, some classes are not
                 # present within the respective Landscape. If so, some metrics (e.g.,
@@ -593,18 +600,18 @@ class TestMultiLandscape(unittest.TestCase):
                 # For area and edge metrics, PyLandStats interprets such `nan` values as
                 # 0, which is why we need to include the equality in the comparison
                 if class_metrics.isnull().all():
-                    self.assertTrue(class_metrics_kws.isnull().all())
+                    self.assertTrue(class_metrics_kwargs.isnull().all())
                 else:
                     self.assertLessEqual(
                         class_metrics["total_area"],
-                        class_metrics_kws["total_area"],
+                        class_metrics_kwargs["total_area"],
                     )
                     # we need quite some tolerance because pixel resolutions in raster
                     # files might be weird float values, e.g., 99.13213 instead of 100
                     # (meters)
                     self.assertLessEqual(
                         class_metrics["total_edge"],
-                        1.01 * class_metrics_kws["total_edge"],
+                        1.01 * class_metrics_kwargs["total_edge"],
                     )
 
             # For all attribute values, entropy metric values computed with the default
@@ -612,7 +619,7 @@ class TestMultiLandscape(unittest.TestCase):
             for entropy_metric in entropy_metrics:
                 self.assertGreater(
                     landscape_metrics[entropy_metric],
-                    landscape_metrics_kws[entropy_metric],
+                    landscape_metrics_kwargs[entropy_metric],
                 )
 
     def test_multilandscape_plot_metrics(self):
@@ -691,7 +698,7 @@ class TestMultiLandscape(unittest.TestCase):
         # if instead, we customize the figure size, the dimensions of the resulting
         # figure must be the customized ones
         custom_figsize = (10, 10)
-        fig = ml.plot_landscapes(subplots_kws={"figsize": custom_figsize})
+        fig = ml.plot_landscapes(subplots_kwargs={"figsize": custom_figsize})
         figwidth, figheight = fig.get_size_inches()
         self.assertAlmostEqual(custom_figsize[0], figwidth)
         self.assertAlmostEqual(custom_figsize[1], figheight)
@@ -969,7 +976,7 @@ class TestZonaAlnalysis(unittest.TestCase):
             # test that the zonal statistics when excluding boundaries should be less or
             # equal than including them
             metric = "total_edge"
-            metric_kws = {"count_boundary": True}
+            metric_kwargs = {"count_boundary": True}
             self.assertLessEqual(
                 za.compute_zonal_statistics_gdf(metrics=[metric], class_val=class_val)[
                     metric
@@ -977,7 +984,7 @@ class TestZonaAlnalysis(unittest.TestCase):
                 za.compute_zonal_statistics_gdf(
                     metrics=[metric],
                     class_val=class_val,
-                    metrics_kws={metric: metric_kws},
+                    metrics_kwargs={metric: metric_kwargs},
                 )[metric].sum(),
             )
 
@@ -1182,9 +1189,11 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
     def test_init(self):
         # we will just test the base init, the rest of functionalities have already been
         # tested above (in `TestSpatioTemporalAnalysis` and `TestZonalAnalysis`)
-        for _class, init_args, init_kws, attr_name in self.init_combinations:
+        for _class, init_args, init_kwargs, attr_name in self.init_combinations:
             # test zones and dates
-            stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
+            stza = _class(
+                self.landscape_fps, *init_args, dates=self.dates, **init_kwargs
+            )
             # test that we have the same zone labels in `zone_gser` and `landscape_ser`
             self.assertTrue(
                 (
@@ -1217,14 +1226,16 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
                 self.landscape_fps,
                 *init_args,
                 neighborhood_rule=neighborhood_rule,
-                **init_kws,
+                **init_kwargs,
             )
             for ls in stza.landscape_ser:
                 self.assertEqual(ls.neighborhood_rule, neighborhood_rule)
 
     def test_dataframes(self):
-        for _class, init_args, init_kws, _ in self.init_combinations:
-            stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
+        for _class, init_args, init_kwargs, _ in self.init_combinations:
+            stza = _class(
+                self.landscape_fps, *init_args, dates=self.dates, **init_kwargs
+            )
             zone_index = stza.zone_gser.index
             dates = stza.landscape_ser.index.get_level_values("date").unique()
 
@@ -1272,8 +1283,10 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
             )
 
     def test_compute_zonal_statistics_gdf(self):
-        for _class, init_args, init_kws, _ in self.init_combinations:
-            stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
+        for _class, init_args, init_kwargs, _ in self.init_combinations:
+            stza = _class(
+                self.landscape_fps, *init_args, dates=self.dates, **init_kwargs
+            )
             # test that the gdf has the proper shape (number of zones, number of metrics
             # + geometry column)
             for class_val in [None, stza.present_classes[0]]:
@@ -1294,7 +1307,7 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
                 # test that the zonal statistics when excluding boundaries should be
                 # less or equal than including them
                 metric = "total_edge"
-                metric_kws = {"count_boundary": True}
+                metric_kwargs = {"count_boundary": True}
                 self.assertLessEqual(
                     stza.compute_zonal_statistics_gdf(
                         metrics=[metric], class_val=class_val
@@ -1304,15 +1317,17 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
                     stza.compute_zonal_statistics_gdf(
                         metrics=[metric],
                         class_val=class_val,
-                        metrics_kws={metric: metric_kws},
+                        metrics_kwargs={metric: metric_kwargs},
                     )[metric]
                     .sum()
                     .sum(),
                 )
 
     def test_plot_metric(self):
-        for _class, init_args, init_kws, _ in self.init_combinations:
-            stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
+        for _class, init_args, init_kwargs, _ in self.init_combinations:
+            stza = _class(
+                self.landscape_fps, *init_args, dates=self.dates, **init_kwargs
+            )
             # test for `None` (landscape-level) and an existing class (class-level)
             metric = "patch_density"
             for class_val in [None, stza.present_classes[0]]:
@@ -1340,8 +1355,10 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
                 self.assertEqual(len(labels), num_lines)
 
     def test_plot_landscapes(self):
-        for _class, init_args, init_kws, _ in self.init_combinations:
-            stza = _class(self.landscape_fps, *init_args, dates=self.dates, **init_kws)
+        for _class, init_args, init_kwargs, _ in self.init_combinations:
+            stza = _class(
+                self.landscape_fps, *init_args, dates=self.dates, **init_kwargs
+            )
             dates = stza.landscape_ser.index.get_level_values("date").unique()
 
             fig = stza.plot_landscapes()
@@ -1365,7 +1382,7 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
             # if instead, we customize the figure size, the dimensions of the resulting
             # figure must be the customized ones
             custom_figsize = (10, 10)
-            fig = stza.plot_landscapes(subplots_kws={"figsize": custom_figsize})
+            fig = stza.plot_landscapes(subplots_kwargs={"figsize": custom_figsize})
             figwidth, figheight = fig.get_size_inches()
             self.assertAlmostEqual(custom_figsize[0], figwidth)
             self.assertAlmostEqual(custom_figsize[1], figheight)

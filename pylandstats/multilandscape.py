@@ -22,10 +22,10 @@ metrics : list-like, optional
 classes : list-like, optional
     A list-like of ints or strings with the class values that should be considered in
     the context of this analysis case.
-metrics_kws : dict, optional
+metrics_kwargs : dict, optional
     Dictionary mapping the keyword arguments (values) that should be passed to each
     metric method (key), e.g., to exclude the boundary from the computation of
-    `total_edge`, metric_kws should map the string 'total_edge' (method name) to
+    `total_edge`, metric_kwargs should map the string 'total_edge' (method name) to
     {{'count_boundary': False}}. The default empty dictionary will compute each metric
     according to FRAGSTATS defaults.
 fillna : bool, optional
@@ -48,10 +48,10 @@ Parameters
 metrics : list-like, optional
     A list-like of strings with the names of the metrics that should be computed. If
     `None`, all the implemented landscape-level metrics will be computed.
-metrics_kws : dict, optional
+metrics_kwargs : dict, optional
     Dictionary mapping the keyword arguments (values) that should be passed to each
     metric method (key), e.g., to exclude the boundary from the computation of
-    `total_edge`, metric_kws should map the string 'total_edge' (method name) to
+    `total_edge`, metric_kwargs should map the string 'total_edge' (method name) to
     {{'count_boundary': False}}. The default empty dictionary will compute each metric
     according to FRAGSTATS defaults.
 
@@ -67,7 +67,9 @@ class MultiLandscape(abc.ABC):
     """Multi-landscape base abstract class."""
 
     @abc.abstractmethod
-    def __init__(self, landscapes, attribute_name, attribute_values, **landscape_kws):
+    def __init__(
+        self, landscapes, attribute_name, attribute_values, **landscape_kwargs
+    ):
         """Initialize the multi-landscape instance.
 
         Parameters
@@ -80,7 +82,7 @@ class MultiLandscape(abc.ABC):
             Name of the attribute that will distinguish each landscape.
         attribute_values : list-like
             Values of the attribute that are characteristic to each landscape.
-        landscape_kws : dict, optional
+        landscape_kwargs : dict, optional
             Keyword arguments to be passed to the instantiation of
             `pylandstats.Landscape` for each element of `landscapes`. Ignored if the
             elements of `landscapes` are already instances of `pylandstats.Landcape`.
@@ -88,7 +90,7 @@ class MultiLandscape(abc.ABC):
         if not isinstance(landscapes[0], Landscape):
             # we assume that landscapes is a list of strings/file-like/path-like objects
             landscapes = [
-                Landscape(landscape, **landscape_kws) for landscape in landscapes
+                Landscape(landscape, **landscape_kwargs) for landscape in landscapes
             ]
         if len(landscapes) != len(attribute_values):
             raise ValueError(
@@ -137,15 +139,15 @@ class MultiLandscape(abc.ABC):
         return len(self.landscape_ser)
 
     def compute_class_metrics_df(  # noqa: D102
-        self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
+        self, *, metrics=None, classes=None, metrics_kwargs=None, fillna=None
     ):
         # if the classes kwarg is not provided, get the classes present in the
         # landscapes
         if classes is None:
             classes = self.present_classes
         # to avoid issues with mutable defaults
-        if metrics_kws is None:
-            metrics_kws = {}
+        if metrics_kwargs is None:
+            metrics_kwargs = {}
         # to avoid setting the same default keyword argument in multiple methods, use
         # the settings module
         if fillna is None:
@@ -155,7 +157,7 @@ class MultiLandscape(abc.ABC):
             dask.delayed(landscape.compute_class_metrics_df)(
                 metrics=metrics,
                 classes=np.intersect1d(classes, landscape.classes),
-                metrics_kws=metrics_kws,
+                metrics_kwargs=metrics_kwargs,
             )
             for landscape in self.landscape_ser
         ]
@@ -207,15 +209,15 @@ class MultiLandscape(abc.ABC):
     )
 
     def compute_landscape_metrics_df(  # noqa: D102
-        self, *, metrics=None, metrics_kws=None
+        self, *, metrics=None, metrics_kwargs=None
     ):
         # to avoid issues with mutable defaults
-        if metrics_kws is None:
-            metrics_kws = {}
+        if metrics_kwargs is None:
+            metrics_kwargs = {}
 
         tasks = [
             dask.delayed(landscape.compute_landscape_metrics_df)(
-                metrics=metrics, metrics_kws=metrics_kws
+                metrics=metrics, metrics_kwargs=metrics_kwargs
             )
             for landscape in self.landscape_ser
         ]
@@ -260,9 +262,9 @@ class MultiLandscape(abc.ABC):
         metric_legend=True,
         metric_label=None,
         fmt="--o",
-        plot_kws=None,
-        subplots_kws=None,
-        metric_kws=None,
+        plot_kwargs=None,
+        subplots_kwargs=None,
+        metric_kwargs=None,
     ):
         """Plot the metric.
 
@@ -284,12 +286,12 @@ class MultiLandscape(abc.ABC):
             module.
         fmt : str, default '--o'
             A format string for `matplotlib.pyplot.plot`.
-        plot_kws : dict, default None
+        plot_kwargs : dict, default None
             Keyword arguments to be passed to `matplotlib.pyplot.plot`.
-        subplots_kws : dict, default None
+        subplots_kwargs : dict, default None
             Keyword arguments to be passed to `matplotlib.pyplot.plot.subplots` only if
             no axis is given (through the `ax` argument).
-        metric_kws : dict, default None
+        metric_kwargs : dict, default None
             Keyword arguments to be passed to the method that computes the metric
             (specified in the `metric` argument) for each landscape.
 
@@ -302,32 +304,32 @@ class MultiLandscape(abc.ABC):
         # whether the metric label should appear as legend or as yaxis label
         # TODO: if we use seaborn in the future, we can use the pd.Series directly,
         # since its index corresponds to this SpatioTemporalAnalysis dates
-        if metric_kws is None:
-            metric_kws = {}
+        if metric_kwargs is None:
+            metric_kwargs = {}
         # since we are using the compute data frame methods even though we are just
         # computing a single metric (so that error management regarding the computation
-        # of metrics is defined in a single place), we need to provide the `metrics_kws`
-        # (mapping a metric to its keyword-arguments `metric_kws`).
-        metrics_kws = {metric: metric_kws}
+        # of metrics is defined in a single place), we need to provide the
+        # `metrics_kwargs` (mapping a metric to its keyword-arguments `metric_kwargs`).
+        metrics_kwargs = {metric: metric_kwargs}
         metrics = [metric]
         if class_val is None:
             metric_values = self.compute_landscape_metrics_df(
-                metrics=metrics, metrics_kws=metrics_kws
+                metrics=metrics, metrics_kwargs=metrics_kwargs
             ).values
         else:
             metric_values = self.compute_class_metrics_df(
-                metrics=metrics, classes=[class_val], metrics_kws=metrics_kws
+                metrics=metrics, classes=[class_val], metrics_kwargs=metrics_kwargs
             ).values
 
         if ax is None:
-            if subplots_kws is None:
-                subplots_kws = {}
-            fig, ax = plt.subplots(**subplots_kws)
+            if subplots_kwargs is None:
+                subplots_kwargs = {}
+            fig, ax = plt.subplots(**subplots_kwargs)
 
-        if plot_kws is None:
-            plot_kws = {}
+        if plot_kwargs is None:
+            plot_kwargs = {}
 
-        ax.plot(self.landscape_ser.index, metric_values, fmt, **plot_kws)
+        ax.plot(self.landscape_ser.index, metric_values, fmt, **plot_kwargs)
 
         if metric_legend:
             if metric_label is None:
@@ -344,9 +346,9 @@ class MultiLandscape(abc.ABC):
         *,
         cmap=None,
         legend=True,
-        subplots_kws=None,
-        show_kws=None,
-        subplots_adjust_kws=None,
+        subplots_kwargs=None,
+        show_kwargs=None,
+        subplots_adjust_kwargs=None,
     ):
         """Plot each landscape snapshot in a dedicated matplotlib axis.
 
@@ -358,11 +360,11 @@ class MultiLandscape(abc.ABC):
             A Colormap instance.
         legend : bool, optional
             If ``True``, display the legend of the land use/cover color codes.
-        subplots_kws : dict, default None
+        subplots_kwargs : dict, default None
             Keyword arguments to be passed to `matplotlib.pyplot.subplots`.
-        show_kws : dict, default None
+        show_kwargs : dict, default None
             Keyword arguments to be passed to `rasterio.plot.show`.
-        subplots_adjust_kws : dict, default None
+        subplots_adjust_kwargs : dict, default None
             Keyword arguments to be passed to `matplotlib.pyplot.subplots_adjust`.
 
         Returns
@@ -373,26 +375,28 @@ class MultiLandscape(abc.ABC):
         num_landscapes = len(self.landscape_ser)
 
         # avoid alias/reference issues
-        if subplots_kws is None:
-            _subplots_kws = {}
+        if subplots_kwargs is None:
+            _subplots_kwargs = {}
         else:
-            _subplots_kws = subplots_kws.copy()
-        figsize = _subplots_kws.pop("figsize", None)
+            _subplots_kwargs = subplots_kwargs.copy()
+        figsize = _subplots_kwargs.pop("figsize", None)
         if figsize is None:
             figwidth, figheight = plt.rcParams["figure.figsize"]
             figsize = (figwidth * num_landscapes, figheight)
 
-        fig, axes = plt.subplots(1, num_landscapes, figsize=figsize, **_subplots_kws)
+        fig, axes = plt.subplots(1, num_landscapes, figsize=figsize, **_subplots_kwargs)
         if len(axes) == 1:  # len(attribute_values) == 1
             axes = [axes]
-        if show_kws is None:
-            show_kws = {}
+        if show_kwargs is None:
+            show_kwargs = {}
         for (attribute_value, landscape), ax in zip(self.landscape_ser.items(), axes):
-            ax = landscape.plot_landscape(cmap=cmap, ax=ax, legend=legend, **show_kws)
+            ax = landscape.plot_landscape(
+                cmap=cmap, ax=ax, legend=legend, **show_kwargs
+            )
             ax.set_title(attribute_value)
 
         # adjust spacing between axes
-        if subplots_adjust_kws is not None:
-            fig.subplots_adjust(**subplots_adjust_kws)
+        if subplots_adjust_kwargs is not None:
+            fig.subplots_adjust(**subplots_adjust_kwargs)
 
         return fig

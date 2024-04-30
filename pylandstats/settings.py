@@ -61,12 +61,12 @@ for suffix in ["mn", "am", "md", "ra", "sd", "cv"]:
     fragstats_abbrev_dict[f"disjunct_core_area_{suffix}"] = f"DCORE_{suffix}"
 
 # SETTINGS
-# TODO: is it worth integrating `metrics` and `metrics_kws` into the settings scheme?
+# TODO: is it worth integrating `metrics` and `metrics_kwargs` into the settings scheme?
 # The main difficulty is that depending on the method, the `metrics` argument might
 # concern only patch-level metrics, class-level metrics (or landscape-level metrics,
 # e.g., see the methods of the form `landscape.Landscape.compute_{level}_metrics_df`,
 # where 'level' can be `patch`, `class` or `landscape`. On the other hand, integrating
-# `metrics_kws` should be more straight-forward.
+# `metrics_kwargs` should be more straight-forward.
 metric_label_dict = environ.get("METRIC_LABEL_DICT", fragstats_abbrev_dict)
 
 # OTHER

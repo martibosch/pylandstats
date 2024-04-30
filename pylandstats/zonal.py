@@ -29,10 +29,10 @@ level : {{'class', 'landscape'}}, optional
 class_val : int, optional
     If provided, the metric will be computed at the level of the corresponding class,
     otherwise it will be computed at the landscape level.
-metrics_kws : dict, optional
+metrics_kwargs : dict, optional
     Dictionary mapping the keyword arguments (values) that should be passed to
     each metric method (key), e.g., to exclude the boundary from the computation
-    of `total_edge`, metric_kws should map the string 'total_edge' (method name)
+    of `total_edge`, metric_kwargs should map the string 'total_edge' (method name)
     to {{'count_boundary': False}}. If `None`, each metric will be computed
     according to FRAGSTATS defaults.
 
@@ -223,15 +223,15 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         *,
         metrics=None,
         class_val=None,
-        metrics_kws=None,
+        metrics_kwargs=None,
     ):
         if class_val is not None:
             zonal_metrics_df = self.compute_class_metrics_df(
-                metrics=metrics, classes=[class_val], metrics_kws=metrics_kws
+                metrics=metrics, classes=[class_val], metrics_kwargs=metrics_kwargs
             ).loc[class_val]
         else:
             zonal_metrics_df = self.compute_landscape_metrics_df(
-                metrics=metrics, metrics_kws=metrics_kws
+                metrics=metrics, metrics_kwargs=metrics_kwargs
             )
 
         # ensure that we have numeric types (not strings)
@@ -370,12 +370,12 @@ class BufferAnalysis(ZonalAnalysis):
 
     # override docs
     def compute_class_metrics_df(  # noqa: D102
-        self, *, metrics=None, classes=None, metrics_kws=None, fillna=None
+        self, *, metrics=None, classes=None, metrics_kwargs=None, fillna=None
     ):
         return super().compute_class_metrics_df(
             metrics=metrics,
             classes=classes,
-            metrics_kws=metrics_kws,
+            metrics_kwargs=metrics_kwargs,
             fillna=fillna,
         )
 
@@ -387,10 +387,10 @@ class BufferAnalysis(ZonalAnalysis):
     )
 
     def compute_landscape_metrics_df(  # noqa: D102
-        self, *, metrics=None, metrics_kws=None
+        self, *, metrics=None, metrics_kwargs=None
     ):
         return super().compute_landscape_metrics_df(
-            metrics=metrics, metrics_kws=metrics_kws
+            metrics=metrics, metrics_kwargs=metrics_kwargs
         )
 
     compute_landscape_metrics_df.__doc__ = (
@@ -540,7 +540,7 @@ class ZonalGridAnalysis(ZonalAnalysis):
             neighborhood_rule=neighborhood_rule,
         )
 
-    def plot_landscapes(self, *, cmap=None, ax=None, figsize=None, **plot_kws):
+    def plot_landscapes(self, *, cmap=None, ax=None, figsize=None, **plot_kwargs):
         """Plot the spatial distribution of the landscape zones.
 
         Parameters
@@ -551,7 +551,7 @@ class ZonalGridAnalysis(ZonalAnalysis):
             Plot in given axis; if None creates a new figure.
         figsize : tuple of two numeric types, optional
             Size of the figure to create. Ignored if axis `ax` is provided.
-        **plot_kws : optional
+        **plot_kwargs : optional
             Keyword arguments to be passed to `geopandas.GeoSeries.plot`.
 
         Returns
@@ -569,11 +569,11 @@ class ZonalGridAnalysis(ZonalAnalysis):
             fig, ax = plt.subplots(figsize=figsize)
             ax.set_aspect("equal")
 
-        if plot_kws is None:
-            plot_kws = {}
+        if plot_kwargs is None:
+            plot_kwargs = {}
 
         gpd.GeoDataFrame(
             {"color": np.arange(len(self.zone_gser))}, geometry=self.zone_gser
-        ).plot("color", ax=ax, cmap=cmap, **plot_kws)
+        ).plot("color", ax=ax, cmap=cmap, **plot_kwargs)
 
         return ax

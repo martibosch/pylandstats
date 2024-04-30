@@ -772,14 +772,14 @@ class Landscape:
         self,
         class_val,
         patch_metric_method,
-        patch_metric_method_kws,
+        patch_metric_method_kwargs,
         reduce_method,
     ):
-        if patch_metric_method_kws is None:
+        if patch_metric_method_kwargs is None:
             patch_metrics = patch_metric_method(class_val=class_val)
         else:
             patch_metrics = patch_metric_method(
-                class_val=class_val, **patch_metric_method_kws
+                class_val=class_val, **patch_metric_method_kwargs
             )
         if class_val is None:
             # ACHTUNG: dropping columns from a `pd.DataFrame` until leaving it with only
@@ -790,14 +790,14 @@ class Landscape:
         return reduce_method(patch_metrics)
 
     def _metric_mn(
-        self, class_val, patch_metric_method, *, patch_metric_method_kws=None
+        self, class_val, patch_metric_method, *, patch_metric_method_kwargs=None
     ):
         return self._metric_reduce(
-            class_val, patch_metric_method, patch_metric_method_kws, np.mean
+            class_val, patch_metric_method, patch_metric_method_kwargs, np.mean
         )
 
     def _metric_am(
-        self, class_val, patch_metric_method, *, patch_metric_method_kws=None
+        self, class_val, patch_metric_method, *, patch_metric_method_kwargs=None
     ):
         # `area` can be `pd.Series` or `pd.DataFrame`
         area = self.area(class_val=class_val)
@@ -808,32 +808,32 @@ class Landscape:
         return self._metric_reduce(
             class_val,
             patch_metric_method,
-            patch_metric_method_kws,
+            patch_metric_method_kwargs,
             functools.partial(np.average, weights=area),
         )
 
     def _metric_md(
-        self, class_val, patch_metric_method, *, patch_metric_method_kws=None
+        self, class_val, patch_metric_method, *, patch_metric_method_kwargs=None
     ):
         return self._metric_reduce(
-            class_val, patch_metric_method, patch_metric_method_kws, np.median
+            class_val, patch_metric_method, patch_metric_method_kwargs, np.median
         )
 
     def _metric_ra(
-        self, class_val, patch_metric_method, *, patch_metric_method_kws=None
+        self, class_val, patch_metric_method, *, patch_metric_method_kwargs=None
     ):
         return self._metric_reduce(
             class_val,
             patch_metric_method,
-            patch_metric_method_kws,
+            patch_metric_method_kwargs,
             lambda metric_ser: metric_ser.max() - metric_ser.min(),
         )
 
     def _metric_sd(
-        self, class_val, patch_metric_method, *, patch_metric_method_kws=None
+        self, class_val, patch_metric_method, *, patch_metric_method_kwargs=None
     ):
         return self._metric_reduce(
-            class_val, patch_metric_method, patch_metric_method_kws, np.std
+            class_val, patch_metric_method, patch_metric_method_kwargs, np.std
         )
 
     def _metric_cv(
@@ -841,13 +841,13 @@ class Landscape:
         class_val,
         patch_metric_method,
         *,
-        patch_metric_method_kws=None,
+        patch_metric_method_kwargs=None,
         percent=True,
     ):
         metric_cv = self._metric_reduce(
             class_val,
             patch_metric_method,
-            patch_metric_method_kws,
+            patch_metric_method_kwargs,
             stats.variation,
         )
         if percent:
@@ -1712,7 +1712,7 @@ class Landscape:
         AREA_MN : numeric
         """
         return self._metric_mn(
-            class_val, self.area, patch_metric_method_kws={"hectares": hectares}
+            class_val, self.area, patch_metric_method_kwargs={"hectares": hectares}
         )
 
     def area_am(self, *, class_val=None, hectares=True):
@@ -1734,7 +1734,7 @@ class Landscape:
         AREA_AM : numeric
         """
         return self._metric_am(
-            class_val, self.area, patch_metric_method_kws={"hectares": hectares}
+            class_val, self.area, patch_metric_method_kwargs={"hectares": hectares}
         )
 
     def area_md(self, *, class_val=None, hectares=True):
@@ -1756,7 +1756,7 @@ class Landscape:
         AREA_MD : numeric
         """
         return self._metric_md(
-            class_val, self.area, patch_metric_method_kws={"hectares": hectares}
+            class_val, self.area, patch_metric_method_kwargs={"hectares": hectares}
         )
 
     def area_ra(self, *, class_val=None, hectares=True):
@@ -1778,7 +1778,7 @@ class Landscape:
         AREA_RA : numeric
         """
         return self._metric_ra(
-            class_val, self.area, patch_metric_method_kws={"hectares": hectares}
+            class_val, self.area, patch_metric_method_kwargs={"hectares": hectares}
         )
 
     def area_sd(self, *, class_val=None, hectares=True):
@@ -1800,7 +1800,7 @@ class Landscape:
         AREA_SD : numeric
         """
         return self._metric_sd(
-            class_val, self.area, patch_metric_method_kws={"hectares": hectares}
+            class_val, self.area, patch_metric_method_kwargs={"hectares": hectares}
         )
 
     def area_cv(self, *, class_val=None, percent=True):
@@ -1951,7 +1951,7 @@ class Landscape:
         return self._metric_mn(
             class_val,
             self.perimeter_area_ratio,
-            patch_metric_method_kws={"hectares": hectares},
+            patch_metric_method_kwargs={"hectares": hectares},
         )
 
     def perimeter_area_ratio_am(self, *, class_val=None, hectares=True):
@@ -1975,7 +1975,7 @@ class Landscape:
         return self._metric_am(
             class_val,
             self.perimeter_area_ratio,
-            patch_metric_method_kws={"hectares": hectares},
+            patch_metric_method_kwargs={"hectares": hectares},
         )
 
     def perimeter_area_ratio_md(self, *, class_val=None, hectares=True):
@@ -1999,7 +1999,7 @@ class Landscape:
         return self._metric_md(
             class_val,
             self.perimeter_area_ratio,
-            patch_metric_method_kws={"hectares": hectares},
+            patch_metric_method_kwargs={"hectares": hectares},
         )
 
     def perimeter_area_ratio_ra(self, *, class_val=None, hectares=True):
@@ -2023,7 +2023,7 @@ class Landscape:
         return self._metric_ra(
             class_val,
             self.perimeter_area_ratio,
-            patch_metric_method_kws={"hectares": hectares},
+            patch_metric_method_kwargs={"hectares": hectares},
         )
 
     def perimeter_area_ratio_sd(self, *, class_val=None, hectares=True):
@@ -2047,7 +2047,7 @@ class Landscape:
         return self._metric_sd(
             class_val,
             self.perimeter_area_ratio,
-            patch_metric_method_kws={"hectares": hectares},
+            patch_metric_method_kwargs={"hectares": hectares},
         )
 
     def perimeter_area_ratio_cv(self, *, class_val=None, percent=True):
@@ -2609,7 +2609,7 @@ class Landscape:
         return self._metric_mn(
             class_val,
             self.core_area,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "hectares": hectares,
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
@@ -2644,7 +2644,7 @@ class Landscape:
         return self._metric_am(
             class_val,
             self.core_area,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "hectares": hectares,
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
@@ -2679,7 +2679,7 @@ class Landscape:
         return self._metric_md(
             class_val,
             self.core_area,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "hectares": hectares,
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
@@ -2714,7 +2714,7 @@ class Landscape:
         return self._metric_ra(
             class_val,
             self.core_area,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "hectares": hectares,
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
@@ -2749,7 +2749,7 @@ class Landscape:
         return self._metric_sd(
             class_val,
             self.core_area,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "hectares": hectares,
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
@@ -2784,7 +2784,7 @@ class Landscape:
         return self._metric_cv(
             class_val,
             self.core_area,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
             },
@@ -2853,7 +2853,7 @@ class Landscape:
         return self._metric_mn(
             class_val,
             self._disjunct_core_area,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "hectares": hectares,
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
@@ -2926,7 +2926,7 @@ class Landscape:
         return self._metric_md(
             class_val,
             self._disjunct_core_area,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "hectares": hectares,
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
@@ -2961,7 +2961,7 @@ class Landscape:
         return self._metric_ra(
             class_val,
             self._disjunct_core_area,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "hectares": hectares,
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
@@ -2996,7 +2996,7 @@ class Landscape:
         return self._metric_sd(
             class_val,
             self._disjunct_core_area,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "hectares": hectares,
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
@@ -3031,7 +3031,7 @@ class Landscape:
         return self._metric_cv(
             class_val,
             self._disjunct_core_area,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
             },
@@ -3061,7 +3061,7 @@ class Landscape:
         return self._metric_mn(
             class_val,
             self.core_area_index,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
             },
@@ -3090,7 +3090,7 @@ class Landscape:
         return self._metric_am(
             class_val,
             self.core_area_index,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
             },
@@ -3119,7 +3119,7 @@ class Landscape:
         return self._metric_md(
             class_val,
             self.core_area_index,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
             },
@@ -3148,7 +3148,7 @@ class Landscape:
         return self._metric_ra(
             class_val,
             self.core_area_index,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
             },
@@ -3177,7 +3177,7 @@ class Landscape:
         return self._metric_sd(
             class_val,
             self.core_area_index,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
             },
@@ -3211,7 +3211,7 @@ class Landscape:
         return self._metric_cv(
             class_val,
             self.core_area_index,
-            patch_metric_method_kws={
+            patch_metric_method_kwargs={
                 "count_boundary": count_boundary,
                 "edge_depth": edge_depth,
             },
@@ -3766,7 +3766,7 @@ class Landscape:
     ###########################################################################
     # compute metrics data frames
 
-    def compute_patch_metrics_df(self, *, metrics=None, metrics_kws=None):
+    def compute_patch_metrics_df(self, *, metrics=None, metrics_kwargs=None):
         """Compute patch-level metrics.
 
         Parameters
@@ -3775,10 +3775,10 @@ class Landscape:
             A list-like of strings with the names of the metrics that should be
             computed. If `None`, all the implemented patch-level metrics will be
             computed.
-        metrics_kws : dict, default None
+        metrics_kwargs : dict, default None
             Dictionary mapping the keyword arguments (values) that should be passed to
             each metric method (key), e.g., to compute `area` in meters instead of
-            hectares, metric_kws should map the string 'area' (method name) to
+            hectares, metric_kwargs should map the string 'area' (method name) to
             {'hectares': False}. If `None`, each metric will be computed according to
             FRAGSTATS defaults.
 
@@ -3791,17 +3791,17 @@ class Landscape:
         if metrics is None:
             metrics = Landscape.PATCH_METRICS
 
-        if metrics_kws is None:
-            metrics_kws = {}
+        if metrics_kwargs is None:
+            metrics_kwargs = {}
 
         metrics_dfs = [self._patch_class_ser]
         for metric in metrics:
-            if metric in metrics_kws:
-                metric_kws = metrics_kws[metric]
+            if metric in metrics_kwargs:
+                metric_kwargs = metrics_kwargs[metric]
             else:
-                metric_kws = {}
+                metric_kwargs = {}
             try:
-                metric_val = getattr(self, metric)(**metric_kws)
+                metric_val = getattr(self, metric)(**metric_kwargs)
             except AttributeError as getattr_e:
                 raise ValueError(
                     "{metric} is not among {Landscape.PATCH_METRICS}"
@@ -3826,7 +3826,9 @@ class Landscape:
 
         return df
 
-    def compute_class_metrics_df(self, *, metrics=None, classes=None, metrics_kws=None):
+    def compute_class_metrics_df(
+        self, *, metrics=None, classes=None, metrics_kwargs=None
+    ):
         """Compute class-level metrics.
 
         Parameters
@@ -3838,11 +3840,11 @@ class Landscape:
         classes : list-like, optional
             A list-like of ints or strings with the class values that should be
             considered in the context of this analysis case.
-        metrics_kws : dict, optional
+        metrics_kwargs : dict, optional
             Dictionary mapping the keyword arguments (values) that should be passed to
             each metric method (key), e.g., to exclude the boundary from the computation
-            of `total_edge`, metric_kws should map the string 'total_edge' (method name)
-            to {'count_boundary': False}. If `None`, each metric will be computed
+            of `total_edge`, metric_kwargs should map the string 'total_edge' (method
+            name) to {'count_boundary': False}. If `None`, each metric will be computed
             according to FRAGSTATS defaults.
 
         Returns
@@ -3871,22 +3873,22 @@ class Landscape:
         if classes is None:
             classes = self.classes
 
-        if metrics_kws is None:
-            metrics_kws = {}
+        if metrics_kwargs is None:
+            metrics_kwargs = {}
 
         try:
             metrics_sers = []
             for metric in metrics:
-                if metric in metrics_kws:
-                    metric_kws = metrics_kws[metric]
+                if metric in metrics_kwargs:
+                    metric_kwargs = metrics_kwargs[metric]
                 else:
-                    metric_kws = {}
+                    metric_kwargs = {}
 
                 metrics_sers.append(
                     pd.Series(
                         {
                             class_val: getattr(self, metric)(
-                                class_val=class_val, **metric_kws
+                                class_val=class_val, **metric_kwargs
                             )
                             for class_val in classes
                         },
@@ -3910,7 +3912,7 @@ class Landscape:
 
         return df
 
-    def compute_landscape_metrics_df(self, *, metrics=None, metrics_kws=None):
+    def compute_landscape_metrics_df(self, *, metrics=None, metrics_kwargs=None):
         """Compute landscape-level metrics.
 
         Parameters
@@ -3919,11 +3921,11 @@ class Landscape:
             A list-like of strings with the names of the metrics that should be
             computed. If `None`, all the implemented landscape-level metrics will be
             computed.
-        metrics_kws : dict, optional
+        metrics_kwargs : dict, optional
             Dictionary mapping the keyword arguments (values) that should be passed to
             each metric method (key), e.g., to exclude the boundary from the computation
-            of `total_edge`, metric_kws should map the string 'total_edge' (method name)
-            to {'count_boundary': False}. If `None`, each metric will be computed
+            of `total_edge`, metric_kwargs should map the string 'total_edge' (method
+            name) to {'count_boundary': False}. If `None`, each metric will be computed
             according to FRAGSTATS defaults.
 
         Returns
@@ -3935,18 +3937,18 @@ class Landscape:
         if metrics is None:
             metrics = Landscape.LANDSCAPE_METRICS
 
-        if metrics_kws is None:
-            metrics_kws = {}
+        if metrics_kwargs is None:
+            metrics_kwargs = {}
 
         try:
             metrics_dict = {}
             for metric in metrics:
-                if metric in metrics_kws:
-                    metric_kws = metrics_kws[metric]
+                if metric in metrics_kwargs:
+                    metric_kwargs = metrics_kwargs[metric]
                 else:
-                    metric_kws = {}
+                    metric_kwargs = {}
 
-                metrics_dict[metric] = getattr(self, metric)(**metric_kws)
+                metrics_dict[metric] = getattr(self, metric)(**metric_kwargs)
 
         except AttributeError:
             raise ValueError(
@@ -3983,8 +3985,8 @@ class Landscape:
         ax=None,
         legend=False,
         figsize=None,
-        legend_kws=None,
-        **show_kws,
+        legend_kwargs=None,
+        **show_kwargs,
     ):
         """Plot the landscape with a categorical legend.
 
@@ -4000,9 +4002,9 @@ class Landscape:
             If `True`, display the legend.
         figsize : tuple of two numeric types, optional
             Size of the figure to create. Ignored if axis `ax` is provided.
-        legend_kws : optional
+        legend_kwargs : optional
             Keyword arguments to be passed to `matplotlib.axes.Axes.legend`.
-        **show_kws : optional
+        **show_kwargs : optional
             Keyword arguments to be passed to `rasterio.plot.show`.
 
         Returns
@@ -4029,7 +4031,7 @@ class Landscape:
             ax=ax,
             transform=self.transform,
             cmap=cmap,
-            **show_kws,
+            **show_kwargs,
         )
 
         if legend:
@@ -4042,8 +4044,8 @@ class Landscape:
                 for i, class_val in enumerate(self.classes)
             ]
             # put those patched as legend-handles into the legend
-            if legend_kws is None:
-                legend_kws = {}
-            ax.legend(handles=patches, **legend_kws)
+            if legend_kwargs is None:
+                legend_kwargs = {}
+            ax.legend(handles=patches, **legend_kwargs)
 
         return ax
