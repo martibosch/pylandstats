@@ -191,7 +191,7 @@ class TestLandscape(unittest.TestCase):
         self.assertTrue((ls.shape_index()["shape_index"] >= 1).all())
         _fractal_dimension_ser = ls.fractal_dimension()["fractal_dimension"]
         self.assertTrue((_fractal_dimension_ser <= 2).all())
-        # ACHTUNG: ugly hardcoded tolerance to correct for misterious errors in GitHub
+        # ACHTUNG: ugly hardcoded tolerance to correct for mysterious errors in GitHub
         # Actions with some Python versions
         self.assertTrue((_fractal_dimension_ser >= 1 - 1e-3).all())
         self.assertTrue((ls.core_area()["core_area"] >= 0).all())
@@ -433,7 +433,7 @@ class TestMultiLandscape(unittest.TestCase):
         self.assertRaises(TypeError, multilandscape.MultiLandscape)
 
         # test that if we init a MultiLandscape from filepaths, Landscape instances are
-        # automaticaly built
+        # automatically built
         ml = self.InstantiableMultiLandscape(
             self.landscape_fps, self.attribute_name, self.attribute_values
         )
@@ -590,7 +590,7 @@ class TestMultiLandscape(unittest.TestCase):
                 # present within the respective Landscape. If so, some metrics (e.g.,
                 # 'perimeter_area_ratio_mn') will be `nan`, both for the analysis with
                 # and without keyword arguments.
-                # For area and edge metrics, PyLandStats inteprets such `nan` values as
+                # For area and edge metrics, PyLandStats interprets such `nan` values as
                 # 0, which is why we need to include the equality in the comparison
                 if class_metrics.isnull().all():
                     self.assertTrue(class_metrics_kws.isnull().all())
@@ -600,7 +600,7 @@ class TestMultiLandscape(unittest.TestCase):
                         class_metrics_kws["total_area"],
                     )
                     # we need quite some tolerance because pixel resolutions in raster
-                    # files might be wierd float values, e.g., 99.13213 instead of 100
+                    # files might be weird float values, e.g., 99.13213 instead of 100
                     # (meters)
                     self.assertLessEqual(
                         class_metrics["total_edge"],
@@ -893,7 +893,7 @@ class TestZonaAlnalysis(unittest.TestCase):
         zone_nodata = 0
         zones = list(set(np.unique(self.label_arr)).difference({zone_nodata}))
         self.assertEqual(len(za), len(zones))
-        # test that Landscape instances are automaticaly built
+        # test that Landscape instances are automatically built
         for landscape in za.landscape_ser:
             self.assertIsInstance(landscape, pls.Landscape)
         # test that the zone index corresponds to the zone labels

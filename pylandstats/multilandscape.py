@@ -31,7 +31,7 @@ metrics_kws : dict, optional
 fillna : bool, optional
     Whether `NaN` values representing landscapes with no occurrences of patches of the
     provided class should be replaced by zero when appropriate, e.g., area and edge
-    metrics (no ocurrences mean zero area/edge). If the provided value is `None`
+    metrics (no occurrences mean zero area/edge). If the provided value is `None`
     (default), the value will be taken from `settings.CLASS_METRICS_DF_FILLNA`.
 
 Returns
@@ -109,7 +109,7 @@ class MultiLandscape(abc.ABC):
         )
 
     # fillna for metrics in class metrics dataframes. Since some classes might not
-    # apprear in some of the landscapes (e.g., zones or temporal snapshots without any
+    # appear in some of the landscapes (e.g., zones or temporal snapshots without any
     # pixel of a particular class type), they will appear as `NaN` in the data frame. We
     # can, however, infer the meaning of this situation for certain metrics, e.g,
     # non-occurence of a given class in a landscape means a number of patches, total
@@ -298,7 +298,7 @@ class MultiLandscape(abc.ABC):
         ax : matplotlib.axes.Axes
             Returns the `Axes` object with the plot drawn onto it.
         """
-        # TODO: metric_legend parameter acepting a set of str values indicating, e.g.,
+        # TODO: metric_legend parameter accepting a set of str values indicating, e.g.,
         # whether the metric label should appear as legend or as yaxis label
         # TODO: if we use seaborn in the future, we can use the pd.Series directly,
         # since its index corresponds to this SpatioTemporalAnalysis dates
@@ -372,7 +372,7 @@ class MultiLandscape(abc.ABC):
         """
         num_landscapes = len(self.landscape_ser)
 
-        # avoid alias/refrence issues
+        # avoid alias/reference issues
         if subplots_kws is None:
             _subplots_kws = {}
         else:

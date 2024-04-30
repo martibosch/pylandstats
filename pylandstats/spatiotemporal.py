@@ -17,7 +17,7 @@ __all__ = [
     "SpatioTemporalZonalGridAnalysis",
 ]
 
-_plot_metric_doc = """Plot the time series of the metric accross {zone_descr}s.
+_plot_metric_doc = """Plot the time series of the metric across {zone_descr}s.
 
 Parameters
 ----------
@@ -320,7 +320,7 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis, zonal.ZonalAnalysis):
         # end: compute metrics
 
         if "label" not in plot_kws:
-            # avoid alias/refrence issues
+            # avoid alias/reference issues
             _plot_kws = plot_kws.copy()
             for zone, zone_df in metric_df.groupby(level=0):
                 _plot_kws["label"] = zone
@@ -378,7 +378,7 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis, zonal.ZonalAnalysis):
         fig : matplotlib.figure.Figure
             The figure with its corresponding plots drawn into its axes.
         """
-        # avoid alias/refrence issues
+        # avoid alias/reference issues
         if subplots_kws is None:
             _subplots_kws = {}
         else:

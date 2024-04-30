@@ -28,7 +28,7 @@ Features
 
 * Compute pandas DataFrames of landscape metrics at the patch, class and landscape level
 * Analyze the spatiotemporal evolution of landscapes
-* Analyze landscape changes accross environmental gradients (zonal analysis)
+* Analyze landscape changes across environmental gradients (zonal analysis)
 
 Using PyLandStats
 -----------------

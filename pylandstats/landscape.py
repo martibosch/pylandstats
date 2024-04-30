@@ -220,7 +220,7 @@ class Landscape:
         self.nodata = nodata
         self.transform = transform
 
-        # set the neigbhor adjacency rule
+        # set the neighbor adjacency rule
         if neighborhood_rule is None:
             neighborhood_rule = settings.DEFAULT_NEIGHBORHOOD_RULE
         elif isinstance(neighborhood_rule, int):
@@ -826,7 +826,7 @@ class Landscape:
             class_val,
             patch_metric_method,
             patch_metric_method_kws,
-            lambda ser: ser.max() - ser.min(),
+            lambda metric_ser: metric_ser.max() - metric_ser.min(),
         )
 
     def _metric_sd(
@@ -1616,7 +1616,7 @@ class Landscape:
                             .drop(self.nodata, axis=1)
                         )
                         # `np.fill_diagonal` acts inplace, however `np.triu` returns a
-                        # copy so we do not need to worry about inadvently modfying
+                        # copy so we do not need to worry about inadvently modifying
                         # `self._adjacency_df`
                         np.fill_diagonal(adjacency_arr, 0)
                         total_edge += np.sum(adjacency_arr) * length
@@ -3329,7 +3329,7 @@ class Landscape:
         raise NotImplementedError
 
     def euclidean_nearest_neighbor_mn(self, *, class_val=None):
-        """Mean of the Euclidean nearest neigbhor distribution.
+        """Mean of the Euclidean nearest neighbor distribution.
 
         See also the documentation of `Landscape.euclidean_nearest_neighbor`.
 

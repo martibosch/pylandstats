@@ -89,3 +89,7 @@ version_files = [
 [tool.cibuildwheel]
 build = ["cp38-*", "cp39-*", "cp310-*", "cp311-*"]
 skip = "*-musllinux_i686"
+
+[tool.codespell]
+ignore-words-list = "te"
+skip = "CHANGELOG.md"

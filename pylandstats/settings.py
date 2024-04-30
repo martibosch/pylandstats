@@ -25,7 +25,7 @@ fragstats_abbrev_dict = {
     # ACHTUNG: the 'total_area' metric might be 'CA' or 'TA' in FRAGSTATS (depending on
     # whether the metric is computed at the class or landscape level respectively).
     # Nevertheless, considering the implementation/functioning of PyLandStats, making
-    # this disctinction in the abbreviations of 'total_area' might be arduous. To
+    # this distinction in the abbreviations of 'total_area' might be arduous. To
     # simplify, we will use 'TA' in all cases.
     "total_area": "TA",
     "proportion_of_landscape": "PLAND",
