@@ -19,6 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 requires-python = ">=3.8"
 dependencies = [
@@ -87,7 +88,7 @@ version_files = [
 ]
 
 [tool.cibuildwheel]
-build = ["cp38-*", "cp39-*", "cp310-*", "cp311-*"]
+build = ["cp38-*", "cp39-*", "cp310-*", "cp311-*", "cp312-*"]
 skip = "*-musllinux_i686"
 
 [tool.codespell]
