@@ -1,4 +1,5 @@
 """Spatio-temporal analysis."""
+
 import functools
 
 import matplotlib.pyplot as plt

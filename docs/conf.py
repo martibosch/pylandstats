@@ -1,4 +1,5 @@
 """Docs config."""
+
 import os
 import sys
 

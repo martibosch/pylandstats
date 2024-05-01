@@ -1,4 +1,5 @@
 """Multi-landscape analysis."""
+
 import abc
 import functools
 
@@ -181,7 +182,8 @@ class MultiLandscape(abc.ABC):
                     )
                     for i, df in zip(landscape_index, dfs)
                 ]
-            ).set_index(names, append=True)
+            )
+            .set_index(names, append=True)
             # only sort the first level, i.e., class val
             .sort_index(level="class_val")
         )

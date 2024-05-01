@@ -46,14 +46,14 @@ doc = ["m2r2", "pydata-sphinx-theme", "sphinx"]
 [tool.setuptools.packages.find]
 include = ["pylandstats", "pylandstats.*"]
 
-[tool.black]
-line-length = 88
-
 [tool.ruff]
-line-length = 88
 select = ["D", "E", "F", "I"]
+line-length = 88
 
-[tool.ruff.pydocstyle]
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
 [tool.ruff.isort]
