@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel", "numpy", "pythran", "transonic>=0.4.0"]
+requires = ["setuptools>=61.0", "wheel", "numpy", "pythran@git+https://github.com/serge-sans-paille/pythran@release/0.16.0", "transonic>=0.4.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
