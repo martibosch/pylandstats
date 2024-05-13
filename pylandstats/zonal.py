@@ -9,10 +9,20 @@ from rasterio import features, mask
 from shapely import geometry
 from shapely.geometry import base as geometry_base
 
+try:
+    from fiona import errors as fiona_errors
+except ImportError:
+    fiona_errors = None
+
 from . import multilandscape
 from .landscape import Landscape
 
 __all__ = ["ZonalAnalysis", "BufferAnalysis", "ZonalGridAnalysis"]
+
+ZONES_READ_ERRORS = [AttributeError, TypeError]
+if fiona_errors is not None:
+    ZONES_READ_ERRORS.append(fiona_errors.DriverError)
+ZONES_READ_ERRORS = tuple(ZONES_READ_ERRORS)
 
 _compute_zonal_statistics_gdf_doc = """
 Compute the zonal statistics geo-data frame over the landscape raster.
@@ -98,12 +108,10 @@ class ZonalAnalysis(multilandscape.MultiLandscape):
         # first, try to read the `zones` argument as a geo-data frame-like file
         try:
             zones = gpd.read_file(zones)
-        except (AttributeError, TypeError):
-            # for GeoDataFrame, GeoSeries, list-like or ndarrays, we will get
-            # "AttributeError: object has no attribute 'startswith'" in windows, fiona
-            # will try to read `masks` as a regular expression and raise a TypeError
-            # (see https://github.com/Toblerity/Fiona/blob/master/fiona/path.py). we let
-            # this continue and try to read the `zones` argument differently below
+        except ZONES_READ_ERRORS:
+            # Depending on the system and installed libraries, geopandas may raise an
+            # `AttributeError`, `TypeError` or `fiona.errors.DriverError`. we let this
+            # continue and try to read the `zones` argument differently below
             pass
 
         with rio.open(landscape_filepath) as src:
