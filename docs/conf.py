@@ -21,11 +21,11 @@ release = __version__
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "m2r2",
     "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx.ext.imgmath",
+    "myst_nb",
 ]
 
 # List of patterns, relative to source directory, that match files and
@@ -56,6 +56,7 @@ html_theme_options = {
     "github_url": "https://github.com/martibosch/pylandstats",
     "twitter_url": "https://twitter.com/mortybosch",
     "pygment_light_style": "tango",
+    "navigation_with_keys": False,
 }
 
 # exclude patterns from sphinx-build

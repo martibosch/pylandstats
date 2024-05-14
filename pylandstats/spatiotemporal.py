@@ -76,13 +76,13 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
         neighborhood_rule : {'8', '4'}, optional
             Neighborhood rule to determine patch adjacencies, i.e: '8' (queen's
             case/Moore neighborhood) or '4' (rook's case/Von Neumann neighborhood).
-            Ignored if the passed-in landscapes are `Landscape` instances. If no value
+            Ignored if the passed-in landscapes are ``Landscape`` instances. If no value
             is provided and the passed-in landscapes are file-like objects or paths, the
             default value set in `settings.DEFAULT_NEIGHBORHOOD_RULE` will be taken.
         landscape_kwargs : dict, optional
             Other keyword arguments to be passed to the instantiation of
-           `pylandstats.Landscape` for each element of `landscapes`. Ignored if the
-            elements of `landscapes` are already instances of `pylandstats.Landcape`.
+            ``pylandstats.Landscape`` for each element of ``landscapes``. Ignored if the
+            elements of ``landscapes`` are already instances of ``pylandstats.Landcape``.
         """
         if dates is None:
             dates = ["t{}".format(i) for i in range(len(landscapes))]
