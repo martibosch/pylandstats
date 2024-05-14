@@ -15,13 +15,12 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "black",
     "dask",
@@ -32,7 +31,7 @@ dependencies = [
     "pandas >= 0.23",
     "rasterio >= 1.0.0",
     "scipy >= 1.0.0",
-    "transonic >= 0.4.0"
+    "transonic >= 0.6.4",
 ]
 
 [project.urls]
@@ -40,8 +39,6 @@ Repository = "https://github.com/martibosch/pylandstats"
 
 [project.optional-dependencies]
 test = ["black", "coverage[toml]", "pytest", "pytest-cov", "python-dotenv", "ruff"]
-dev = ["build", "commitizen", "pre-commit", "pip", "toml", "tox", "twine"]
-doc = ["m2r2", "pydata-sphinx-theme", "sphinx"]
 
 [tool.setuptools.packages.find]
 include = ["pylandstats", "pylandstats.*"]
@@ -94,3 +91,10 @@ skip = "*-musllinux_i686"
 [tool.codespell]
 ignore-words-list = "te"
 skip = "CHANGELOG.md"
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.dev-dependencies]
+dev = ["build", "commitizen", "pre-commit", "pip", "toml", "tox", "twine"]
+doc = ["m2r2", "pydata-sphinx-theme", "sphinx"]
