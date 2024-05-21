@@ -1,5 +1,54 @@
 # Change log
 
+## v3.0.0rc2 (2024-05-21)
+
+### :boom: BREAKING CHANGES
+
+- due to [`bbef272`](https://github.com/martibosch/pylandstats/commit/bbef272ca515193410267dbec6d1b0e6c9a73b9d) - rename kws -> kwargs *(commit by @martibosch)*:
+
+  rename kws -> kwargs
+
+### :sparkles: New Features
+
+- [`2dafaaf`](https://github.com/martibosch/pylandstats/commit/2dafaaff35e3caffae52b8ed4507818c54e1a13a) - use dask to compute metrics' dataframes in parallel *(commit by @martibosch)*
+- [`a47f333`](https://github.com/martibosch/pylandstats/commit/a47f333294b311b02fafd54131ca72758559ce03) - multilandscape.landscape_ser, DRY compute metrics dfs, dask *(commit by @martibosch)*
+- [`d480243`](https://github.com/martibosch/pylandstats/commit/d480243c43326fe831bb354a9d4d17fcba47d1e9) - single-class (or landscape-level) zonal gdf *(commit by @martibosch)*
+
+### :bug: Bug Fixes
+
+- [`ea7cde5`](https://github.com/martibosch/pylandstats/commit/ea7cde54e9dea2539abdae0356a6d02384f0e606) - missing fragstats abbrevs for core (also use f-strings) *(commit by @martibosch)*
+- [`d074f32`](https://github.com/martibosch/pylandstats/commit/d074f32629f7837445d5a7dae7afe6e52940d507) - len in SpatioTemporalZonalAnalysis *(commit by @martibosch)*
+- [`1ce4a4e`](https://github.com/martibosch/pylandstats/commit/1ce4a4e764a0ff10b25cb066dc8bf26a7676ae97) - min two classes warning for entropy (credits to @kareed1) *(commit by @martibosch)*
+- [`72c1cc9`](https://github.com/martibosch/pylandstats/commit/72c1cc9e90dc093eb90edff4fc603167be81f551) - except zerodivisionerror in disjunct_core_area_am *(commit by @martibosch)*
+- [`6fa816c`](https://github.com/martibosch/pylandstats/commit/6fa816ccd79c948b02df3e7d77ba672cf52cb952) - catch fiona DriverError for `zones` when fiona is installed *(commit by @martibosch)*
+
+### :recycle: Refactors
+
+- [`bbef272`](https://github.com/martibosch/pylandstats/commit/bbef272ca515193410267dbec6d1b0e6c9a73b9d) - rename kws -> kwargs *(commit by @martibosch)*
+
+## v3.0.0rc1 (2023-11-20)
+
+### Feat
+
+- core area metrics (#45)
+
+### Fix
+
+- apply `to_numeric` in stza compute_class_metrics_df
+- fillna with 0 for core area metrics
+
+## v3.0.0rc0 (2023-09-11)
+
+### Feat
+
+- 3.0.0rc0 (#40)
+
+### Fix
+
+- manual cbuildwheel steps (until action is in marketplace) (#28)
+- single quotes in release.yml (see actions/runner/issues/866) (#27)
+- manage dtype for adj/reclassif arrays; fix reclassif arr init
+
 ## 2.4.2 (19/11/2021)
 
 - fix sum(level) -> groupby(level).sum (pandas deprecation)
