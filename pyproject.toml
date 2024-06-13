@@ -92,6 +92,7 @@ skip = "*-musllinux_i686"
 ignore-words-list = "te"
 skip = "CHANGELOG.md"
 
+
 [tool.pdm]
 distribution = true
 ignore_package_warnings = ["ipython"]
@@ -99,3 +100,12 @@ ignore_package_warnings = ["ipython"]
 [tool.pdm.dev-dependencies]
 dev = ["build", "commitizen", "pre-commit", "pip", "toml", "tox", "twine"]
 doc = ["pydata-sphinx-theme", "sphinx", "myst-nb",]
+
+[tool.pdm.options]
+lock = ["-G", ":all"]
+# for Meson
+# sync = ["--no-isolation"]
+# install = ["--no-isolation"]
+
+[tool.pdm.scripts]
+test = "pytest tests"
