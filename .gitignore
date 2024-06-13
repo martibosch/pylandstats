@@ -113,6 +113,7 @@ output/
 # Transonic
 __pythran__
 __numba__
+__python__
 
 # PDM
 .pdm-python

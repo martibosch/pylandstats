@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel", "numpy", "pythran>=0.16.0", "transonic>=0.4.0"]
-build-backend = "setuptools.build_meta"
+requires = ["meson-python", "numpy", "pythran>=0.16.1", "transonic>=0.4.0"]
+build-backend = 'mesonpy'
 
 [project]
 name = "pylandstats"
@@ -90,7 +90,7 @@ skip = "*-musllinux_i686"
 
 [tool.codespell]
 ignore-words-list = "te"
-skip = "CHANGELOG.md"
+skip = "CHANGELOG.md,pdm.lock"
 
 
 [tool.pdm]
@@ -98,14 +98,21 @@ distribution = true
 ignore_package_warnings = ["ipython"]
 
 [tool.pdm.dev-dependencies]
-dev = ["build", "commitizen", "pre-commit", "pip", "toml", "tox", "twine"]
-doc = ["pydata-sphinx-theme", "sphinx", "myst-nb",]
+build = [
+    "meson-python",
+    "numpy",
+    "transonic>=0.6.2",
+    "pythran>=0.16.1",
+    "ninja",
+]
+dev = ["commitizen", "pre-commit", "toml", "ruff"]
+doc = ["pydata-sphinx-theme", "sphinx", "myst-nb", "pip"]
 
 [tool.pdm.options]
 lock = ["-G", ":all"]
 # for Meson
-# sync = ["--no-isolation"]
-# install = ["--no-isolation"]
+sync = ["--clean", "--no-isolation"]
+install = ["--clean", "--no-isolation"]
 
 [tool.pdm.scripts]
 test = "pytest tests"
