@@ -1,6 +1,6 @@
 [build-system]
 requires = ["meson-python", "numpy", "pythran>=0.16.1", "transonic>=0.4.0"]
-build-backend = 'mesonpy'
+build-backend = "mesonpy"
 
 [project]
 name = "pylandstats"
