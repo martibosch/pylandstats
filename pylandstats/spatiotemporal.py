@@ -82,7 +82,8 @@ class SpatioTemporalAnalysis(multilandscape.MultiLandscape):
         landscape_kwargs : dict, optional
             Other keyword arguments to be passed to the instantiation of
             ``pylandstats.Landscape`` for each element of ``landscapes``. Ignored if the
-            elements of ``landscapes`` are already instances of ``pylandstats.Landcape``.
+            elements of ``landscapes`` are already instances of
+            ``pylandstats.Landcape``.
         """
         if dates is None:
             dates = ["t{}".format(i) for i in range(len(landscapes))]

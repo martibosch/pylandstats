@@ -44,19 +44,21 @@ test = ["black", "coverage[toml]", "pytest", "pytest-cov", "python-dotenv", "ruf
 include = ["pylandstats", "pylandstats.*"]
 
 [tool.ruff]
-select = ["D", "E", "F", "I"]
 line-length = 88
 
 [tool.ruff.format]
 docstring-code-format = true
 
+[tool.ruff.lint]
+select = ["D", "E", "F", "I"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["pylandstats"]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["F403"]
 "pylandstats/landscape.py" = ["D401"]  # for metric docstrings
 "tests/test_pylandstats.py" = ["D"]
