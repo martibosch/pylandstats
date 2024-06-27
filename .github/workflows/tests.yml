@@ -35,12 +35,10 @@ jobs:
             pip
 
       - name: install dependencies
-        run: pip install tox tox-gh-actions
+        run: pip install pdm nox
 
-      - name: test with tox
-        run: tox
-        env:
-          CONDA_EXE: mamba
+      - name: test with nox
+        run: nox
 
       - name: upload coverage reports to Codecov
         uses: codecov/codecov-action@v3

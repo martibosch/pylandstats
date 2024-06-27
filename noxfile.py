@@ -40,12 +40,13 @@ def wheel(session):
     session.run("twine", "check", "dist/*")
 
 
-@nox.session
+@nox.session(venv_backend="mamba|micromamba|conda")
 def test(session):
     """Run the test in a Nox environment."""
     command = "pdm sync --clean --prod -G test --no-self"
     session.run_install(*command.split(), external=True)
 
+    session.conda_install("gdal>=3.3", channel=["conda-forge"])
     session.install(".", "--no-deps", external=True)
 
     session.run(
