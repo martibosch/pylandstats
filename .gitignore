@@ -117,3 +117,4 @@ __python__
 
 # PDM
 .pdm-python
+.nox
