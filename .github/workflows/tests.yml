@@ -37,8 +37,13 @@ jobs:
       - name: install dependencies
         run: pip install pdm nox
 
+      - name: Build wheel
+        run: |
+          nox -s wheel
+
       - name: test with nox
-        run: nox
+        run: |
+          nox --force-python ${{ matrix.python-version }} -s test
 
       - name: upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
