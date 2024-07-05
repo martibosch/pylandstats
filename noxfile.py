@@ -46,7 +46,7 @@ def test(session):
     command = "pdm sync --clean --prod -G test --no-self"
     session.run_install(*command.split(), external=True)
 
-    session.conda_install("gdal>=3.3", channel=["conda-forge"])
+    # session.conda_install("gdal>=3.3", channel=["conda-forge"])
     session.install(".", "--no-deps", external=True)
 
     session.run(

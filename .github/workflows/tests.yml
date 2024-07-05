@@ -33,6 +33,7 @@ jobs:
           create-args: >-
             python=${{ matrix.python-version }}
             pip
+            gdal>=3.3
 
       - name: install dependencies
         run: pip install pdm nox
