@@ -13,6 +13,11 @@ try:
     from fiona import errors as fiona_errors
 except ImportError:
     fiona_errors = None
+try:
+    from pyogrio import errors as pyogrio_errors
+except ImportError:
+    pyogrio_errors = None
+
 
 from . import multilandscape
 from .landscape import Landscape
@@ -22,6 +27,8 @@ __all__ = ["ZonalAnalysis", "BufferAnalysis", "ZonalGridAnalysis"]
 ZONES_READ_ERRORS = [AttributeError, TypeError]
 if fiona_errors is not None:
     ZONES_READ_ERRORS.append(fiona_errors.DriverError)
+if pyogrio_errors is not None:
+    ZONES_READ_ERRORS.append(pyogrio_errors.DataSourceError)
 ZONES_READ_ERRORS = tuple(ZONES_READ_ERRORS)
 
 _compute_zonal_statistics_gdf_doc = """
