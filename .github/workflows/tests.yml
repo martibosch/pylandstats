@@ -47,7 +47,7 @@ jobs:
           nox --force-python ${{ matrix.python-version }} -s test
 
       - name: upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
 
       - name: Test notebooks
         run: |
