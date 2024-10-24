@@ -1,5 +1,11 @@
 # Change log
 
+## \[v3.0.0\] - 2024-10-24
+
+### :sparkles: New Features
+
+- [`913fb06`](https://github.com/martibosch/pylandstats/commit/913fb06afb95ca66ef23331665b00b4af30653c7) - catch pyogrio errors when reading zones for geopandas>1 *(commit by [@martibosch](https://github.com/martibosch))*
+
 ## v3.0.0rc2 (2024-05-21)
 
 ### :boom: BREAKING CHANGES
@@ -214,3 +220,4 @@
 ## 0.1.0 (22/01/2019)
 
 - initial release
+  \[v3.0.0\]: https://github.com/martibosch/pylandstats/compare/v3.0.0rc2...v3.0.0
