@@ -38,7 +38,9 @@ dependencies = [
 Repository = "https://github.com/martibosch/pylandstats"
 
 [project.optional-dependencies]
-test = ["black", "coverage[toml]", "pytest", "pytest-cov", "python-dotenv", "ruff"]
+test = ["coverage[toml]", "pytest", "pytest-cov", "ruff"]
+dev = ["build", "commitizen", "nox", "pre-commit", "pip", "toml", "twine"]
+doc = ["m2r2", "pydata-sphinx-theme", "sphinx"]
 
 [tool.setuptools.packages.find]
 include = ["pylandstats", "pylandstats.*"]
