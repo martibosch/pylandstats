@@ -48,7 +48,7 @@ repos:
       - id: pyupgrade
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.3.0
+    rev: 2fa406f
     hooks:
       - id: codespell
         additional_dependencies:
