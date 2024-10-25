@@ -4,7 +4,7 @@ build-backend = "mesonpy"
 
 [project]
 name = "pylandstats"
-version = "3.0.0"
+version = "3.0.1"
 description = "Computing landscape metrics in the Python ecosystem."
 readme = "README.md"
 authors = [
