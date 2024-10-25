@@ -22,7 +22,6 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "black",
     "dask",
     "geopandas",
     "matplotlib >= 2.2",
