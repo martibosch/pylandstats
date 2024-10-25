@@ -1,5 +1,11 @@
 # Change log
 
+## \[v3.0.1\] - 2024-10-25
+
+### :bug: Bug Fixes
+
+- [`d1f7d37`](https://github.com/martibosch/pylandstats/commit/d1f7d378fa8edd9e9097285e5c358d2c0f074139) - drop stale black requirement *(commit by [@martibosch](https://github.com/martibosch))*
+
 ## \[v3.0.0\] - 2024-10-24
 
 ### :sparkles: New Features
@@ -221,3 +227,4 @@
 
 - initial release
   \[v3.0.0\]: https://github.com/martibosch/pylandstats/compare/v3.0.0rc2...v3.0.0
+  \[v3.0.1\]: https://github.com/martibosch/pylandstats/compare/v3.0.0...v3.0.1
