@@ -19,8 +19,8 @@ except ImportError:
     pyogrio_errors = None
 
 
-from . import multilandscape
-from .landscape import Landscape
+from pylandstats import multilandscape
+from pylandstats.landscape import Landscape
 
 __all__ = ["ZonalAnalysis", "BufferAnalysis", "ZonalGridAnalysis"]
 

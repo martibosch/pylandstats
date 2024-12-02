@@ -1,7 +1,6 @@
 """Landscape analysis."""
 
 import functools
-import platform
 import warnings
 
 import matplotlib.patches as mpatches
@@ -9,18 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import rasterio as rio
-import transonic
 from rasterio import plot
 from scipy import ndimage, spatial, stats
 
-from . import settings
-
-if platform.system() == "Windows":
-    backend = "numba"
-else:
-    backend = "pythran"
-
-transonic.set_backend_for_this_module(backend)
+from pylandstats import settings
+from pylandstats.adjacency import compute_adjacency_arr
 
 __all__ = ["Landscape"]
 
@@ -34,60 +26,6 @@ NEIGHBORHOOD_KERNEL_DICT = {
 
 # type definitions
 ADJ_ARR_DTYPE = np.uint32
-# define type annotations outside signature to avoid ForwardAnnotationSyntaxError
-# see https://github.com/PyCQA/pyflakes/issues/542
-AdjacencyArray = transonic.Array[ADJ_ARR_DTYPE, "2d"]
-
-
-@transonic.boost
-def compute_adjacency_arr(padded_arr: AdjacencyArray, num_classes: "int"):
-    # flat-array approach to pixel adjacency from link below:
-    # https://ilovesymposia.com/2016/12/20/numba-in-the-real-world/
-    # the first axis of `adjacency_arr` is of fixed size of 2 and serves to distinguish
-    # between vertical and horizontal adjacencies (we could also use a tuple of two 2-D
-    # arrays)
-    # adjacency_arr = np.zeros((2, num_classes + 1, num_classes + 1),
-    #                          dtype=np.uint32)
-    num_cols_adjacency = num_classes + 1
-    horizontal_adjacency_arr = np.zeros(
-        num_cols_adjacency * num_cols_adjacency, dtype=ADJ_ARR_DTYPE
-    )
-    vertical_adjacency_arr = np.zeros(
-        num_cols_adjacency * num_cols_adjacency, dtype=ADJ_ARR_DTYPE
-    )
-    num_cols_pixel = padded_arr.shape[1]
-    flat_arr = padded_arr.ravel()
-    # steps_to_neighbors as argument to distinguish between vertical/horizontal
-    # adjacencies
-    # steps_to_neighbors = [1, num_cols, -1, -num_cols]
-    horizontal_neighbors = [1, -1]
-    vertical_neighbors = [num_cols_pixel, -num_cols_pixel]
-    start = num_cols_pixel + 1
-    end = len(flat_arr) - start
-    for i in range(start, end):
-        class_i = flat_arr[i]
-        # class_left = flat_arr[i - 1]
-        # class_right = flat_arr[i + 1]
-        # class_above = flat_arr[i - num_cols]
-        # class_below = flat_arr[i + num_cols]
-        # adjacency_arr[0, class_i, class_left] += 1
-        # adjacency_arr[0, class_i, class_right] += 1
-        # adjacency_arr[1, class_i, class_above] += 1
-        # adjacency_arr[1, class_i, class_below] += 1
-        for neighbor in horizontal_neighbors:
-            # adjacency_arr[0, class_i, flat_arr[i + neighbor]] += 1
-            horizontal_adjacency_arr[
-                class_i + num_cols_adjacency * flat_arr[i + neighbor]
-            ] += 1
-        for neighbor in vertical_neighbors:
-            # adjacency_arr[1, class_i, flat_arr[i + neighbor]] += 1
-            vertical_adjacency_arr[
-                class_i + num_cols_adjacency * flat_arr[i + neighbor]
-            ] += 1
-
-    return np.stack((horizontal_adjacency_arr, vertical_adjacency_arr)).reshape(
-        (2, num_cols_adjacency, num_cols_adjacency)
-    )
 
 
 def compute_core_label_arr(label_arr, count_boundary, edge_depth):
@@ -689,9 +627,7 @@ class Landscape:
             )
 
             # compute the adjacency array
-            adjacency_arr = compute_adjacency_arr(
-                padded_arr, num_classes
-            )  # .sum(axis=0)
+            adjacency_arr = compute_adjacency_arr(padded_arr, num_classes)
 
             # put the adjacency array in the form of a pandas DataFrame
             adjacency_cols = np.concatenate([self.classes, [self.nodata]])

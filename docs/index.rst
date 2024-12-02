@@ -18,7 +18,6 @@ Open-source library to compute landscape metrics in the Python ecosystem (NumPy,
    :maxdepth: 1
    :caption: Development:
 
-   dev-install
    changelog
    contributing
 
