@@ -1,6 +1,6 @@
 [build-system]
-requires = ["meson-python", "numpy", "pythran>=0.16.1", "transonic>=0.4.0"]
-build-backend = "mesonpy"
+requires = ["setuptools>=61.0", "wheel", "cython", "numpy"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "pylandstats"
@@ -25,12 +25,10 @@ dependencies = [
     "dask",
     "geopandas",
     "matplotlib >= 2.2",
-    "numba ; platform_system == 'Windows'",
     "numpy >= 1.15",
     "pandas >= 0.23",
     "rasterio >= 1.0.0",
     "scipy >= 1.0.0",
-    "transonic >= 0.6.4",
 ]
 
 [project.urls]
@@ -40,6 +38,11 @@ Repository = "https://github.com/martibosch/pylandstats"
 test = ["coverage[toml]", "pytest", "pytest-cov", "ruff"]
 dev = ["build", "commitizen", "nox", "pre-commit", "pip", "toml", "twine"]
 doc = ["m2r2", "pydata-sphinx-theme", "sphinx"]
+
+# [tool.setuptools]
+# ext-modules = [
+#     {name="adjacency", sources=["pylandstats/adjacency.pyx"]}
+# ]
 
 [tool.setuptools.packages.find]
 include = ["pylandstats", "pylandstats.*"]
@@ -57,7 +60,7 @@ select = ["D", "E", "F", "I"]
 convention = "numpy"
 
 [tool.ruff.lint.isort]
-known-first-party = ["pylandstats"]
+known-first-party = ["adjacency", "pylandstats"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["F403"]
@@ -94,28 +97,3 @@ skip = "*-musllinux_i686"
 [tool.codespell]
 ignore-words-list = "te"
 skip = "CHANGELOG.md,pdm.lock"
-
-
-[tool.pdm]
-distribution = true
-ignore_package_warnings = ["ipython"]
-
-[tool.pdm.dev-dependencies]
-build = [
-    "meson-python",
-    "numpy",
-    "transonic>=0.6.2",
-    "pythran>=0.16.1",
-    "ninja",
-]
-dev = ["commitizen", "pre-commit", "toml", "ruff"]
-doc = ["pydata-sphinx-theme", "sphinx", "myst-nb", "pip"]
-
-[tool.pdm.options]
-lock = ["-G", ":all"]
-# for Meson
-sync = ["--clean", "--no-isolation"]
-install = ["--clean", "--no-isolation"]
-
-[tool.pdm.scripts]
-test = "pytest tests"
