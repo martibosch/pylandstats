@@ -19,6 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",    
 ]
 requires-python = ">=3.9"
 dependencies = [
@@ -91,7 +92,7 @@ version_files = [
 ]
 
 [tool.cibuildwheel]
-build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*"]
+build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
 skip = "*-musllinux_i686"
 
 [tool.codespell]
@@ -105,6 +106,7 @@ envlist = [
     "py310",
     "py311",
     "py312",
+    "py313",    
 ]
 isolated_build = true
 requires = [
@@ -122,8 +124,11 @@ requires = [
     "py311",
 ]
 "3.12" = [
-    "lint",
     "py312",
+]
+"3.13" = [
+    "lint",
+    "py313",
 ]
 
 [tool.tox.testenv]
