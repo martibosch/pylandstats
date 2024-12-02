@@ -1,6 +1,6 @@
 [build-system]
-requires = ["meson-python", "numpy", "pythran>=0.16.1", "transonic>=0.4.0"]
-build-backend = "mesonpy"
+requires = ["setuptools>=74.1.0", "wheel", "cython", "numpy"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "pylandstats"
@@ -19,18 +19,17 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 requires-python = ">=3.9"
 dependencies = [
     "dask",
     "geopandas",
     "matplotlib >= 2.2",
-    "numba ; platform_system == 'Windows'",
     "numpy >= 1.15",
     "pandas >= 0.23",
     "rasterio >= 1.0.0",
     "scipy >= 1.0.0",
-    "transonic >= 0.6.4",
 ]
 
 [project.urls]
@@ -38,8 +37,13 @@ Repository = "https://github.com/martibosch/pylandstats"
 
 [project.optional-dependencies]
 test = ["coverage[toml]", "pytest", "pytest-cov", "ruff"]
-dev = ["build", "commitizen", "nox", "pre-commit", "pip", "toml", "twine"]
+dev = ["build", "commitizen", "pre-commit", "pip", "toml", "tox", "twine"]
 doc = ["m2r2", "pydata-sphinx-theme", "sphinx"]
+
+# [tool.setuptools]
+# ext-modules = [
+#     {name="adjacency", sources=["pylandstats/adjacency.pyx"]}
+# ]
 
 [tool.setuptools.packages.find]
 include = ["pylandstats", "pylandstats.*"]
@@ -87,35 +91,72 @@ version_files = [
     "pyproject.toml:version"
 ]
 
+
 [tool.cibuildwheel]
-build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*"]
+build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
 skip = "*-musllinux_i686"
 
 [tool.codespell]
 ignore-words-list = "te"
-skip = "CHANGELOG.md,pdm.lock"
+skip = "CHANGELOG.md"
 
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
 
-[tool.pdm]
-distribution = true
-ignore_package_warnings = ["ipython"]
-
-[tool.pdm.dev-dependencies]
-build = [
-    "meson-python",
-    "numpy",
-    "transonic>=0.6.2",
-    "pythran>=0.16.1",
-    "ninja",
+[tool.tox]
+env_list = [
+    "lint",
+    "py39",
+    "py310",
+    "py311",
+    "py312",
+    "py313",
 ]
-dev = ["commitizen", "pre-commit", "toml", "ruff"]
-doc = ["pydata-sphinx-theme", "sphinx", "myst-nb", "pip"]
+requires = [
+    "tox>=4.19",
+]
 
-[tool.pdm.options]
-lock = ["-G", ":all"]
-# for Meson
-sync = ["--clean", "--no-isolation"]
-install = ["--clean", "--no-isolation"]
+[tool.tox.gh.python]
+"3.13" = ["3.13", "lint"]
+"3.12" = ["3.12"]
+"3.11" = ["3.11"]
+"3.10" = ["3.10"]
+"3.9" = ["3.9"]
 
-[tool.pdm.scripts]
-test = "pytest tests"
+[tool.tox.env_run_base]
+commands = [[
+    "pytest",
+    "-s",
+    "--cov=pylandstats",
+    "--cov-append",
+    "--cov-report=xml",
+    "--cov-report",
+    "term-missing",
+    "tests",
+]]
+conda_deps = [
+    "gdal>=3.3",
+]
+extras = [
+    "test",
+]
+whitelist_externals = [
+    "pytest",
+]
+
+[tool.tox.env.lint]
+commands = [[
+    ["python", "-m", "build"],
+    ["sphinx-build", "docs", "docs/_build"],
+    ["twine", "check", "dist/*"],
+]]
+extras = [
+    "dev",
+    "doc",
+    "test",
+]
+whitelist_externals = [
+    "build",
+    "sphinx-build",
+    "twine",
+]

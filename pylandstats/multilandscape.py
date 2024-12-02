@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 from dask import diagnostics
 
-from . import settings
-from .landscape import Landscape
+from pylandstats import settings
+from pylandstats.landscape import Landscape
 
 _compute_class_metrics_df_doc = """
 Compute the data frame of class-level metrics, which is {index_descr}.

@@ -8,8 +8,8 @@ import pandas as pd
 import rasterio as rio
 from rasterio import mask
 
-from . import multilandscape, settings, zonal
-from .landscape import Landscape
+from pylandstats import multilandscape, settings, zonal
+from pylandstats.landscape import Landscape
 
 __all__ = [
     "SpatioTemporalAnalysis",
