@@ -96,4 +96,67 @@ skip = "*-musllinux_i686"
 
 [tool.codespell]
 ignore-words-list = "te"
-skip = "CHANGELOG.md,pdm.lock"
+skip = "CHANGELOG.md"
+
+[tool.tox]
+envlist = [
+    "lint",
+    "py39",
+    "py310",
+    "py311",
+    "py312",
+]
+isolated_build = true
+requires = [
+    "tox>=4.19",
+]
+
+[tool.tox.gh-actions.python]
+"3.9" = [
+    "py39",
+]
+"3.10" = [
+    "py310",
+]
+"3.11" = [
+    "py311",
+]
+"3.12" = [
+    "lint",
+    "py312",
+]
+
+[tool.tox.testenv]
+commands = [
+    "pytest -s --cov=pylandstats --cov-append --cov-report=xml --cov-report term-missing tests",
+]
+conda_deps = [
+    "gdal>=3.3",
+]
+extras = [
+    "test",
+]
+whitelist_externals = [
+    "pytest",
+]
+
+[tool.tox.testenv.lint]
+commands = [
+    "python -m build",
+    "sphinx-build docs docs/_build",
+    "twine check dist/*",
+]
+extras = [
+    "dev",
+    "doc",
+    "test",
+]
+whitelist_externals = [
+    "build",
+    "sphinx-build",
+    "twine",
+]
+
+[tool.tox.testenv.setenv]
+PYTHONPATH = "{toxinidir}"
+PYTHONWARNINGS = "ignore"

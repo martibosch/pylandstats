@@ -36,15 +36,12 @@ jobs:
             gdal>=3.3
 
       - name: install dependencies
-        run: pip install pdm nox
+        run: pip install tox tox-gh-actions
 
-      - name: Build wheel
-        run: |
-          nox -s wheel
-
-      - name: test with nox
-        run: |
-          nox --force-python ${{ matrix.python-version }} -s test
+      - name: test with tox
+        run: tox
+        env:
+          CONDA_EXE: mamba
 
       - name: upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
