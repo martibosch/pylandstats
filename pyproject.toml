@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=74.1.0", "wheel", "cython", "numpy"]
+requires = ["setuptools>=74.1.0", "setuptools_scm>=8", "wheel", "cython", "numpy"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pylandstats"
-version = "3.0.1"
+dynamic = ["version"]
 description = "Computing landscape metrics in the Python ecosystem."
 readme = "README.md"
 authors = [
@@ -47,6 +47,8 @@ doc = ["m2r2", "pydata-sphinx-theme", "sphinx"]
 
 [tool.setuptools.packages.find]
 include = ["pylandstats", "pylandstats.*"]
+
+[tool.setuptools_scm]
 
 [tool.ruff]
 line-length = 88
