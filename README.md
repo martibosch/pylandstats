@@ -104,7 +104,7 @@ $ pip install -e .
 ## Acknowledgments
 
 - The computation of the adjacency matrix in [transonic](https://github.com/fluiddyn/transonic) has been implemented by Pierre Augier ([paugier](https://github.com/paugier))
-- Several information theory-based metrics from Nowosad and Stepinski \[1\] were added by [achennu](https://github.com/achennu)
+- Several information theory-based metrics from Nowosad and Stepinski [1] were added by [achennu](https://github.com/achennu)
 - With the support of the École Polytechnique Fédérale de Lausanne (EPFL)
 - The Corine Land Cover datasets used for the test datasets were produced with funding by the European Union
 
