@@ -1,6 +1,6 @@
 [build-system]
-requires = ["meson-python", "numpy", "pythran>=0.16.1", "transonic>=0.4.0"]
-build-backend = "mesonpy"
+requires = ["setuptools>=74.1.0", "wheel", "cython", "numpy"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "pylandstats"
@@ -19,18 +19,17 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 requires-python = ">=3.9"
 dependencies = [
     "dask",
     "geopandas",
     "matplotlib >= 2.2",
-    "numba ; platform_system == 'Windows'",
     "numpy >= 1.15",
     "pandas >= 0.23",
     "rasterio >= 1.0.0",
     "scipy >= 1.0.0",
-    "transonic >= 0.6.4",
 ]
 
 [project.urls]
@@ -40,6 +39,11 @@ Repository = "https://github.com/martibosch/pylandstats"
 test = ["coverage[toml]", "pytest", "pytest-cov", "ruff"]
 dev = ["build", "commitizen", "nox", "pre-commit", "pip", "toml", "twine"]
 doc = ["m2r2", "pydata-sphinx-theme", "sphinx"]
+
+# [tool.setuptools]
+# ext-modules = [
+#     {name="adjacency", sources=["pylandstats/adjacency.pyx"]}
+# ]
 
 [tool.setuptools.packages.find]
 include = ["pylandstats", "pylandstats.*"]
@@ -88,34 +92,14 @@ version_files = [
 ]
 
 [tool.cibuildwheel]
-build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*"]
+build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
 skip = "*-musllinux_i686"
 
 [tool.codespell]
 ignore-words-list = "te"
-skip = "CHANGELOG.md,pdm.lock"
+skip = "CHANGELOG.md"
 
-
-[tool.pdm]
-distribution = true
-ignore_package_warnings = ["ipython"]
-
-[tool.pdm.dev-dependencies]
-build = [
-    "meson-python",
-    "numpy",
-    "transonic>=0.6.2",
-    "pythran>=0.16.1",
-    "ninja",
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
 ]
-dev = ["commitizen", "pre-commit", "toml", "ruff"]
-doc = ["pydata-sphinx-theme", "sphinx", "myst-nb", "pip"]
-
-[tool.pdm.options]
-lock = ["-G", ":all"]
-# for Meson
-sync = ["--clean", "--no-isolation"]
-install = ["--clean", "--no-isolation"]
-
-[tool.pdm.scripts]
-test = "pytest tests"
