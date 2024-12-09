@@ -37,7 +37,7 @@ Repository = "https://github.com/martibosch/pylandstats"
 
 [project.optional-dependencies]
 test = ["coverage[toml]", "pytest", "pytest-cov", "ruff"]
-dev = ["build", "commitizen", "pre-commit", "pip", "toml", "tox", "twine"]
+dev = ["build", "commitizen", "nox", "pre-commit", "pip", "toml", "twine"]
 doc = ["m2r2", "pydata-sphinx-theme", "sphinx"]
 
 # [tool.setuptools]
@@ -99,60 +99,7 @@ skip = "*-musllinux_i686"
 ignore-words-list = "te"
 skip = "CHANGELOG.md"
 
-[tool.tox]
-env_list = [
-    "lint",
-    "py39",
-    "py310",
-    "py311",
-    "py312",
-    "py313",
-]
-requires = [
-    "tox>=4.19",
-]
-
-[tool.tox.gh.python]
-"3.13" = ["3.13", "lint"]
-"3.12" = ["3.12"]
-"3.11" = ["3.11"]
-"3.10" = ["3.10"]
-"3.9" = ["3.9"]
-
-[tool.tox.env_run_base]
-commands = [[
-    "pytest",
-    "-s",
-    "--cov=pylandstats",
-    "--cov-append",
-    "--cov-report=xml",
-    "--cov-report",
-    "term-missing",
-    "tests",
-]]
-conda_deps = [
-    "gdal>=3.3",
-]
-extras = [
-    "test",
-]
-whitelist_externals = [
-    "pytest",
-]
-
-[tool.tox.env.lint]
-commands = [[
-    ["python", "-m", "build"],
-    ["sphinx-build", "docs", "docs/_build"],
-    ["twine", "check", "dist/*"],
-]]
-extras = [
-    "dev",
-    "doc",
-    "test",
-]
-whitelist_externals = [
-    "build",
-    "sphinx-build",
-    "twine",
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
 ]

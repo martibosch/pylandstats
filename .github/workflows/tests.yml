@@ -36,11 +36,11 @@ jobs:
             tox
             tox-gh
 
-      - name: run tests suite
-        run: tox -vv
-        env:
-          TOX_GH_MAJOR_MINOR: ${{ matrix.python-version }}
-          CONDA_EXE: mamba
+      - name: setup nox
+        uses: wntrblm/nox@2024.10.09
+
+      - name: run nox (tests and build)
+        run: nox --force-python ${{ matrix.python-version }}
 
       - name: upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
