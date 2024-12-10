@@ -181,6 +181,7 @@ class MultiLandscape(abc.ABC):
                         }
                     )
                     for i, df in zip(landscape_index, dfs)
+                    if not df.empty
                 ]
             )
             .set_index(names, append=True)
