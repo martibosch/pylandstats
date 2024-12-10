@@ -331,9 +331,11 @@ class BufferAnalysis(ZonalAnalysis):
                 base_gser = base_geom
 
         # 3. buffer around base mask
-        avg_longitude = base_gser.to_crs(
-            "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
-        ).unary_union.centroid.x
+        avg_longitude = (
+            base_gser.to_crs("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+            .union_all()
+            .centroid.x
+        )
         # trick from OSMnx to be able to buffer in meters
         utm_zone = int(np.floor((avg_longitude + 180) / 6.0) + 1)
         # utm_crs = {
