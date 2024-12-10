@@ -1,10 +1,8 @@
 """Docs config."""
 
-import os
-import sys
 
 # add module to path
-sys.path.insert(0, os.path.abspath(".."))
+# sys.path.insert(0, os.path.abspath(".."))
 
 import pylandstats as pls  # noqa: E402
 
