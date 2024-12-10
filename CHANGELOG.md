@@ -1,5 +1,11 @@
 # Change log
 
+## \[v3.0.2\] - 2024-12-10
+
+### :bug: Bug Fixes
+
+- [`f73a61b`](https://github.com/martibosch/pylandstats/commit/f73a61bc8696096b569a65d3641711cef6077d9f) - cython, py3.13, build with setuptools and tests with tox *(PR [#60](https://github.com/martibosch/pylandstats/pull/60) by [@martibosch](https://github.com/martibosch))*
+
 ## \[v3.0.1\] - 2024-10-25
 
 ### :bug: Bug Fixes
@@ -228,3 +234,4 @@
 - initial release
   \[v3.0.0\]: https://github.com/martibosch/pylandstats/compare/v3.0.0rc2...v3.0.0
   \[v3.0.1\]: https://github.com/martibosch/pylandstats/compare/v3.0.0...v3.0.1
+  \[v3.0.2\]: https://github.com/martibosch/pylandstats/compare/v3.0.1...v3.0.2
