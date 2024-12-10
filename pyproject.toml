@@ -37,8 +37,8 @@ Repository = "https://github.com/martibosch/pylandstats"
 
 [project.optional-dependencies]
 test = ["coverage[toml]", "pytest", "pytest-cov", "ruff"]
-dev = ["build", "commitizen", "pre-commit", "pip", "toml", "tox", "twine"]
-doc = ["m2r2", "pydata-sphinx-theme", "sphinx"]
+dev = ["build", "commitizen", "nox", "pre-commit", "pip", "toml", "twine"]
+doc = ["m2r2", "myst-nb", "pydata-sphinx-theme", "sphinx"]
 
 # [tool.setuptools]
 # ext-modules = [
