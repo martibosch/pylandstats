@@ -31,6 +31,12 @@ repos:
           - mdformat-gfm
           - mdformat-black
 
+  - repo: https://github.com/pappasam/toml-sort
+    rev: v0.24.2
+    hooks:
+      - id: toml-sort-fix
+        args: ["--in-place"]
+
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.35.1
     hooks:
@@ -41,6 +47,11 @@ repos:
     rev: 0.29.4
     hooks:
       - id: check-github-workflows
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.4
+    hooks:
+      - id: actionlint
 
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.18.0
@@ -62,3 +73,9 @@ repos:
         args: [ --fix ]
       # Run the formatter.
       - id: ruff-format
+
+  - repo: https://github.com/MarcoGorelli/cython-lint
+    rev: v0.16.6
+    hooks:
+      - id: cython-lint
+      - id: double-quote-cython-strings

@@ -1,6 +1,6 @@
 [build-system]
-requires = ["meson-python", "numpy", "pythran>=0.16.1", "transonic>=0.4.0"]
-build-backend = "mesonpy"
+requires = ["setuptools>=74.1.0", "wheel", "cython", "numpy"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "pylandstats"
@@ -8,41 +8,71 @@ version = "3.0.1"
 description = "Computing landscape metrics in the Python ecosystem."
 readme = "README.md"
 authors = [
-    { name = "Martí Bosch", email = "marti.bosch@epfl.ch" },
+  {name = "Martí Bosch", email = "marti.bosch@epfl.ch"}
 ]
-license = { text = "GPL-3.0" }
+license = {text = "GPL-3.0"}
 classifiers = [
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-    "Natural Language :: English",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13"
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "dask",
-    "geopandas",
-    "matplotlib >= 2.2",
-    "numba ; platform_system == 'Windows'",
-    "numpy >= 1.15",
-    "pandas >= 0.23",
-    "rasterio >= 1.0.0",
-    "scipy >= 1.0.0",
-    "transonic >= 0.6.4",
+  "dask",
+  "geopandas",
+  "matplotlib >= 2.2",
+  "numpy >= 1.15",
+  "pandas >= 0.23",
+  "rasterio >= 1.0.0",
+  "scipy >= 1.0.0"
 ]
-
-[project.urls]
-Repository = "https://github.com/martibosch/pylandstats"
 
 [project.optional-dependencies]
 test = ["coverage[toml]", "pytest", "pytest-cov", "ruff"]
 dev = ["build", "commitizen", "nox", "pre-commit", "pip", "toml", "twine"]
-doc = ["m2r2", "pydata-sphinx-theme", "sphinx"]
+doc = ["m2r2", "myst-nb", "pydata-sphinx-theme", "sphinx"]
 
-[tool.setuptools.packages.find]
-include = ["pylandstats", "pylandstats.*"]
+[project.urls]
+Repository = "https://github.com/martibosch/pylandstats"
+
+[tool.cibuildwheel]
+build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
+skip = "*-musllinux_i686"
+
+[tool.codespell]
+ignore-words-list = "te"
+skip = "CHANGELOG.md"
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+version_provider = "pep621"
+version_files = [
+  "pylandstats/__init__.py",
+  "pyproject.toml:version"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "if self.debug:",
+  "pragma: no cover",
+  "raise NotImplementedError",
+  "except ModuleNotFoundError",
+  "except ImportError"
+]
+ignore_errors = true
+omit = ["tests/*", "docs/conf.py"]
+
+[tool.coverage.run]
+source = ["pylandstats"]
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
 
 [tool.ruff]
 line-length = 88
@@ -53,69 +83,16 @@ docstring-code-format = true
 [tool.ruff.lint]
 select = ["D", "E", "F", "I"]
 
-[tool.ruff.lint.pydocstyle]
-convention = "numpy"
-
 [tool.ruff.lint.isort]
 known-first-party = ["pylandstats"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["F403"]
-"pylandstats/landscape.py" = ["D401"]  # for metric docstrings
+"pylandstats/landscape.py" = ["D401"] # for metric docstrings
 "tests/test_pylandstats.py" = ["D"]
 
-[tool.coverage.run]
-source = ["pylandstats"]
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
 
-[tool.coverage.report]
-exclude_lines = [
-    "if self.debug:",
-    "pragma: no cover",
-    "raise NotImplementedError",
-    "except ModuleNotFoundError",
-    "except ImportError",
-]
-ignore_errors = true
-omit = ["tests/*", "docs/conf.py"]
-
-[tool.commitizen]
-name = "cz_conventional_commits"
-tag_format = "v$version"
-version_provider = "pep621"
-version_files = [
-    "pylandstats/__init__.py",
-    "pyproject.toml:version"
-]
-
-[tool.cibuildwheel]
-build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*"]
-skip = "*-musllinux_i686"
-
-[tool.codespell]
-ignore-words-list = "te"
-skip = "CHANGELOG.md,pdm.lock"
-
-
-[tool.pdm]
-distribution = true
-ignore_package_warnings = ["ipython"]
-
-[tool.pdm.dev-dependencies]
-build = [
-    "meson-python",
-    "numpy",
-    "transonic>=0.6.2",
-    "pythran>=0.16.1",
-    "ninja",
-]
-dev = ["commitizen", "pre-commit", "toml", "ruff"]
-doc = ["pydata-sphinx-theme", "sphinx", "myst-nb", "pip"]
-
-[tool.pdm.options]
-lock = ["-G", ":all"]
-# for Meson
-sync = ["--clean", "--no-isolation"]
-install = ["--clean", "--no-isolation"]
-
-[tool.pdm.scripts]
-test = "pytest tests"
+[tool.setuptools.packages.find]
+include = ["pylandstats", "pylandstats.*"]

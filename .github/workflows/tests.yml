@@ -12,12 +12,12 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         include:
           - os: macos-latest
-            python-version: "3.12"
+            python-version: "3.13"
           - os: windows-latest
-            python-version: "3.12"
+            python-version: "3.13"
 
     runs-on: ${{ matrix.os }}
     defaults:
@@ -32,19 +32,15 @@ jobs:
           environment-name: test-env
           create-args: >-
             python=${{ matrix.python-version }}
-            pip
             gdal>=3.3
+            tox
+            tox-gh
 
-      - name: install dependencies
-        run: pip install pdm nox
-
-      - name: Build wheel
-        run: |
-          nox -s wheel
-
-      - name: test with nox
-        run: |
-          nox --force-python ${{ matrix.python-version }} -s test
+      - name: run tests suite
+        run: tox -vv
+        env:
+          TOX_GH_MAJOR_MINOR: ${{ matrix.python-version }}
+          CONDA_EXE: mamba
 
       - name: upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
