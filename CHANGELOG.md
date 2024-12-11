@@ -1,5 +1,11 @@
 # Change log
 
+## \[v3.0.3\] - 2024-12-11
+
+### :bug: Bug Fixes
+
+- [`18220ed`](https://github.com/martibosch/pylandstats/commit/18220ed024bb1d759279c8c10760f2d9e77e0962) - consistent handling of metrics for classes with no patches *(commit by [@martibosch](https://github.com/martibosch))*
+
 ## \[v3.0.2\] - 2024-12-10
 
 ### :bug: Bug Fixes
@@ -235,3 +241,4 @@
   \[v3.0.0\]: https://github.com/martibosch/pylandstats/compare/v3.0.0rc2...v3.0.0
   \[v3.0.1\]: https://github.com/martibosch/pylandstats/compare/v3.0.0...v3.0.1
   \[v3.0.2\]: https://github.com/martibosch/pylandstats/compare/v3.0.1...v3.0.2
+  \[v3.0.3\]: https://github.com/martibosch/pylandstats/compare/v3.0.2...v3.0.3
