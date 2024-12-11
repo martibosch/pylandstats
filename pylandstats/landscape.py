@@ -711,6 +711,17 @@ class Landscape:
         patch_metric_method_kwargs,
         reduce_method,
     ):
+        try:
+            if self._num_patches_dict[class_val] < 1:
+                warnings.warn(
+                    "There are no patches of class {class_val}, computing the"
+                    " corresponding metrics will return nan values.",
+                    RuntimeWarning,
+                )
+                return np.nan
+        except KeyError:
+            # `class_val` may be `None` (for landscape-level metrics)
+            pass
         if patch_metric_method_kwargs is None:
             patch_metrics = patch_metric_method(class_val=class_val)
         else:
