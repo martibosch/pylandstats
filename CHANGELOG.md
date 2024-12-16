@@ -1,24 +1,24 @@
 # Change log
 
-## \[v3.0.3\] - 2024-12-11
+## [v3.0.3] - 2024-12-11
 
 ### :bug: Bug Fixes
 
 - [`18220ed`](https://github.com/martibosch/pylandstats/commit/18220ed024bb1d759279c8c10760f2d9e77e0962) - consistent handling of metrics for classes with no patches *(commit by [@martibosch](https://github.com/martibosch))*
 
-## \[v3.0.2\] - 2024-12-10
+## [v3.0.2] - 2024-12-10
 
 ### :bug: Bug Fixes
 
 - [`f73a61b`](https://github.com/martibosch/pylandstats/commit/f73a61bc8696096b569a65d3641711cef6077d9f) - cython, py3.13, build with setuptools and tests with tox *(PR [#60](https://github.com/martibosch/pylandstats/pull/60) by [@martibosch](https://github.com/martibosch))*
 
-## \[v3.0.1\] - 2024-10-25
+## [v3.0.1] - 2024-10-25
 
 ### :bug: Bug Fixes
 
 - [`d1f7d37`](https://github.com/martibosch/pylandstats/commit/d1f7d378fa8edd9e9097285e5c358d2c0f074139) - drop stale black requirement *(commit by [@martibosch](https://github.com/martibosch))*
 
-## \[v3.0.0\] - 2024-10-24
+## [v3.0.0] - 2024-10-24
 
 ### :sparkles: New Features
 
