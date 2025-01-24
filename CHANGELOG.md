@@ -238,7 +238,8 @@
 ## 0.1.0 (22/01/2019)
 
 - initial release
-  \[v3.0.0\]: https://github.com/martibosch/pylandstats/compare/v3.0.0rc2...v3.0.0
-  \[v3.0.1\]: https://github.com/martibosch/pylandstats/compare/v3.0.0...v3.0.1
-  \[v3.0.2\]: https://github.com/martibosch/pylandstats/compare/v3.0.1...v3.0.2
-  \[v3.0.3\]: https://github.com/martibosch/pylandstats/compare/v3.0.2...v3.0.3
+
+[v3.0.0]: https://github.com/martibosch/pylandstats/compare/v3.0.0rc2...v3.0.0
+[v3.0.1]: https://github.com/martibosch/pylandstats/compare/v3.0.0...v3.0.1
+[v3.0.2]: https://github.com/martibosch/pylandstats/compare/v3.0.1...v3.0.2
+[v3.0.3]: https://github.com/martibosch/pylandstats/compare/v3.0.2...v3.0.3
