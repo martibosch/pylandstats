@@ -346,7 +346,7 @@ class BufferAnalysis(ZonalAnalysis):
         #     'units': 'm'
         # }
         utm_crs = (
-            f"+proj=utm +zone={utm_zone} +ellps=WGS84 +datum=WGS84 " "+units=m +no_defs"
+            f"+proj=utm +zone={utm_zone} +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
         )
         base_proj_geom = base_gser.to_crs(utm_crs).iloc[0]
         if buffer_rings:
