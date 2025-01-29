@@ -11,7 +11,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import rasterio as rio
+from pandas.testing import assert_index_equal
 from shapely import geometry
+from sklearn import decomposition, impute, preprocessing
 
 import pylandstats as pls
 
@@ -1395,3 +1397,281 @@ class TestSpatioTemporalZonalAnalysis(unittest.TestCase):
                 stza.zone_gser.index, range(0, len(fig.axes), len(dates))
             ):
                 self.assertEqual(str(zone), fig.axes[i].get_ylabel())
+
+
+class TestSpatialSignatureAnalysis(unittest.TestCase):
+    def setUp(self):
+        self.landscape_fps = [
+            path.join(tests_data_dir, "ls250_06.tif"),
+            path.join(tests_data_dir, "ls250_12.tif"),
+        ]
+        dates = [2006, 2012]
+        self.sta = pls.SpatioTemporalAnalysis(self.landscape_fps, dates=dates)
+        # zones_fp = path.join(tests_data_dir, "gmb-lausanne.gpkg")
+        # use label_arr instead of zones_fp to have at least 2 zones
+        label_arr = np.load(
+            path.join(tests_data_dir, "label_arr.npy"), allow_pickle=True
+        )
+        self.za = pls.ZonalAnalysis(self.landscape_fps[0], label_arr)
+        self.stza = pls.SpatioTemporalZonalAnalysis(self.landscape_fps, label_arr)
+
+        self.class_metrics = ["proportion_of_landscape"]
+        self.landscape_metrics = ["edge_density"]
+
+        # use to test all the methods except `test_metrics_df` (which tests init
+        # combinations). Note that we only use the first class to avoid nan values so
+        # that we can instantiate without an imputer
+        self.sta_ssa = pls.SpatialSignatureAnalysis(
+            self.sta,
+            class_metrics=self.class_metrics,
+            classes=self.sta.present_classes[:1],
+            landscape_metrics=self.landscape_metrics,
+        )
+
+        # use this to test with nans
+        self.zonal_nan_ssa = pls.SpatialSignatureAnalysis(
+            self.za,
+            class_metrics=self.class_metrics,
+            classes=self.za.present_classes[:1],
+            landscape_metrics=self.landscape_metrics,
+        )
+
+    #     self.tmp_dir = path.join(tests_dir, "tmp")
+    #     os.mkdir(self.tmp_dir)
+
+    # def tearDown(self):
+    #     shutil.rmtree(self.tmp_dir)
+
+    def test_metrics_df(self):
+        for landscapes in [self.sta, self.za, self.stza]:
+            classes = landscapes.present_classes
+            classes_subset = classes[1:]
+            # test that we can instantiate the class with any of the multilandscape
+            # classes
+            for kwargs, n_cols in [
+                (
+                    {"class_metrics": self.class_metrics},
+                    len(classes) * len(self.class_metrics),
+                ),
+                (
+                    {"class_metrics": self.class_metrics, "classes": classes_subset},
+                    len(classes_subset) * len(self.class_metrics),
+                ),
+                (
+                    {"class_metrics": self.class_metrics, "class_metrics_fillna": 0},
+                    len(classes) * len(self.class_metrics),
+                ),
+                (
+                    {
+                        "class_metrics": self.class_metrics,
+                        "class_metrics_kwargs": {
+                            "proportion_of_landscape": {"percent": True}
+                        },
+                    },
+                    len(classes) * len(self.class_metrics),
+                ),
+                (
+                    {"landscape_metrics": self.landscape_metrics},
+                    len(self.landscape_metrics),
+                ),
+                (
+                    {
+                        "landscape_metrics": self.landscape_metrics,
+                        "landscape_metrics_kwargs": {
+                            "edge_density": {"count_boundary": True}
+                        },
+                    },
+                    len(self.landscape_metrics),
+                ),
+                (
+                    {
+                        "class_metrics": self.class_metrics,
+                        "landscape_metrics": self.landscape_metrics,
+                    },
+                    len(classes) * len(self.class_metrics)
+                    + len(self.landscape_metrics),
+                ),
+            ]:
+                ssa = pls.SpatialSignatureAnalysis(landscapes, **kwargs)
+
+                # test that the metrics_df index is the same as that from
+                # landscapes.landscape_ser
+                assert_index_equal(ssa.metrics_df.index, landscapes.landscape_ser.index)
+                # test that the shape of the metrics data frame is correct
+                self.assertEqual(ssa.metrics_df.shape[1], n_cols)
+
+    def test_decompose(self):
+        for kwargs in [
+            {},
+            {"preprocessor": preprocessing.StandardScaler},
+            {
+                "preprocessor": preprocessing.StandardScaler,
+                "preprocessor_kwargs": {"with_mean": False},
+            },
+            {"imputer": impute.SimpleImputer},
+            {"imputer": impute.SimpleImputer, "imputer_kwargs": {"strategy": "mean"}},
+            {"decomposer": decomposition.PCA},
+            # note that the decomposer kwargs are passed directly to the `decompose`
+            # method
+            {"decomposer": decomposition.PCA, "n_components": 2},
+        ]:
+            components_df, decompose_model = self.sta_ssa.decompose(**kwargs)
+
+            # test that decompose_model has the fit, transform and fit_transform methods
+            for method_name in ["fit", "transform", "fit_transform"]:
+                method = getattr(decompose_model, method_name)
+                self.assertTrue(callable(method))
+
+            # test that decompose_model has the `components_` and `n_components_`
+            # attributes
+            for attr_name in ["components_", "n_components_"]:
+                self.assertTrue(hasattr(decompose_model, attr_name))
+
+            # test that the shape of the components_df is correct
+            self.assertLessEqual(
+                components_df.shape[0], self.sta_ssa.metrics_df.shape[0]
+            )
+            self.assertEqual(components_df.shape[1], decompose_model.n_components_)
+
+            # test loading_df
+            loading_df = self.sta_ssa.get_loading_df(decompose_model)
+            self.assertEqual(loading_df.shape[0], self.sta_ssa.metrics_df.shape[1])
+            self.assertEqual(loading_df.shape[1], decompose_model.n_components_)
+
+        # test warning when `metrics_df` has nan values
+        with warnings.catch_warnings(record=True) as w:
+            components_df, decompose_model = self.zonal_nan_ssa.decompose(**kwargs)
+            self.assertGreater(len(w), 0)
+        # if no imputer is passed, rows are dropped
+        self.assertLess(components_df.shape[0], self.zonal_nan_ssa.metrics_df.shape[0])
+
+        # if an imputer is passed, the returned number of landscapes (samples) should be
+        # the same
+        components_df, decompose_model = self.zonal_nan_ssa.decompose(
+            imputer=impute.SimpleImputer, **kwargs
+        )
+        self.assertEqual(components_df.shape[0], self.zonal_nan_ssa.metrics_df.shape[0])
+
+    def test_cgram(self):
+        # test that instantiating with no args will raise a ValueError because it will
+        # try to fit n_clusters > n_samples (2)
+        with self.assertRaises(ValueError) as cm:
+            self.sta_ssa.get_cgram()
+        self.assertIn("should be >=", str(cm.exception))
+
+        # test different init kwargs but always with custom k_range
+        base_cgram_kwargs = {"k_range": [2]}
+
+        for kwargs in [
+            {},
+            {"decomposer": decomposition.PCA},
+            {"decomposer": decomposition.PCA, "decomposer_kwargs": {"n_components": 2}},
+            {"preprocessor": preprocessing.StandardScaler},
+            {
+                "preprocessor": preprocessing.StandardScaler,
+                "preprocessor_kwargs": {"with_mean": False},
+            },
+            {"imputer": impute.SimpleImputer},
+            {"imputer": impute.SimpleImputer, "imputer_kwargs": {"strategy": "mean"}},
+            # custom Clustergram kwargs (besides k_range)
+            {"method": "gmm"},
+        ]:
+            _kwargs = dict(kwargs, **base_cgram_kwargs)
+            cgram = self.sta_ssa.get_cgram(**_kwargs)
+
+        # test warning when `metrics_df` has nan values
+        with warnings.catch_warnings(record=True) as w:
+            cgram = self.zonal_nan_ssa.get_cgram(**base_cgram_kwargs)
+            self.assertGreater(len(w), 0)
+        # if no imputer is passed, rows are dropped
+        self.assertLess(cgram.data.shape[0], self.zonal_nan_ssa.metrics_df.shape[0])
+
+        # if an imputer is passed, the returned number of landscapes (samples) should be
+        # the same
+        cgram = self.zonal_nan_ssa.get_cgram(
+            imputer=impute.SimpleImputer, **base_cgram_kwargs
+        )
+        self.assertEqual(cgram.data.shape[0], self.zonal_nan_ssa.metrics_df.shape[0])
+
+        # use the latest cgram (with `self.zonal_nan_ssa`) to test the plotting methods
+        n_clusters = 2
+        # test scatterplot_cluster_metrics
+        scatterplot_args = [
+            cgram,
+            n_clusters,
+            self.zonal_nan_ssa.metrics_df.columns[0],
+            self.zonal_nan_ssa.metrics_df.columns[1],
+        ]
+        for kwargs in [
+            {"palette_name": "Set1"},
+            {"center_plot_kwargs": {"marker": "v"}},
+        ]:
+            ax = self.zonal_nan_ssa.scatterplot_cluster_metrics(
+                *scatterplot_args, **kwargs
+            )
+            # test that there are as many legend entries as clusters
+            self.assertEqual(len(ax.get_legend().get_texts()), n_clusters)
+        # test plot in given axis
+        fig, ax = plt.subplots()
+        self.zonal_nan_ssa.scatterplot_cluster_metrics(*scatterplot_args, ax=ax)
+        self.assertEqual(len(ax.get_legend().get_texts()), n_clusters)
+        # test no legend
+        ax = self.zonal_nan_ssa.scatterplot_cluster_metrics(
+            *scatterplot_args, legend=False
+        )
+        self.assertIsNone(ax.get_legend())
+
+        # test plot_cluster_landscapes
+        plot_landscapes_kwargs = {"n_cluster_landscapes": 1, "n_cols": 1}
+        for kwargs in [
+            {},
+            {"sample_kwargs": {"random_state": 1}},
+            {"figure_kwargs": {"figsize": (1, 1)}},
+            {"subfigures_kwargs": {"wspace": 0.1}},
+            {"subplots_kwargs": {"sharex": True, "sharey": True}},
+            {"supylabel_kwargs": {"fontweight": "bold"}},
+            {"cmap": "viridis"},
+        ]:
+            _kwargs = dict(kwargs, **plot_landscapes_kwargs)
+            self.zonal_nan_ssa.plot_cluster_landscapes(cgram, n_clusters, **_kwargs)
+
+        # test plot_cluster_zones
+        for kwargs in [{}, {"categorical": False}, {"cmap": "viridis"}]:
+            ax = self.zonal_nan_ssa.plot_cluster_zones(cgram, n_clusters, **kwargs)
+            # self.assertEqual(len(ax.get_legend().get_texts()), n_clusters)
+        # test plot in given axis
+        fig, ax = plt.subplots()
+        self.zonal_nan_ssa.plot_cluster_zones(cgram, n_clusters, ax=ax)
+        self.assertEqual(len(ax.get_legend().get_texts()), n_clusters)
+        # test no legend
+        ax = self.zonal_nan_ssa.plot_cluster_zones(cgram, n_clusters, legend=False)
+        self.assertIsNone(ax.get_legend())
+
+        # test that a warning is issued when calling `plot_cluster_zones` if the
+        # SpatialSignatureAnalysis is not initialized with a zonal analysis, and None is
+        # returned
+        ssa = pls.SpatialSignatureAnalysis(
+            self.sta,
+            class_metrics=self.class_metrics,
+            classes=self.sta.present_classes[:1],
+            landscape_metrics=self.landscape_metrics,
+        )
+        cgram = ssa.get_cgram(**base_cgram_kwargs)
+        with warnings.catch_warnings(record=True) as w:
+            ax = ssa.plot_cluster_zones(cgram, n_clusters)
+            self.assertGreater(len(w), 0)
+
+        self.assertIsNone(ax)
+
+        # TODO: test plotting zones in a spatiotemporalzonalanalysis
+        # test that a figure is returned, with as many axes as dates
+        ssa = pls.SpatialSignatureAnalysis(
+            self.stza,
+            class_metrics=self.class_metrics,
+            classes=self.sta.present_classes[:1],
+            landscape_metrics=self.landscape_metrics,
+        )
+        cgram = ssa.get_cgram(**base_cgram_kwargs)
+        fig = ssa.plot_cluster_zones(cgram, n_clusters)
+        self.assertIsInstance(fig, plt.Figure)
+        self.assertEqual(len(fig.axes), len(self.stza.dates))

@@ -23,12 +23,15 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
+  "clustergram",
   "dask",
   "geopandas",
   "matplotlib >= 2.2",
   "numpy >= 1.15",
   "pandas >= 0.23",
   "rasterio >= 1.0.0",
+  "seaborn",
+  "scikit-learn >= 1.0.0",
   "scipy >= 1.0.0"
 ]
 

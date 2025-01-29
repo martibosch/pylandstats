@@ -13,6 +13,7 @@ Open-source library to compute landscape metrics in the Python ecosystem (NumPy,
    spatiotemporal
    zonal
    spatiotemporal-zonal
+   spatial-signature-analysis
 
 .. toctree::
    :maxdepth: 1
