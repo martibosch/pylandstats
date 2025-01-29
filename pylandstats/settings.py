@@ -2,6 +2,8 @@
 
 from os import environ
 
+from sklearn import preprocessing
+
 try:
     import dotenv
 
@@ -74,3 +76,4 @@ metric_label_dict = environ.get("METRIC_LABEL_DICT", fragstats_abbrev_dict)
 DEFAULT_LANDSCAPE_NODATA = 0
 DEFAULT_NEIGHBORHOOD_RULE = "8"
 CLASS_METRICS_DF_FILLNA = True
+DEFAULT_PREPROCESSOR = preprocessing.StandardScaler

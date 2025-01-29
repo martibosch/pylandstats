@@ -1,6 +1,7 @@
 """pylandstats init."""
 
 from pylandstats.landscape import *
+from pylandstats.spatial_signature import *
 from pylandstats.spatiotemporal import *
 from pylandstats.zonal import *
 
