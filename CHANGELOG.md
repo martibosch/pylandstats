@@ -1,5 +1,16 @@
 # Change log
 
+## [v3.1.0] - 2025-02-13
+
+### :sparkles: New Features
+
+- [`3bbd673`](https://github.com/martibosch/pylandstats/commit/3bbd673af50f41a69a96edf0fa779f406f288917) - set `dates` attribute in `SpatioTemporalZonalAnalysis` *(commit by [@martibosch](https://github.com/martibosch))*
+- [`b70b3ca`](https://github.com/martibosch/pylandstats/commit/b70b3ca4021d204cd15d86d85f327e3f2f51f01b) - spatial signature analysis *(commit by [@martibosch](https://github.com/martibosch))*
+
+### :white_check_mark: Tests
+
+- [`b602b87`](https://github.com/martibosch/pylandstats/commit/b602b8788dd2a77adce63cdde71f651e48b6e665) - add {posargs} to pytest command in tox to run selected tests *(commit by [@martibosch](https://github.com/martibosch))*
+
 ## [v3.0.3] - 2024-12-11
 
 ### :bug: Bug Fixes
@@ -243,3 +254,4 @@
 [v3.0.1]: https://github.com/martibosch/pylandstats/compare/v3.0.0...v3.0.1
 [v3.0.2]: https://github.com/martibosch/pylandstats/compare/v3.0.1...v3.0.2
 [v3.0.3]: https://github.com/martibosch/pylandstats/compare/v3.0.2...v3.0.3
+[v3.1.0]: https://github.com/martibosch/pylandstats/compare/v3.0.3...v3.1.0
