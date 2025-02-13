@@ -221,6 +221,7 @@ class SpatioTemporalZonalAnalysis(SpatioTemporalAnalysis, zonal.ZonalAnalysis):
         # TODO: DRY this from `SpatioTemporalAnalysis.__init__`
         if dates is None:
             dates = ["t{}".format(i) for i in range(len(landscape_filepaths))]
+        self.dates = dates
 
         # instantiate the series of landscapes but using a multi-index
         self.landscape_ser = pd.Series(
