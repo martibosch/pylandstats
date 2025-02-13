@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pylandstats"
-version = "3.0.3"
+version = "3.1.0"
 description = "Computing landscape metrics in the Python ecosystem."
 readme = "README.md"
 authors = [

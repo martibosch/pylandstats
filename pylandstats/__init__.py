@@ -5,4 +5,4 @@ from pylandstats.spatial_signature import *
 from pylandstats.spatiotemporal import *
 from pylandstats.zonal import *
 
-__version__ = "3.0.3"
+__version__ = "3.1.0"
