@@ -7,7 +7,7 @@ from setuptools import Extension, setup
 extensions = [
     Extension(
         name="pylandstats.adjacency",
-        sources=["pylandstats/adjacency.pyx"],
+        sources=["src/pylandstats/adjacency.pyx"],
         include_dirs=[np.get_include()],
     )
 ]

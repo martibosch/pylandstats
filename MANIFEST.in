@@ -1,1 +1,1 @@
-include pylandstats/adjacency.pyx
+include src/pylandstats/adjacency.pyx

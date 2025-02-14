@@ -71,12 +71,6 @@ exclude_lines = [
 ignore_errors = true
 omit = ["tests/*", "docs/conf.py"]
 
-[tool.coverage.run]
-source = ["pylandstats"]
-
-[tool.pytest.ini_options]
-addopts = ["--import-mode=importlib"]
-
 [tool.ruff]
 line-length = 88
 
@@ -91,11 +85,11 @@ known-first-party = ["pylandstats"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["F403"]
-"pylandstats/landscape.py" = ["D401"] # for metric docstrings
+"src/pylandstats/landscape.py" = ["D401"] # for metric docstrings
 "tests/test_pylandstats.py" = ["D"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
 [tool.setuptools.packages.find]
-include = ["pylandstats", "pylandstats.*"]
+where = ["src"]
