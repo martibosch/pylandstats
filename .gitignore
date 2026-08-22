@@ -118,3 +118,10 @@ __python__
 # PDM
 .pdm-python
 .nox
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+# cython-generated sources
+src/pylandstats/*.c

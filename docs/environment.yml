@@ -1,9 +1,0 @@
-name: pylandstats
-channels:
-  - conda-forge
-dependencies:
-  - gdal=3.9.2
-  - myst-nb=1.1.2
-  - pydata-sphinx-theme=0.16.0
-  - python=3.12
-  - sphinx=8.1.3

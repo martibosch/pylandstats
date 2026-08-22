@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=74.1.0", "wheel", "cython", "numpy>=2.0.0"]
+requires = ["setuptools>=74.1.0", "wheel", "cython>=3.1", "numpy>=2.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -15,13 +15,13 @@ classifiers = [
   "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
   "Natural Language :: English",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13"
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14"
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   "clustergram",
   "dask",
@@ -37,26 +37,26 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["coverage[toml]", "pytest", "pytest-cov", "ruff"]
-dev = ["build", "commitizen", "nox", "pre-commit", "pip", "toml", "twine"]
+dev = ["build", "commitizen", "pre-commit", "pip", "toml", "twine"]
 doc = ["m2r2", "myst-nb", "pydata-sphinx-theme", "sphinx"]
 
 [project.urls]
 Repository = "https://github.com/martibosch/pylandstats"
 
 [tool.cibuildwheel]
-build = ["cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
+build = ["cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*"]
 skip = "*-musllinux_i686"
 
 [tool.codespell]
 ignore-words-list = "te"
-skip = "CHANGELOG.md"
+skip = "CHANGELOG.md,pixi.lock"
 
 [tool.commitizen]
 name = "cz_conventional_commits"
 tag_format = "v$version"
 version_provider = "pep621"
 version_files = [
-  "pylandstats/__init__.py",
+  "src/pylandstats/__init__.py",
   "pyproject.toml:version"
 ]
 
@@ -70,6 +70,74 @@ exclude_lines = [
 ]
 ignore_errors = true
 omit = ["tests/*", "docs/conf.py"]
+
+[tool.pixi.dependencies]
+python = ">=3.10,<3.15"
+# the geospatial stack comes from conda-forge rather than from the PyPI wheels,
+# which vendor their own gdal and would thus conflict with the conda-forge one
+gdal = ">=3.3"
+geopandas = "*"
+rasterio = ">=1.0.0"
+# ACHTUNG: the toolchain below is required in *every* environment (not only in
+# `dev`) because the editable install of pylandstats is part of the default
+# feature and is built with `no-build-isolation` (see `tool.pixi.pypi-options`)
+c-compiler = "*"
+cython = ">=3.1"
+numpy = ">=2.0.0"
+setuptools = ">=74.1.0"
+
+[tool.pixi.environments]
+default = {solve-group = "default"}
+dev = {features = ["dev"], solve-group = "default"}
+doc = {features = ["doc"], solve-group = "default"}
+test = {features = ["test"], solve-group = "default"}
+# one environment per supported python version, to match the wheels built by
+# cibuildwheel - each needs its own solve group
+test-py310 = {features = ["py310", "test"], solve-group = "py310"}
+test-py311 = {features = ["py311", "test"], solve-group = "py311"}
+test-py312 = {features = ["py312", "test"], solve-group = "py312"}
+test-py313 = {features = ["py313", "test"], solve-group = "py313"}
+test-py314 = {features = ["py314", "test"], solve-group = "py314"}
+
+[tool.pixi.feature.dev.tasks]
+# editable installs do not recompile the cython extension when `.pyx` files
+# change, so rebuild it in place explicitly
+build-ext = "python setup.py build_ext --inplace"
+build-sdist = "python -m build --sdist"
+check = {cmd = "twine check --strict dist/*", depends-on = ["build-sdist"]}
+
+[tool.pixi.feature.doc.tasks]
+build-doc = "sphinx-build docs docs/_build"
+
+[tool.pixi.feature.py310.dependencies]
+python = "3.10.*"
+
+[tool.pixi.feature.py311.dependencies]
+python = "3.11.*"
+
+[tool.pixi.feature.py312.dependencies]
+python = "3.12.*"
+
+[tool.pixi.feature.py313.dependencies]
+python = "3.13.*"
+
+[tool.pixi.feature.py314.dependencies]
+python = "3.14.*"
+
+[tool.pixi.feature.test.tasks]
+test = "pytest -s --cov=pylandstats --cov-report=xml tests"
+
+[tool.pixi.pypi-dependencies]
+pylandstats = {path = ".", editable = true}
+
+[tool.pixi.pypi-options]
+# build the extension against the conda-forge numpy/cython/compiler rather than
+# against an ephemeral build environment resolved from PyPI
+no-build-isolation = ["pylandstats"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64", "win-64"]
 
 [tool.ruff]
 line-length = 88
