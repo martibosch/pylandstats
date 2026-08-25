@@ -6,39 +6,16 @@ Open-source library to compute landscape metrics in the Python ecosystem (NumPy,
 
 ```{toctree}
 ---
-maxdepth: 1
-caption: User Guide
+hidden:
+maxdepth: 2
 ---
-user-guide/overview
-user-guide/landscape-analysis
-user-guide/spatiotemporal-analysis
-user-guide/zonal-analysis
-user-guide/spatiotemporal-zonal-analysis
-user-guide/spatial-signature-analysis
-```
-
-```{toctree}
----
-maxdepth: 1
-caption: Reference Guide
----
-landscape
-spatiotemporal
-zonal
-spatiotemporal-zonal
-spatial-signature-analysis
-```
-
-```{toctree}
----
-maxdepth: 1
-caption: Development
----
+user-guide
+api
 changelog
 contributing
 ```
 
-See the user guide above for a tutorial and thorough overview of PyLandStats, and the reference guide for the API documentation. The data preprocessing pipeline that derives the example datasets used in the user guide is kept in the [pylandstats-notebooks](https://github.com/martibosch/pylandstats-notebooks) repository.
+See the [user guide](user-guide.md) for a tutorial and thorough overview of PyLandStats, and the [API reference](api.md) for the API documentation. The data preprocessing pipeline that derives the example datasets used in the user guide is kept in the [pylandstats-notebooks](https://github.com/martibosch/pylandstats-notebooks) repository.
 
 ## Features
 
