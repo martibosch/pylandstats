@@ -60,7 +60,7 @@ Open-source library to compute landscape metrics in the Python ecosystem (NumPy,
 
 - Zonal analysis of landscapes
 
-See the [documentation](https://pylandstats.readthedocs.io/en/latest/?badge=latest) and the [pylandstats-notebooks](https://github.com/martibosch/pylandstats-notebooks) repository for a more complete overview.
+See the [user guide](https://pylandstats.readthedocs.io/en/latest/user-guide/overview.html) for a more complete overview, and the [documentation](https://pylandstats.readthedocs.io/en/latest/?badge=latest) for the API reference.
 
 ## Installation
 
