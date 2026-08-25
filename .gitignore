@@ -118,3 +118,16 @@ __python__
 # PDM
 .pdm-python
 .nox
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+# cython-generated sources
+src/pylandstats/*.c
+
+# docs build artifacts
+docs/jupyter_execute/
+# osmnx cache, created when regenerating the user guide example data
+docs/user-guide/cache/
+docs/.jupyter_cache/

@@ -1,7 +1,6 @@
-==============================
-Spatiotemporal zonal analysis
-==============================
+# Spatiotemporal zonal analysis
 
+```{eval-rst}
 .. autoclass:: pylandstats.SpatioTemporalZonalAnalysis
    :members:  __init__, compute_class_metrics_df, compute_landscape_metrics_df, compute_zonal_statistics_gdf, plot_metric, plot_landscapes
 
@@ -10,3 +9,4 @@ Spatiotemporal zonal analysis
 
 .. autoclass:: pylandstats.SpatioTemporalZonalGridAnalysis
    :members:  __init__, compute_class_metrics_df, compute_landscape_metrics_df, compute_zonal_statistics_gdf, plot_metric, plot_landscapes
+```

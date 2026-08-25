@@ -1,19 +1,16 @@
 version: 2
 
 build:
-    os: ubuntu-22.04
-    tools:
-        python: mambaforge-4.10
-
-conda:
-    environment: docs/environment.yml
-
-python:
+  os: ubuntu-24.04
+  tools:
+    python: "latest"
+  jobs:
+    create_environment:
+      - asdf plugin add pixi
+      - asdf install pixi latest
+      - asdf global pixi latest
     install:
-        - method: pip
-          path: .
-          extra_requirements:
-            - geo
-
-sphinx:
-  configuration: docs/conf.py
+      - pixi install -e doc
+    build:
+      html:
+        - pixi run -e doc sphinx-build -T -b html docs $READTHEDOCS_OUTPUT/html

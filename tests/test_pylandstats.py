@@ -1090,7 +1090,13 @@ class TestZonaAlnalysis(unittest.TestCase):
         # excluded when `buffer_rings=True`)
         ba = pls.BufferAnalysis(self.landscape_fp, gser, self.buffer_dists)
         for zone_gser, ring_zone_gser in zip(ba.zone_gser, ba_rings.zone_gser):
-            self.assertGreaterEqual(zone_gser.area, ring_zone_gser.area)
+            # the first zone is the same in both cases, so it may only differ by
+            # floating-point noise in the geometry area computation (which can flip the
+            # strict inequality, e.g., on macOS)
+            self.assertTrue(
+                zone_gser.area >= ring_zone_gser.area
+                or np.isclose(zone_gser.area, ring_zone_gser.area)
+            )
 
     def test_grid_init(self):
         # test init by number of zone rows/cols
