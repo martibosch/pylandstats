@@ -39,6 +39,9 @@ dependencies = [
 test = ["coverage[toml]", "pytest", "pytest-cov", "ruff"]
 dev = ["build", "commitizen", "pre-commit", "pip", "toml", "twine"]
 doc = ["m2r2", "myst-nb", "pydata-sphinx-theme", "sphinx"]
+# dependencies of the user guide notebooks, which are not required to *render*
+# the docs but only to *execute* them
+user-guide = ["contextily", "ipykernel", "nbclient", "osmnx", "swisslandstats-geopy"]
 
 [project.urls]
 Repository = "https://github.com/martibosch/pylandstats"
@@ -85,12 +88,16 @@ c-compiler = "*"
 cython = ">=3.1"
 numpy = ">=2.0.0"
 setuptools = ">=74.1.0"
+# so that the default environment can be used as a jupyter kernel, which is
+# what pixi-kernel falls back to
+ipykernel = ">=7.3.0,<8"
 
 [tool.pixi.environments]
 default = {solve-group = "default"}
 dev = {features = ["dev"], solve-group = "default"}
-doc = {features = ["doc"], solve-group = "default"}
+doc = {features = ["doc", "user-guide"], solve-group = "default"}
 test = {features = ["test"], solve-group = "default"}
+user-guide = {features = ["user-guide"], solve-group = "default"}
 # one environment per supported python version, to match the wheels built by
 # cibuildwheel - each needs its own solve group
 test-py310 = {features = ["py310", "test"], solve-group = "py310"}

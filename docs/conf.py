@@ -22,14 +22,25 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
-    "sphinx.ext.imgmath",
+    # mathjax renders the math in the browser, i.e., unlike imgmath, it does not
+    # require latex/dvipng to be installed in the docs environment
+    "sphinx.ext.mathjax",
     "myst_nb",
 ]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**.ipynb_checkpoints",
+    # myst-nb writes the executed notebooks here, which would otherwise be
+    # picked up as (orphan) source documents
+    "jupyter_execute",
+    ".jupyter_cache",
+]
 
 # The master toctree document.
 master_doc = "index"
@@ -57,8 +68,13 @@ html_theme_options = {
     "navigation_with_keys": False,
 }
 
-# exclude patterns from sphinx-build
-exclude_patterns = ["_build", "**.ipynb_checkpoints"]
+# -- Options for the user guide notebooks ------------------------------
+# the notebooks are saved with the pixi kernel (so that they can be run from
+# jupyter lab), which does not exist within the environment that builds the docs
+nb_kernel_rgx_aliases = {"^pixi-kernel-python3$": "python3"}
+
+nb_execution_mode = "cache"
+nb_execution_timeout = 300
 
 # -- Options for LaTeX output ------------------------------------------
 
