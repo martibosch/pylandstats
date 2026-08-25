@@ -1,7 +1,6 @@
-=================
-Zonal analysis
-=================
+# Zonal analysis
 
+```{eval-rst}
 .. autoclass:: pylandstats.ZonalAnalysis
    :members:  __init__, compute_class_metrics_df, compute_landscape_metrics_df, compute_zonal_statistics_gdf, plot_metric, plot_landscapes
 
@@ -10,3 +9,4 @@ Zonal analysis
 
 .. autoclass:: pylandstats.ZonalGridAnalysis
    :members:  __init__, compute_class_metrics_df, compute_landscape_metrics_df, compute_zonal_statistics_gdf, plot_landscapes
+```

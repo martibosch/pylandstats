@@ -48,6 +48,11 @@ master_doc = "index"
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
 
+# -- Options for MyST markdown -----------------------------------------
+# dollarmath/amsmath render the `$...$` and `$$...$$` math in the markdown pages
+myst_enable_extensions = ["amsmath", "dollarmath"]
+myst_heading_anchors = 3
+
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
