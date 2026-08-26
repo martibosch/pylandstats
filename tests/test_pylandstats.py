@@ -124,6 +124,41 @@ class TestLandscape(unittest.TestCase):
                 getattr(ls, method)()
                 self.assertGreater(len(w), 0)
 
+    def test_euclidean_nearest_neighbor(self):
+        # the euclidean nearest neighbor is computed by querying an increasing number of
+        # neighbors of each patch edge pixel, so test a class whose two patches have
+        # very different sizes, i.e., a large block (whose edge has far more pixels than
+        # the number of neighbors initially queried) and a distant single pixel
+        block_slice, pixel_i = slice(1, 51), 55
+        arr = np.ones((60, 60))
+        arr[block_slice, block_slice] = 2
+        arr[pixel_i, pixel_i] = 2
+        ls = pls.Landscape(arr, res=(1, 1))
+
+        enn_ser = ls.euclidean_nearest_neighbor(class_val=2)
+        # both patches are each other's nearest neighbor, i.e., the distance goes from
+        # the corner of the block to the isolated pixel
+        expected_dist = np.sqrt(2) * (pixel_i - (block_slice.stop - 1))
+        self.assertEqual(len(enn_ser), 2)
+        self.assertFalse(enn_ser.isna().any())
+        self.assertTrue(np.allclose(enn_ser, expected_dist))
+
+        # the distances must not depend on the number of neighbors initially queried,
+        # which is only a matter of how fast they are computed
+        expected_ser = pls.Landscape(self.landscape_fp).euclidean_nearest_neighbor()[
+            "euclidean_nearest_neighbor"
+        ]
+        default_num_neighbors = pls.landscape.ENN_NUM_NEIGHBORS
+        try:
+            for num_neighbors in [2, 4, 32]:
+                pls.landscape.ENN_NUM_NEIGHBORS = num_neighbors
+                other_ser = pls.Landscape(
+                    self.landscape_fp
+                ).euclidean_nearest_neighbor()["euclidean_nearest_neighbor"]
+                self.assertTrue(np.allclose(expected_ser, other_ser, equal_nan=True))
+        finally:
+            pls.landscape.ENN_NUM_NEIGHBORS = default_num_neighbors
+
     def test_metric_dataframes(self):
         ls = self.ls
         patch_metrics = set(pls.Landscape.PATCH_METRICS)
