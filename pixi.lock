@@ -28133,7 +28133,7 @@ packages:
 - pypi: ./
   name: pylandstats
   version: 3.1.0
-  sha256: 0590ee1e9fb0c8315cdde781372cd5bde870a1d6b707d38ef21c0d1498f5ded6
+  sha256: 2c34373c27e18ccb9021d0fb3e8d8a58e9178df3881857dc048483117fdbd50d
   requires_dist:
   - clustergram
   - dask

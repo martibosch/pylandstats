@@ -57,6 +57,22 @@ jobs:
       - name: build sdist and check it # the `check` task depends on `build-sdist`
         run: pixi run -e dev check
 
-      # the docs (which execute the user guide notebooks) are built on read the
-      # docs, whose pull request builds act as the docs check - see
-      # `.readthedocs.yml`
+  # the user guide notebooks are executed here (rather than only when building the docs
+  # on read the docs) so that a failure is reported next to the test results, with the
+  # traceback inline. Note that the FRAGSTATS comparison notebook asserts that the
+  # computed metrics match the FRAGSTATS reference files, i.e., this also acts as the
+  # metrics correctness check
+  notebooks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: prefix-dev/setup-pixi@v0.9.2
+        with:
+          pixi-version: v0.63.2
+          environments: user-guide
+          frozen: true
+
+      - name: run the user guide notebooks
+        run: pixi run -e user-guide run-notebooks
