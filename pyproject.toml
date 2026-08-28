@@ -38,7 +38,7 @@ dependencies = [
 [project.optional-dependencies]
 test = ["coverage[toml]", "pytest", "pytest-cov", "ruff"]
 dev = ["build", "commitizen", "pre-commit", "pip", "toml", "twine"]
-doc = ["myst-nb", "pydata-sphinx-theme", "sphinx"]
+doc = ["myst-nb", "pydata-sphinx-theme", "sphinx", "sphinxemoji"]
 # dependencies of the user guide notebooks, which are not required to *render*
 # the docs but only to *execute* them
 user-guide = ["contextily", "ipykernel", "nbclient", "swisslandstats-geopy"]
@@ -97,6 +97,9 @@ dev = {features = ["dev"], solve-group = "default"}
 doc = {features = ["doc", "user-guide"], solve-group = "default"}
 test = {features = ["test"], solve-group = "default"}
 user-guide = {features = ["user-guide"], solve-group = "default"}
+# ACHTUNG: `no-default-feature` so that this environment is only R, i.e., it neither
+# installs python nor builds the cython extension of pylandstats
+benchmark = {features = ["benchmark"], no-default-feature = true}
 # one environment per supported python version, to match the wheels built by
 # cibuildwheel - each needs its own solve group
 test-py310 = {features = ["py310", "test"], solve-group = "py310"}
@@ -104,6 +107,22 @@ test-py311 = {features = ["py311", "test"], solve-group = "py311"}
 test-py312 = {features = ["py312", "test"], solve-group = "py312"}
 test-py313 = {features = ["py313", "test"], solve-group = "py313"}
 test-py314 = {features = ["py314", "test"], solve-group = "py314"}
+
+[tool.pixi.feature.benchmark]
+# ACHTUNG: r-landscapemetrics >=2 is not built for every platform of the workspace
+# (e.g., osx-arm64), and the benchmarks are anyway measured manually in a single machine
+platforms = ["linux-64"]
+
+[tool.pixi.feature.benchmark.dependencies]
+# R and landscapemetrics, to measure the execution times reported in the performance
+# notes annex of the user guide. ACHTUNG: this environment is NOT used to build the docs
+# nor to run the notebooks, it is only used to (manually) re-measure the benchmarks
+r-base = "*"
+r-landscapemetrics = ">=2"
+r-terra = "*"
+
+[tool.pixi.feature.benchmark.tasks]
+benchmark-landscapemetrics = "Rscript docs/user-guide/metrics-benchmark.R"
 
 [tool.pixi.feature.dev.tasks]
 # editable installs do not recompile the cython extension when `.pyx` files
@@ -135,8 +154,18 @@ test = "pytest -s --cov=pylandstats --cov-report=xml tests"
 
 [tool.pixi.feature.user-guide.tasks]
 # execute the user guide notebooks (without storing their outputs, which are computed
-# when building the docs), i.e., so that they are also tested in github actions
-run-notebooks = "jupyter execute --kernel_name=python3 docs/user-guide/*.ipynb"
+# when building the docs), i.e., so that they are also tested in github actions.
+# ACHTUNG: the notebooks are listed explicitly (rather than globbed) because the annexes
+# from a02 on are not executed - keep in sync with `nb_execution_excludepatterns` in
+# docs/conf.py
+run-notebooks = """jupyter execute --kernel_name=python3
+  docs/user-guide/overview.ipynb
+  docs/user-guide/landscape-analysis.ipynb
+  docs/user-guide/spatiotemporal-analysis.ipynb
+  docs/user-guide/zonal-analysis.ipynb
+  docs/user-guide/spatiotemporal-zonal-analysis.ipynb
+  docs/user-guide/spatial-signature-analysis.ipynb
+  docs/user-guide/a01-fragstats-comparison.ipynb"""
 
 [tool.pixi.pypi-dependencies]
 pylandstats = {path = ".", editable = true}

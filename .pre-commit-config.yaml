@@ -69,6 +69,10 @@ repos:
     rev: 0.9.1
     hooks:
       - id: nbstripout
+        # the annexes from a02 on are not executed when building the docs (see
+        # `nb_execution_excludepatterns` in docs/conf.py), so they must keep their
+        # stored outputs in order to render
+        exclude: ^docs/user-guide/a0[2-9]-.*\.ipynb$
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.9.6
