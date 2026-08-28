@@ -23,6 +23,15 @@ NEIGHBORHOOD_KERNEL_DICT = {
     "8": ndimage.generate_binary_structure(2, 2),  # Moore/queen
     "4": ndimage.generate_binary_structure(2, 1),  # Von Neumann/rook
 }
+# number of neighbors queried in the first round of the euclidean nearest neighbor
+# computation (see `compute_patch_euclidean_nearest_neighbor`), which is then doubled
+# for the pixels that are still ambiguous. The result does NOT depend on it, only the
+# time it takes to get there. A sweep over a 12k-patch landscape gives an optimum at 8
+# (2: 259ms, 4: 180ms, 8: 132ms, 16: 175ms, 64: 391ms, 128: 1232ms) - note that the
+# curve is asymmetric, i.e., overshooting allocates a large dense array for every pixel
+# (most of which are discarded anyway), whereas undershooting only adds a cheap extra
+# round over a rapidly shrinking set of pixels
+ENN_NUM_NEIGHBORS = 8
 
 # type definitions
 ADJ_ARR_DTYPE = np.uint32
@@ -402,32 +411,62 @@ class Landscape:
             # # end CDIST
 
             # begin KDTree
+            # ACHTUNG: we build a SINGLE tree with the coords of all the patches (rather
+            # than one tree per patch, excluding its own coords), since building the
+            # tree dominates the computation, i.e., building one tree per patch takes
+            # 97% of the time for a landscape of ~12k patches.
+            # The queried neighbors are sorted by distance, therefore the first neighbor
+            # of a pixel that belongs to ANOTHER patch is necessarily its nearest
+            # neighbor of another patch (any closer one would have been queried first).
+            # If none of the queried neighbors belongs to another patch, the distance to
+            # the last queried neighbor is a lower bound of the pixel's distance to
+            # another patch, so since we only need the minimum distance of each patch, a
+            # pixel can be discarded as soon as its lower bound exceeds the minimum
+            # distance already found for its patch. The remaining (ambiguous) pixels are
+            # queried again with twice as many neighbors.
+            num_pixels = len(coords)
             unique_labels = np.unique(labels)
+            tree = spatial.cKDTree(coords, balanced_tree=False, compact_nodes=False)
 
-            enn = np.empty(len(unique_labels))
-            for unique_label in unique_labels:
-                # we build a KDTree with all the coords that are not part of the current
-                # feature
-                tree = spatial.cKDTree(
-                    coords[labels != unique_label],
-                    balanced_tree=False,
-                    compact_nodes=False,
+            # `min_dist` is indexed by patch label, which is 1-based
+            min_dist = np.full(labels.max() + 1, np.inf)
+            pixel_idx = np.arange(num_pixels)
+            num_neighbors = ENN_NUM_NEIGHBORS
+            while len(pixel_idx) > 0:
+                # ACHTUNG: `num_neighbors` must be allowed to reach `num_pixels`,
+                # otherwise the pixels of a patch with more edge pixels than
+                # `num_neighbors` may never see the other patches
+                _num_neighbors = min(num_neighbors, num_pixels)
+                dist_arr, neighbor_idx_arr = tree.query(
+                    coords[pixel_idx], k=_num_neighbors, workers=-1
                 )
-                # now, for each coord of the current feature, we query the closest coord
-                # of the tree (which does not include points of the current feature)
-                mindist, minid = tree.query(coords[labels == unique_label])
-                # note that `mindist` and `minid` will be 1D arrays, whose lengths
-                # correspond to the number of pixels within the current feature.
-                # Each position of `mindist` and `mindid` matches the corresponding
-                # pixel of the current feature to its closest neighbor from the
-                # non-feature tree. Since we are only interested in the closest
-                # distance, we will just get `min(mindist)`. Note that because of the
-                # symmetry, we could use `minid` to assign this same distance to the
-                # counterpart of `unique_label`.
-                # Nevertheless, the overheads of maintaining the required data structure
-                # would most likely exceed any potential gains.
-                # We use `unique_label - 1` to obtain the corresponding 0-based index
-                enn[unique_label - 1] = min(mindist)
+                pixel_labels = labels[pixel_idx]
+                is_other_patch = labels[neighbor_idx_arr] != pixel_labels[:, None]
+                # a pixel is resolved if any of its neighbors belongs to another patch
+                is_resolved = is_other_patch.any(axis=1)
+                nearest_other_idx = np.argmax(is_other_patch, axis=1)
+                nearest_other_dist = dist_arr[
+                    np.arange(len(pixel_idx)), nearest_other_idx
+                ]
+                np.minimum.at(
+                    min_dist,
+                    pixel_labels[is_resolved],
+                    nearest_other_dist[is_resolved],
+                )
+                # keep only the pixels that are both unresolved and whose lower bound
+                # can still improve the minimum distance of their patch
+                lower_bound = dist_arr[:, -1]
+                pixel_idx = pixel_idx[
+                    ~is_resolved & (lower_bound < min_dist[pixel_labels])
+                ]
+                if _num_neighbors == num_pixels:
+                    # each pixel has already seen the whole class, so any remaining
+                    # pixel belongs to a patch without any other patch of its class
+                    break
+                num_neighbors *= 2
+
+            enn = min_dist[unique_labels]
+            enn[np.isinf(enn)] = np.nan
             # end KDTree
 
             if np.isclose(self.cell_width, self.cell_height, rtol=CELLLENGTH_RTOL):
