@@ -133,6 +133,11 @@ python = "3.14.*"
 [tool.pixi.feature.test.tasks]
 test = "pytest -s --cov=pylandstats --cov-report=xml tests"
 
+[tool.pixi.feature.user-guide.tasks]
+# execute the user guide notebooks (without storing their outputs, which are computed
+# when building the docs), i.e., so that they are also tested in github actions
+run-notebooks = "jupyter execute --kernel_name=python3 docs/user-guide/*.ipynb"
+
 [tool.pixi.pypi-dependencies]
 pylandstats = {path = ".", editable = true}
 

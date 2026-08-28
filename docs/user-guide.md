@@ -16,3 +16,12 @@ user-guide/zonal-analysis
 user-guide/spatiotemporal-zonal-analysis
 user-guide/spatial-signature-analysis
 ```
+
+## Annex
+
+```{toctree}
+---
+maxdepth: 1
+---
+user-guide/fragstats-comparison
+```

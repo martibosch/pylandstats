@@ -1,0 +1,3 @@
+LID , TYPE , CA , PLAND , NP , PD , LPI , TE , ED , LSI , MESH , PAFRAC
+Z:\home\martibosch\pylandstats-notebooks\data\vaud_g100_clc00_V18_5.tif , cls_2 ,  296346.0000 ,      92.2981 ,      13.0000 ,       0.0040 ,      89.4514 , 1431600.0000 ,       4.4588 ,      10.0533 ,       257139.0778 ,       1.3221
+Z:\home\martibosch\pylandstats-notebooks\data\vaud_g100_clc00_V18_5.tif , cls_1 ,   24729.0000 ,       7.7019 ,     193.0000 ,       0.0601 ,       2.0699 , 1431600.0000 ,       4.4588 ,      22.9492 ,       169.5745 ,       1.4393
