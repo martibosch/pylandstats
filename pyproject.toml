@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=74.1.0"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.9.4,<0.10.0"]
+build-backend = "uv_build"
 
 [project]
 name = "pylandstats"
@@ -10,9 +10,9 @@ readme = "README.md"
 authors = [
   {name = "Martí Bosch", email = "marti.bosch@epfl.ch"}
 ]
-license = {text = "GPL-3.0"}
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 classifiers = [
-  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
   "Natural Language :: English",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
@@ -45,10 +45,6 @@ user-guide = ["contextily", "ipykernel", "nbclient", "swisslandstats-geopy"]
 
 [project.urls]
 Repository = "https://github.com/martibosch/pylandstats"
-
-[tool.cibuildwheel]
-build = ["cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*"]
-skip = "*-musllinux_i686"
 
 [tool.codespell]
 ignore-words-list = "te"
@@ -92,11 +88,10 @@ dev = {features = ["dev"], solve-group = "default"}
 doc = {features = ["doc", "user-guide"], solve-group = "default"}
 test = {features = ["test"], solve-group = "default"}
 user-guide = {features = ["user-guide"], solve-group = "default"}
-# ACHTUNG: `no-default-feature` so that this environment is only R, i.e., it neither
-# installs python nor builds the cython extension of pylandstats
+# ACHTUNG: `no-default-feature` so that this environment is only R, i.e., it does not
+# install python nor pylandstats
 benchmark = {features = ["benchmark"], no-default-feature = true}
-# one environment per supported python version, to match the wheels built by
-# cibuildwheel - each needs its own solve group
+# one environment per supported python version - each needs its own solve group
 test-py310 = {features = ["py310", "test"], solve-group = "py310"}
 test-py311 = {features = ["py311", "test"], solve-group = "py311"}
 test-py312 = {features = ["py312", "test"], solve-group = "py312"}
@@ -120,8 +115,8 @@ r-terra = "*"
 benchmark-landscapemetrics = "Rscript docs/user-guide/metrics-benchmark.R"
 
 [tool.pixi.feature.dev.tasks]
-build-sdist = "python -m build --sdist"
-check = {cmd = "twine check --strict dist/*", depends-on = ["build-sdist"]}
+build = "python -m build"
+check = {cmd = "twine check --strict dist/*", depends-on = ["build"]}
 
 [tool.pixi.feature.doc.tasks]
 build-doc = "sphinx-build docs docs/_build"
@@ -185,6 +180,3 @@ known-first-party = ["pylandstats"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
-
-[tool.setuptools.packages.find]
-where = ["src"]

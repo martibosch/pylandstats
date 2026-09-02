@@ -1,4 +1,0 @@
-# the docs (which ship the user guide data, e.g., the FRAGSTATS reference files) and the
-# test data are not distributed within the source distribution
-prune docs
-prune tests

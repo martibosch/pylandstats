@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 jobs:
-  build_sdist:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,75 +18,54 @@ jobs:
           environments: dev
           frozen: true
 
-      - name: build source tarball # the `check` task depends on `build-sdist`
+      - name: build and check # the `check` command depends on `build`
         run: pixi run -e dev check
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cibw-sdist
-          path: dist/*.tar.gz
-
-  build_wheels:
-    name: wheel on ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: build wheels
-        uses: pypa/cibuildwheel@v3.2.0
-
-      - name: upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
-          path: ./wheelhouse/*.whl
+          path: dist/*
 
   publish_dev_build:
-    needs: [build_sdist, build_wheels]
+    needs: [build]
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://pypi.org/p/pylandstats
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
-          pattern: cibw-*
+          name: artifact
           path: dist
-          merge-multiple: true
 
-      - name: publish to test pypi
+      # Temporary workaround: use Twine-based publisher instead of `uv publish`.
+      # See https://github.com/pypi/support/issues/9423
+      - name: publish to test pypi (twine workaround)
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-          skip-existing: true
+          packages-dir: dist
 
   release:
     needs: [publish_dev_build]
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/pylandstats
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
       # see https://github.com/softprops/action-gh-release/issues/236
       contents: write
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: install uv
+        uses: astral-sh/setup-uv@v7
 
       - name: update changelog
         id: changelog
@@ -96,7 +75,7 @@ jobs:
           tag: ${{ github.ref_name }}
 
       - name: create release
-        uses: ncipollo/release-action@v1.15.0
+        uses: ncipollo/release-action@v1.16.0
         with:
           allowUpdates: true
           draft: false
@@ -105,14 +84,13 @@ jobs:
           body: ${{ steps.changelog.outputs.changes }}
           token: ${{ github.token }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
-          pattern: cibw-*
+          name: artifact
           path: dist
-          merge-multiple: true
 
       - name: publish to pypi
-        uses: pypa/gh-action-pypi-publish@release/v1
+        run: uv publish
 
       - name: pre-commit on changelog
         uses: pre-commit/action@v3.0.1
@@ -122,7 +100,7 @@ jobs:
         continue-on-error: true
 
       - name: commit changelog
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           branch: main
           commit_message: 'docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]'
