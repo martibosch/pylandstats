@@ -2,9 +2,18 @@
 
 import numpy as np
 
-# the class pairs are counted in chunks so that the intermediate index arrays stay in
-# cache, which is ~3x faster than counting them in a single pass over a large raster
-ADJ_CHUNK_SIZE = 1 << 20
+# number of rows whose class pairs are counted at a time, so that the intermediate index
+# arrays stay in cache. The result does not depend on it, only the time it takes
+ADJ_CHUNK_NUM_ROWS = 512
+
+
+def _count_pairs(class_arr, neighbor_arr, num_cols_adjacency):
+    """Count the occurrences of each (class, neighbor class) pair."""
+    return np.bincount(
+        neighbor_arr.ravel().astype(np.intp) * num_cols_adjacency
+        + class_arr.ravel().astype(np.intp),
+        minlength=num_cols_adjacency * num_cols_adjacency,
+    )
 
 
 def compute_adjacency_arr(padded_arr, num_classes):
@@ -25,38 +34,37 @@ def compute_adjacency_arr(padded_arr, num_classes):
         vertical adjacency counts between each pair of classes.
     """
     num_cols_adjacency = num_classes + 1
-    num_cols_pixel = padded_arr.shape[1]
-    flat_arr = padded_arr.ravel()
-    # ACHTUNG: the array is traversed flat, so the pixels of the left and right padding
-    # columns are counted as neighbors of each other (wrapping around the rows). Since
-    # both are nodata, this only affects the nodata-nodata count, which no metric reads
-    start = num_cols_pixel + 1
-    end = flat_arr.shape[0] - start
+    num_rows_pixel = padded_arr.shape[0]
     size = num_cols_adjacency * num_cols_adjacency
 
     horizontal_adjacency_arr = np.zeros(size, dtype=np.int64)
     vertical_adjacency_arr = np.zeros(size, dtype=np.int64)
 
-    for chunk_start in range(start, end, ADJ_CHUNK_SIZE):
-        chunk_end = min(chunk_start + ADJ_CHUNK_SIZE, end)
-        class_arr = flat_arr[chunk_start:chunk_end].astype(np.intp)
-        for adjacency_arr, offsets in (
-            (horizontal_adjacency_arr, (1, -1)),
-            (vertical_adjacency_arr, (num_cols_pixel, -num_cols_pixel)),
-        ):
-            for offset in offsets:
-                # ACHTUNG: the neighbor class is the row of the adjacency array, i.e.,
-                # the flat index is `class_i + num_cols_adjacency * neighbor_class`
-                neighbor_arr = flat_arr[
-                    chunk_start + offset : chunk_end + offset
-                ].astype(np.intp)
-                adjacency_arr += np.bincount(
-                    neighbor_arr * num_cols_adjacency + class_arr, minlength=size
-                )
-
-    return np.stack(
-        (
-            horizontal_adjacency_arr.astype(np.uint32),
-            vertical_adjacency_arr.astype(np.uint32),
+    for start in range(0, num_rows_pixel, ADJ_CHUNK_NUM_ROWS):
+        end = min(start + ADJ_CHUNK_NUM_ROWS, num_rows_pixel)
+        # horizontal adjacencies, i.e., between the columns of each row
+        chunk = padded_arr[start:end]
+        horizontal_adjacency_arr += _count_pairs(
+            chunk[:, :-1], chunk[:, 1:], num_cols_adjacency
         )
-    ).reshape((2, num_cols_adjacency, num_cols_adjacency))
+        # vertical adjacencies, i.e., between each row and the next one, hence the chunk
+        # extends one row beyond its end
+        chunk = padded_arr[start : end + 1]
+        vertical_adjacency_arr += _count_pairs(
+            chunk[:-1], chunk[1:], num_cols_adjacency
+        )
+
+    # each adjacency has been counted once, from the perspective of the left/upper
+    # pixel of the pair, so add the transpose to also count it from that of the
+    # right/lower one
+    return np.stack(
+        [
+            (arr + arr.T).astype(np.uint32)
+            for arr in (
+                horizontal_adjacency_arr.reshape(
+                    num_cols_adjacency, num_cols_adjacency
+                ),
+                vertical_adjacency_arr.reshape(num_cols_adjacency, num_cols_adjacency),
+            )
+        ]
+    )
