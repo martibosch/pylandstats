@@ -123,8 +123,6 @@ __python__
 .pixi/*
 !.pixi/config.toml
 
-# cython-generated sources
-src/pylandstats/*.c
 
 # docs build artifacts
 docs/jupyter_execute/

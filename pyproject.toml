@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=74.1.0", "wheel", "cython>=3.1", "numpy>=2.0.0"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.9.4,<0.10.0"]
+build-backend = "uv_build"
 
 [project]
 name = "pylandstats"
@@ -10,9 +10,9 @@ readme = "README.md"
 authors = [
   {name = "Martí Bosch", email = "marti.bosch@epfl.ch"}
 ]
-license = {text = "GPL-3.0"}
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 classifiers = [
-  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
   "Natural Language :: English",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
@@ -46,10 +46,6 @@ user-guide = ["contextily", "ipykernel", "nbclient", "swisslandstats-geopy"]
 [project.urls]
 Repository = "https://github.com/martibosch/pylandstats"
 
-[tool.cibuildwheel]
-build = ["cp310-*", "cp311-*", "cp312-*", "cp313-*", "cp314-*"]
-skip = "*-musllinux_i686"
-
 [tool.codespell]
 ignore-words-list = "te"
 skip = "CHANGELOG.md,pixi.lock"
@@ -81,12 +77,7 @@ python = ">=3.10,<3.15"
 gdal = ">=3.3"
 geopandas = "*"
 rasterio = ">=1.0.0"
-# ACHTUNG: the toolchain below is required in *every* environment (not only in
-# `dev`) because the editable install of pylandstats is part of the default
-# feature and is built with `no-build-isolation` (see `tool.pixi.pypi-options`)
-cython = ">=3.1"
 numpy = ">=2.0.0"
-setuptools = ">=74.1.0"
 # so that the default environment can be used as a jupyter kernel, which is
 # what pixi-kernel falls back to
 ipykernel = ">=7.3.0,<8"
@@ -97,11 +88,10 @@ dev = {features = ["dev"], solve-group = "default"}
 doc = {features = ["doc", "user-guide"], solve-group = "default"}
 test = {features = ["test"], solve-group = "default"}
 user-guide = {features = ["user-guide"], solve-group = "default"}
-# ACHTUNG: `no-default-feature` so that this environment is only R, i.e., it neither
-# installs python nor builds the cython extension of pylandstats
+# ACHTUNG: `no-default-feature` so that this environment is only R, i.e., it does not
+# install python nor pylandstats
 benchmark = {features = ["benchmark"], no-default-feature = true}
-# one environment per supported python version, to match the wheels built by
-# cibuildwheel - each needs its own solve group
+# one environment per supported python version - each needs its own solve group
 test-py310 = {features = ["py310", "test"], solve-group = "py310"}
 test-py311 = {features = ["py311", "test"], solve-group = "py311"}
 test-py312 = {features = ["py312", "test"], solve-group = "py312"}
@@ -125,11 +115,8 @@ r-terra = "*"
 benchmark-landscapemetrics = "Rscript docs/user-guide/metrics-benchmark.R"
 
 [tool.pixi.feature.dev.tasks]
-# editable installs do not recompile the cython extension when `.pyx` files
-# change, so rebuild it in place explicitly
-build-ext = "python setup.py build_ext --inplace"
-build-sdist = "python -m build --sdist"
-check = {cmd = "twine check --strict dist/*", depends-on = ["build-sdist"]}
+build = "python -m build"
+check = {cmd = "twine check --strict dist/*", depends-on = ["build"]}
 
 [tool.pixi.feature.doc.tasks]
 build-doc = "sphinx-build docs docs/_build"
@@ -170,29 +157,6 @@ run-notebooks = """jupyter execute --kernel_name=python3
 [tool.pixi.pypi-dependencies]
 pylandstats = {path = ".", editable = true}
 
-[tool.pixi.pypi-options]
-# build the extension against the conda-forge numpy/cython/compiler rather than
-# against an ephemeral build environment resolved from PyPI
-no-build-isolation = ["pylandstats"]
-
-# on unix, the cython extension is built with the conda-forge compiler; on
-# windows there is no conda compiler, so setuptools autodetects the (system) MSVC
-# toolchain via vswhere - installing `vs2022_win-64` (via `c-compiler`) would set
-# `DISTUTILS_USE_SDK` and thus expect an already-activated toolchain, which is not
-# the case when `no-build-isolation` builds the editable install during `pixi
-# install` (before the environment activation scripts run)
-[tool.pixi.target.linux-64.dependencies]
-c-compiler = "*"
-
-[tool.pixi.target.linux-aarch64.dependencies]
-c-compiler = "*"
-
-[tool.pixi.target.osx-64.dependencies]
-c-compiler = "*"
-
-[tool.pixi.target.osx-arm64.dependencies]
-c-compiler = "*"
-
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64", "win-64"]
@@ -216,6 +180,3 @@ known-first-party = ["pylandstats"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
-
-[tool.setuptools.packages.find]
-where = ["src"]
