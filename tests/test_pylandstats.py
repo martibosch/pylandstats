@@ -170,6 +170,29 @@ class TestLandscape(unittest.TestCase):
             np.all(patch_df.columns.drop("class_val") == pls.Landscape.PATCH_METRICS)
         )
         self.assertEqual(patch_df.index.name, "patch_id")
+        patch_centroids_df = ls.compute_patch_metrics_df(centroids=True)
+        self.assertIn("centroid_x", patch_centroids_df.columns)
+        self.assertIn("centroid_y", patch_centroids_df.columns)
+        self.assertFalse(
+            patch_centroids_df[["centroid_x", "centroid_y"]].isna().any().any()
+        )
+
+        ls_with_transform = pls.Landscape(self.landscape_fp)
+        patch_crs_df = ls_with_transform.compute_patch_metrics_df(centroids=True)
+        bounds = rio.transform.array_bounds(
+            ls_with_transform.landscape_arr.shape[0],
+            ls_with_transform.landscape_arr.shape[1],
+            ls_with_transform.transform,
+        )
+        self.assertTrue((patch_crs_df["centroid_x"] >= bounds[0]).all())
+        self.assertTrue((patch_crs_df["centroid_x"] <= bounds[2]).all())
+        self.assertTrue((patch_crs_df["centroid_y"] >= bounds[1]).all())
+        self.assertTrue((patch_crs_df["centroid_y"] <= bounds[3]).all())
+        class_centroids = ls_with_transform.centroids(class_val=ls.classes[0])
+        self.assertEqual(len(class_centroids.columns), 2)
+        self.assertGreater(
+            pls.landscape.compute_entropy(pd.Series([10, 20], dtype=object)), 0
+        )
         # try that raised ValueErrors have different error messages depending on the
         # context
         with self.assertRaises(ValueError) as cm:
