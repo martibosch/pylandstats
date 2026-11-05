@@ -96,6 +96,7 @@ def compute_entropy(counts, base=None):
     -------
     entropy: numeric
     """
+    counts = np.asarray(counts, dtype=float)
     pcounts = (counts / counts.sum())[counts > 0]
     entropy = -np.sum(pcounts * np.log(pcounts))
     if base:
@@ -314,6 +315,34 @@ class Landscape:
         # we could use `ndimage.find_objects`, but since we do not need to preserve the
         # feature shapes, `np.bincount` is much faster
         return np.bincount(label_arr.ravel())[1:] * self.cell_area
+
+    def compute_patch_centroids(self, label_arr):
+        """Compute the (x, y) centroid coordinates of each patch in a labeled array.
+
+        Parameters
+        ----------
+        label_arr : numpy.ndarray
+            Array with unique integer labels for each patch.
+
+        Returns
+        -------
+        patch_centroids : numpy.ndarray
+            Two-dimensional array of shape (num_patches, 2) with the (x, y) centroid
+            coordinates of each patch. If `self.transform` is not None, coordinates
+            are transformed to the landscape's coordinate reference system; otherwise
+            pixel (column, row) coordinates are returned.
+        """
+        if np.max(label_arr) < 1:
+            return np.empty((0, 2), dtype=float)
+        nonzero_i_idx, nonzero_j_idx = np.nonzero(label_arr)
+        labels = label_arr[nonzero_i_idx, nonzero_j_idx]
+        counts = np.bincount(labels)[1:]
+        rows = np.bincount(labels, weights=nonzero_i_idx)[1:] / counts
+        cols = np.bincount(labels, weights=nonzero_j_idx)[1:] / counts
+        if self.transform is not None:
+            xs, ys = self.transform * (cols + 0.5, rows + 0.5)
+            return np.column_stack((xs, ys))
+        return np.column_stack((cols, rows))
 
     def compute_patch_perimeters(self, label_arr):
         """Compute the perimeter of each patch in a labeled patch array.
@@ -639,6 +668,27 @@ class Landscape:
             return self._cached_patch_euclidean_nearest_neighbor_ser
 
     @property
+    def _patch_centroid_df(self):
+        try:
+            return self._cached_patch_centroid_df
+        except AttributeError:
+            if len(self.classes) > 0:
+                centroids_arr = np.vstack(
+                    [
+                        self.compute_patch_centroids(self.class_label(class_val)[0])
+                        for class_val in self.classes
+                    ]
+                )
+            else:
+                centroids_arr = np.empty((0, 2), dtype=float)
+            self._cached_patch_centroid_df = pd.DataFrame(
+                centroids_arr,
+                columns=["centroid_x", "centroid_y"],
+            )
+
+            return self._cached_patch_centroid_df
+
+    @property
     def _adjacency_df(self):
         try:
             return self._cached_adjacency_df
@@ -740,6 +790,31 @@ class Landscape:
         # `patch_perimeter_ser` is a slice: although we would not have alias problems,
         # we would get a `SettingWithCopyWarning` form `pandas`
         return patch_euclidean_nearest_neighbor_ser
+
+    def _get_patch_centroid_df(self, *, class_val=None):
+        if class_val is None:
+            return self._patch_centroid_df
+        return self._patch_centroid_df[self._patch_class_ser == class_val]
+
+    def centroids(self, *, class_val=None):
+        """Centroid (x, y) coordinates of each patch of the landscape.
+
+        Parameters
+        ----------
+        class_val : int, optional
+            If provided, the centroids will be computed for the corresponding class
+            only, otherwise they will be computed for all the classes of the landscape.
+
+        Returns
+        -------
+        centroids : pandas.DataFrame
+            DataFrame with `centroid_x` and `centroid_y` columns (and `class_val` when
+            `class_val` is None).
+        """
+        centroid_df = self._get_patch_centroid_df(class_val=class_val)
+        if class_val is None:
+            return pd.concat([self._patch_class_ser, centroid_df], axis=1)
+        return centroid_df
 
     # metric distribution statistics
 
@@ -3752,7 +3827,9 @@ class Landscape:
     ###########################################################################
     # compute metrics data frames
 
-    def compute_patch_metrics_df(self, *, metrics=None, metrics_kwargs=None):
+    def compute_patch_metrics_df(
+        self, *, metrics=None, metrics_kwargs=None, centroids=False
+    ):
         """Compute patch-level metrics.
 
         Parameters
@@ -3767,6 +3844,9 @@ class Landscape:
             hectares, metric_kwargs should map the string 'area' (method name) to
             {'hectares': False}. If `None`, each metric will be computed according to
             FRAGSTATS defaults.
+        centroids : bool, default False
+            Whether the `centroid_x` and `centroid_y` coordinates of each patch should
+            be included as columns in the resulting data frame.
 
         Returns
         -------
@@ -3806,6 +3886,9 @@ class Landscape:
                         metric=metric
                     )
                 ) from drop_e
+
+        if centroids:
+            metrics_dfs.append(self._patch_centroid_df)
 
         df = pd.concat(metrics_dfs, axis=1)  # [['class_val'] + patch_metrics]
         df.index.name = "patch_id"
