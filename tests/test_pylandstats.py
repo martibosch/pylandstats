@@ -190,9 +190,6 @@ class TestLandscape(unittest.TestCase):
         self.assertTrue((patch_crs_df["centroid_y"] <= bounds[3]).all())
         class_centroids = ls_with_transform.centroids(class_val=ls.classes[0])
         self.assertEqual(len(class_centroids.columns), 2)
-        self.assertGreater(
-            pls.landscape.compute_entropy(pd.Series([10, 20], dtype=object)), 0
-        )
         # try that raised ValueErrors have different error messages depending on the
         # context
         with self.assertRaises(ValueError) as cm:

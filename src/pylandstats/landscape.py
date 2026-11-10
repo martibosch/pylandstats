@@ -96,7 +96,6 @@ def compute_entropy(counts, base=None):
     -------
     entropy: numeric
     """
-    counts = np.asarray(counts, dtype=float)
     pcounts = (counts / counts.sum())[counts > 0]
     entropy = -np.sum(pcounts * np.log(pcounts))
     if base:
