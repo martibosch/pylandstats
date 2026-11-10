@@ -316,7 +316,7 @@ class Landscape:
         return np.bincount(label_arr.ravel())[1:] * self.cell_area
 
     def compute_patch_centroids(self, label_arr):
-        """Compute the (x, y) centroid coordinates of each patch in a labeled array.
+        """Compute the (x, y) centroid coordinates of each labeled patch.
 
         Parameters
         ----------
@@ -326,10 +326,10 @@ class Landscape:
         Returns
         -------
         patch_centroids : numpy.ndarray
-            Two-dimensional array of shape (num_patches, 2) with the (x, y) centroid
-            coordinates of each patch. If `self.transform` is not None, coordinates
-            are transformed to the landscape's coordinate reference system; otherwise
-            pixel (column, row) coordinates are returned.
+            Two-dimensional array of shape (num_patches, 2) with the (x, y)
+            centroid coordinates of each patch. If `self.transform` is not
+            None, coordinates are in the landscape's CRS; otherwise pixel
+            (column, row) coordinates are returned.
         """
         if np.max(label_arr) < 1:
             return np.empty((0, 2), dtype=float)
@@ -674,7 +674,9 @@ class Landscape:
             if len(self.classes) > 0:
                 centroids_arr = np.vstack(
                     [
-                        self.compute_patch_centroids(self.class_label(class_val)[0])
+                        self.compute_patch_centroids(
+                            self.class_label(class_val)[0]
+                        )
                         for class_val in self.classes
                     ]
                 )
@@ -801,14 +803,14 @@ class Landscape:
         Parameters
         ----------
         class_val : int, optional
-            If provided, the centroids will be computed for the corresponding class
-            only, otherwise they will be computed for all the classes of the landscape.
+            If provided, the centroids will be computed for the corresponding
+            class only, otherwise for all the classes of the landscape.
 
         Returns
         -------
         centroids : pandas.DataFrame
-            DataFrame with `centroid_x` and `centroid_y` columns (and `class_val` when
-            `class_val` is None).
+            DataFrame with `centroid_x` and `centroid_y` columns (and
+            `class_val` when `class_val` is None).
         """
         centroid_df = self._get_patch_centroid_df(class_val=class_val)
         if class_val is None:
@@ -3844,8 +3846,8 @@ class Landscape:
             {'hectares': False}. If `None`, each metric will be computed according to
             FRAGSTATS defaults.
         centroids : bool, default False
-            Whether the `centroid_x` and `centroid_y` coordinates of each patch should
-            be included as columns in the resulting data frame.
+            Whether the `centroid_x` and `centroid_y` coordinates of each
+            patch should be included as columns in the resulting data frame.
 
         Returns
         -------

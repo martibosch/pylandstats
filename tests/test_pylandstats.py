@@ -177,18 +177,18 @@ class TestLandscape(unittest.TestCase):
             patch_centroids_df[["centroid_x", "centroid_y"]].isna().any().any()
         )
 
-        ls_with_transform = pls.Landscape(self.landscape_fp)
-        patch_crs_df = ls_with_transform.compute_patch_metrics_df(centroids=True)
+        ls_tr = pls.Landscape(self.landscape_fp)
+        patch_crs_df = ls_tr.compute_patch_metrics_df(centroids=True)
         bounds = rio.transform.array_bounds(
-            ls_with_transform.landscape_arr.shape[0],
-            ls_with_transform.landscape_arr.shape[1],
-            ls_with_transform.transform,
+            ls_tr.landscape_arr.shape[0],
+            ls_tr.landscape_arr.shape[1],
+            ls_tr.transform,
         )
         self.assertTrue((patch_crs_df["centroid_x"] >= bounds[0]).all())
         self.assertTrue((patch_crs_df["centroid_x"] <= bounds[2]).all())
         self.assertTrue((patch_crs_df["centroid_y"] >= bounds[1]).all())
         self.assertTrue((patch_crs_df["centroid_y"] <= bounds[3]).all())
-        class_centroids = ls_with_transform.centroids(class_val=ls.classes[0])
+        class_centroids = ls_tr.centroids(class_val=ls.classes[0])
         self.assertEqual(len(class_centroids.columns), 2)
         # try that raised ValueErrors have different error messages depending on the
         # context
