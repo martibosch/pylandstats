@@ -674,9 +674,7 @@ class Landscape:
             if len(self.classes) > 0:
                 centroids_arr = np.vstack(
                     [
-                        self.compute_patch_centroids(
-                            self.class_label(class_val)[0]
-                        )
+                        self.compute_patch_centroids(self.class_label(class_val)[0])
                         for class_val in self.classes
                     ]
                 )
